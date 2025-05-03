@@ -27,7 +27,7 @@
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.SmartKal.founder",
+      "bundleIdentifier": "com.jebilinjebilin.ShopMart",
       "config": {
         "googleMapsApiKey": "###### Key #######"
       },
@@ -56,7 +56,7 @@
     },
     "android": {
       "versionCode": 5,
-      "package": "com.SmartKal.founder",
+      "package": "com.jebilinjebilin.ShopMart",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "config": {

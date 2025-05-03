@@ -16,6 +16,10 @@ const SignInScreen = () => {
   const [forgotPasswordModal, setForgotPasswordModal] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [otpModal, setOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const navigation = useNavigation();
   const { user, login } = useAuth();
 
@@ -180,27 +184,20 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
 
     setForgotPasswordLoading(true);
     try {
-      console.log('Sending forgot password request to:', `${base_url}/auth/forgetPassword`);
-      console.log('Request body:', JSON.stringify({ email: forgotPasswordEmail }));
-      
-      const response = await fetch(`${base_url}/auth/forgetPassword`, {
+      const response = await fetch(`${base_url}/user/forgotPassword/getOTP/${forgotPasswordEmail}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: forgotPasswordEmail }),
       });
 
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
-
       if (response.ok) {
-        Alert.alert('Success', 'Password reset link has been sent to your email');
+        Alert.alert('Success', 'OTP has been sent to your email');
         setForgotPasswordModal(false);
-        setForgotPasswordEmail('');
+        setOtpModal(true);
       } else {
-        Alert.alert('Error', data.message || 'Failed to send reset link. Please try again.');
+        const data = await response.json();
+        Alert.alert('Error', data.message || 'Failed to send OTP. Please try again.');
       }
     } catch (error) {
       console.error('Error in forgot password:', error);
@@ -213,7 +210,52 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
     }
   };
 
+  const handleUpdatePassword = async () => {
+    if (!otp || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
 
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${base_url}/user/forgotPassword/updatePassword`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          password: newPassword,
+          otp: parseInt(otp),
+          email: forgotPasswordEmail
+        }),
+      });
+
+      if (response.ok) {
+        Alert.alert('Success', 'Password has been updated successfully');
+        setOtpModal(false);
+        setOtp('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setForgotPasswordEmail('');
+      } else {
+        const data = await response.json();
+        Alert.alert('Error', data.message || 'Failed to update password. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error in updating password:', error);
+      Alert.alert(
+        'Error', 
+        'Failed to process your request. Please check your internet connection and try again.'
+      );
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -304,7 +346,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Reset Password</Text>
             <Text style={styles.modalSubtitle}>
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we'll send you an OTP to reset your password.
             </Text>
             
             <TextInput
@@ -325,13 +367,77 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
               {forgotPasswordLoading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.modalButtonText}>Send Reset Link</Text>
+                <Text style={styles.modalButtonText}>Send OTP</Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.modalCloseButton}
               onPress={() => setForgotPasswordModal(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* OTP Verification Modal */}
+      <Modal
+        visible={otpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setOtpModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enter OTP</Text>
+            <Text style={styles.modalSubtitle}>
+              Please enter the 4-digit OTP sent to your email.
+            </Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter OTP"
+              placeholderTextColor="#999"
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="numeric"
+              maxLength={4}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="New Password"
+              placeholderTextColor="#999"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Confirm Password"
+              placeholderTextColor="#999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={handleUpdatePassword}
+              disabled={forgotPasswordLoading}
+            >
+              {forgotPasswordLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.modalButtonText}>Update Password</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setOtpModal(false)}
             >
               <Text style={styles.modalCloseButtonText}>Cancel</Text>
             </TouchableOpacity>
