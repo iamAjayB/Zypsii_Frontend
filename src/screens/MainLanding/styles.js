@@ -166,16 +166,16 @@ const styles = StyleSheet.create({
   },
   titleSpacernearest: {
     marginLeft: '4%',
-    marginTop: scale(15),
+    marginTop: scale(5),
     marginBottom: '4%',
   },
   titleSpaceredge: {
     marginLeft: '1%',
-    marginTop: scale(15)
+    marginTop: scale(5)
   },
   titleSpacerdesti: {
     marginLeft: '1%',
-    marginTop: scale(15)
+    marginTop: scale(5)
   },
   productCard: {
     marginLeft: '5%',
@@ -287,12 +287,12 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   scheduleContainer: {
-    padding: wp('4%'), // Dynamic padding based on screen width
+    padding: wp('1%'), // Dynamic padding based on screen width
     //marginTop: hp('2%'),
     // marginTop: verticalScale(20),
-    paddingHorizontal: scale(14),
+    paddingHorizontal: scale(4),
     backgroundColor: '#fff',
-    paddingBottom: verticalScale(20),
+    paddingBottom: verticalScale(0),
   },
   scheduleheadContainer:{
     flexDirection: 'row',

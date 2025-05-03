@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Animated, Easing } from 'react-native';
 import { colors } from "../../utils";
 import { Ionicons } from '@expo/vector-icons';
+import navigationService from '../../routes/navigationService';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 30; // Full width minus margins
@@ -101,133 +102,131 @@ const DirectionIndicator = ({ duration, distance }) => {
 };
 
 // Nearby Places Card Component
-const RecommendedScheduleCard = ({ onSchedulePress, onViewMorePress }) => {
+const RecommendedScheduleCard = ({ onSchedulePress }) => {
+    const scrollViewRef = useRef(null);
+    const scrollX = useRef(new Animated.Value(0)).current;
+    const currentIndex = useRef(0);
+    const autoScrollTimer = useRef(null);
+
+    const startAutoScroll = () => {
+        if (scrollViewRef.current) {
+            autoScrollTimer.current = setInterval(() => {
+                currentIndex.current = (currentIndex.current + 1) % suggestions[0].places.length;
+                
+                // Smooth scroll animation
+                Animated.timing(scrollX, {
+                    toValue: currentIndex.current * (CARD_WIDTH - 30),
+                    duration: 1000,
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                }).start();
+
+                scrollViewRef.current.scrollTo({
+                    x: currentIndex.current * (CARD_WIDTH - 30),
+                    animated: true,
+                });
+            }, 3000); // Change card every 3 seconds
+        }
+    };
+
+    const stopAutoScroll = () => {
+        if (autoScrollTimer.current) {
+            clearInterval(autoScrollTimer.current);
+        }
+    };
+
+    useEffect(() => {
+        startAutoScroll();
+        return () => stopAutoScroll();
+    }, []);
+
+    const handleScroll = (event) => {
+        const newIndex = Math.round(event.nativeEvent.contentOffset.x / (CARD_WIDTH - 30));
+        if (newIndex !== currentIndex.current) {
+            currentIndex.current = newIndex;
+            stopAutoScroll();
+            startAutoScroll();
+        }
+    };
+
+    const handleViewDetails = (place) => {
+        navigationService.navigate('PlaceDetails', { 
+            place,
+            isAllPlaces: false 
+        });
+    };
+
+    const handleViewAll = (suggestion) => {
+        navigationService.navigate('PlaceDetails', {
+            places: suggestion.places,
+            isAllPlaces: true
+        });
+    };
+
     const suggestions = [
+       
         {
-            title: "Beach Day",
+            title: "Cultural Heritage",
             places: [
-                {
-                    name: "Calangute Beach",
-                    time: "10:00 AM - 2:00 PM",
-                    icon: "🏖️",
-                    activities: ["Sunbathing", "Beach Games", "Local Food", "Shopping"],
-                    vehicle: "bike",
-                    distance: "15 km",
-                    duration: "30 mins",
-                    description: "One of Goa's most popular beaches with golden sand and clear waters",
-                    rating: "4.5",
-                    price: "₹500-1000",
-                    date: "2024-05-01"
-                },
-                {
-                    name: "Baga Beach",
-                    time: "3:00 PM - 6:00 PM",
-                    icon: "🏖️",
-                    activities: ["Water Sports", "Beach Relaxation", "Nightlife", "Dining"],
-                    vehicle: "bike",
-                    distance: "5 km",
-                    duration: "10 mins",
-                    description: "Famous for water sports and vibrant nightlife",
-                    rating: "4.3",
-                    price: "₹1000-2000",
-                    date: "2024-05-02"
-                }
-            ]
-        },
-        {
-            title: "Historical Tour",
-            places: [
-                {
-                    name: "Fort Aguada",
-                    time: "9:00 AM - 12:00 PM",
-                    icon: "🏰",
-                    activities: ["History", "Photography", "Scenic Views", "Light House"],
-                    vehicle: "car",
-                    distance: "20 km",
-                    duration: "45 mins",
-                    description: "17th-century Portuguese fort with panoramic views",
-                    rating: "4.7",
-                    price: "₹200-500",
-                    date: "2024-05-03"
-                },
-                {
-                    name: "Chapora Fort",
-                    time: "2:00 PM - 5:00 PM",
-                    icon: "🏰",
-                    activities: ["History", "Scenic Views", "Sunset Point", "Photography"],
-                    vehicle: "car",
-                    distance: "25 km",
-                    duration: "50 mins",
-                    description: "Historic fort with stunning views of the Arabian Sea",
-                    rating: "4.6",
-                    price: "Free",
-                    date: "2024-05-04"
-                }
-            ]
-        },
-        {
-            title: "Nature & Wildlife",
-            places: [
-                {
-                    name: "Dudhsagar Falls",
-                    time: "8:00 AM - 12:00 PM",
-                    icon: "🌊",
-                    activities: ["Trekking", "Waterfall", "Swimming", "Nature Walk"],
-                    vehicle: "jeep",
-                    distance: "60 km",
-                    duration: "2 hours",
-                    description: "Majestic four-tiered waterfall in the Western Ghats",
-                    rating: "4.8",
-                    price: "₹1000-1500"
-                },
-                {
-                    name: "Mollem National Park",
-                    time: "1:00 PM - 4:00 PM",
-                    icon: "🌳",
-                    activities: ["Wildlife", "Nature Walk", "Bird Watching", "Photography"],
-                    vehicle: "jeep",
-                    distance: "5 km",
-                    duration: "15 mins",
-                    description: "Rich biodiversity with various species of flora and fauna",
-                    rating: "4.4",
-                    price: "₹500-800"
-                }
-            ]
-        },
-        {
-            title: "Cultural Experience",
-            places: [
-                {
-                    name: "Shri Shantadurga Temple",
-                    time: "9:00 AM - 12:00 PM",
-                    icon: "🛕",
-                    activities: ["Temple Visit", "Local Culture"]
-                },
                 {
                     name: "Basilica of Bom Jesus",
-                    time: "2:00 PM - 5:00 PM",
+                    time: "9:00 AM - 12:00 PM",
                     icon: "⛪",
-                    activities: ["History", "Architecture"]
+                    activities: ["Historical Tour", "Photography", "Religious Visit"],
+                    date: "2024-03-17",
+                    rating: "4.7",
+                    price: "Free",
+                    duration: "3 hours",
+                    distance: "12 km",
+                    description: "Explore this UNESCO World Heritage Site and marvel at its Baroque architecture.",
+                    vehicle: "car"
+                },
+                {
+                    name: "Fort Aguada",
+                    time: "2:00 PM - 5:00 PM",
+                    icon: "🏰",
+                    activities: ["Historical Tour", "Photography", "Sunset Viewing"],
+                    date: "2024-03-17",
+                    rating: "4.5",
+                    price: "₹100",
+                    duration: "3 hours",
+                    distance: "15 km",
+                    description: "Visit this 17th-century Portuguese fort with stunning views of the Arabian Sea.",
+                    vehicle: "car"
                 }
             ]
         },
         {
-            title: "Adventure Sports",
-            places: [
-                {
-                    name: "Anjuna Beach",
-                    time: "9:00 AM - 12:00 PM",
-                    icon: "🏃",
-                    activities: ["Paragliding", "Rock Climbing"]
-                },
-                {
-                    name: "Candolim Beach",
-                    time: "2:00 PM - 5:00 PM",
-                    icon: "🏄",
-                    activities: ["Jet Ski", "Parasailing"]
-                }
-            ]
-        }
+          title: " Heritage",
+          places: [
+              {
+                  name: "Jesus",
+                  time: "9:00 AM - 12:00 PM",
+                  icon: "⛪",
+                  activities: ["Historical Tour", "Photography", "Religious Visit"],
+                  date: "2024-03-17",
+                  rating: "4.7",
+                  price: "Free",
+                  duration: "3 hours",
+                  distance: "12 km",
+                  description: "Explore this UNESCO World Heritage Site and marvel at its Baroque architecture.",
+                  vehicle: "car"
+              },
+              {
+                  name: " Aguada",
+                  time: "2:00 PM - 5:00 PM",
+                  icon: "🏰",
+                  activities: ["Historical Tour", "Photography", "Sunset Viewing"],
+                  date: "2024-03-17",
+                  rating: "4.5",
+                  price: "₹100",
+                  duration: "3 hours",
+                  distance: "15 km",
+                  description: "Visit this 17th-century Portuguese fort with stunning views of the Arabian Sea.",
+                  vehicle: "car"
+              }
+          ]
+      }
     ];
   
     const getVehicleIcon = (vehicle) => {
@@ -269,11 +268,75 @@ const RecommendedScheduleCard = ({ onSchedulePress, onViewMorePress }) => {
         });
     };
   
+    const renderPlaceCard = (place, placeIndex) => (
+        <View key={placeIndex} style={styles.placeCardContainer}>
+            <View style={styles.placeCard}>
+                <View style={styles.dayHeader}>
+                    <View style={styles.dayMarker}>
+                        <Text style={styles.dayText}>Day {placeIndex + 1}</Text>
+                        <Text style={styles.dateText}>{formatDate(place.date)}</Text>
+                    </View>
+                </View>
+                <View style={styles.placeContent}>
+                    <View style={styles.placeHeader}>
+                        <Text style={styles.placeIcon}>{place.icon}</Text>
+                        <View style={styles.placeInfo}>
+                            <View style={styles.nameRow}>
+                                <Text style={styles.placeName}>{place.name}</Text>
+                                {place.vehicle && (
+                                    <View style={styles.vehicleContainer}>
+                                        <Text style={styles.vehicleIcon}>
+                                            {place.vehicle === 'bike' ? '🚲' : place.vehicle === 'car' ? '🚗' : '🚙'}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                            <Text style={styles.placeTime}>{place.time}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.placeDescription}>{place.description}</Text>
+                    <View style={styles.placeMeta}>
+                        <View style={styles.metaItem}>
+                            <Ionicons name="star" size={16} color="#FFD700" />
+                            <Text style={styles.metaText}>{place.rating}</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                            <Ionicons name="cash-outline" size={16} color="#666" />
+                            <Text style={styles.metaText}>{place.price}</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                            <Ionicons name="time-outline" size={16} color="#666" />
+                            <Text style={styles.metaText}>{place.duration}</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                            <Ionicons name="location-outline" size={16} color="#666" />
+                            <Text style={styles.metaText}>{place.distance}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.activitiesContainer}>
+                        {place.activities && place.activities.map((activity, activityIndex) => (
+                            <View key={activityIndex} style={styles.activityTag}>
+                                <Text style={styles.activityText}>{activity}</Text>
+                            </View>
+                        ))}
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.viewButton}
+                        onPress={() => handleViewDetails(place)}
+                    >
+                        <Text style={styles.viewButtonText}>View Details</Text>
+                        <Ionicons name="chevron-forward" size={16} color={colors.Zypsii_color} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+    );
+  
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Suggested Itineraries</Text>
-          <TouchableOpacity onPress={onViewMorePress}>
+          <TouchableOpacity onPress={() => handleViewAll(suggestions[0])}>
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -296,54 +359,117 @@ const RecommendedScheduleCard = ({ onSchedulePress, onViewMorePress }) => {
                 </TouchableOpacity>
               </View>
 
-              {suggestion.places.map((place, placeIndex) => (
-                <React.Fragment key={placeIndex}>
-                  <View style={styles.placeCard}>
-                    <View style={styles.placeHeader}>
-                      <View style={styles.markerContainer}>
-                        <View style={[styles.marker, styles.dayMarker]}>
-                          <Text style={styles.markerText}>Day {placeIndex + 1}</Text>
+              <Animated.ScrollView
+                ref={scrollViewRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                pagingEnabled
+                contentContainerStyle={styles.placesScrollContent}
+                onScroll={Animated.event(
+                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                  { useNativeDriver: true, listener: handleScroll }
+                )}
+                scrollEventThrottle={16}
+              >
+                {suggestion.places.map((place, placeIndex) => (
+                  <View key={placeIndex} style={styles.placeCardContainer}>
+                    <View style={styles.placeCard}>
+                      <View style={styles.dayHeader}>
+                        <View style={styles.dayMarker}>
+                          <Text style={styles.dayText}>Day {placeIndex + 1}</Text>
                           <Text style={styles.dateText}>{formatDate(place.date)}</Text>
                         </View>
                       </View>
-                      <Text style={styles.placeIcon}>{place.icon}</Text>
-                      <View style={styles.placeInfo}>
-                        <Text style={styles.placeName}>{place.name}</Text>
-                        <Text style={styles.placeTime}>{place.time}</Text>
-                        <Text style={styles.placeDescription}>{place.description}</Text>
+                      <View style={styles.placeContent}>
+                        <View style={styles.placeHeader}>
+                          <Text style={styles.placeIcon}>{place.icon}</Text>
+                          <View style={styles.placeInfo}>
+                            <View style={styles.nameRow}>
+                              <Text style={styles.placeName}>{place.name}</Text>
+                              {place.vehicle && (
+                                <View style={styles.vehicleContainer}>
+                                  <Text style={styles.vehicleIcon}>
+                                    {place.vehicle === 'bike' ? '🚲' : place.vehicle === 'car' ? '🚗' : '🚙'}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.placeTime}>{place.time}</Text>
+                          </View>
+                        </View>
+                        
                         <View style={styles.placeMeta}>
                           <View style={styles.metaItem}>
-                            <Ionicons name="star" size={12} color="#FFD700" />
+                            <Ionicons name="star" size={16} color="#FFD700" />
                             <Text style={styles.metaText}>{place.rating}</Text>
                           </View>
                           <View style={styles.metaItem}>
-                            <Ionicons name="cash-outline" size={12} color="#666" />
+                            <Ionicons name="cash-outline" size={16} color="#666" />
                             <Text style={styles.metaText}>{place.price}</Text>
                           </View>
                           <View style={styles.metaItem}>
-                            <Ionicons name="time-outline" size={12} color="#666" />
+                            <Ionicons name="time-outline" size={16} color="#666" />
                             <Text style={styles.metaText}>{place.duration}</Text>
                           </View>
                           <View style={styles.metaItem}>
-                            <Ionicons name="location-outline" size={12} color="#666" />
+                            <Ionicons name="location-outline" size={16} color="#666" />
                             <Text style={styles.metaText}>{place.distance}</Text>
                           </View>
                         </View>
-                      </View>
-                      <View style={styles.vehicleContainer}>
-                        <Text style={styles.vehicleIcon}>{getVehicleIcon(place.vehicle)}</Text>
+                        <View style={styles.activitiesContainer}>
+                          {place.activities && place.activities.map((activity, activityIndex) => (
+                            <View key={activityIndex} style={styles.activityTag}>
+                              <Text style={styles.activityText}>{activity}</Text>
+                            </View>
+                          ))}
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.viewButton}
+                          onPress={() => handleViewDetails(place)}
+                        >
+                          <Text style={styles.viewButtonText}>View Details</Text>
+                          <Ionicons name="chevron-forward" size={16} color={colors.Zypsii_color} />
+                        </TouchableOpacity>
                       </View>
                     </View>
-                    {renderActivities(place.activities)}
                   </View>
-                  {placeIndex < suggestion.places.length - 1 && (
-                    <DirectionIndicator 
-                      duration={suggestion.places[placeIndex + 1].duration}
-                      distance={suggestion.places[placeIndex + 1].distance}
+                ))}
+              </Animated.ScrollView>
+
+              <View style={styles.paginationDots}>
+                {suggestion.places.map((_, index) => {
+                  const inputRange = [
+                    (index - 1) * (CARD_WIDTH - 30),
+                    index * (CARD_WIDTH - 30),
+                    (index + 1) * (CARD_WIDTH - 30),
+                  ];
+                  
+                  const scale = scrollX.interpolate({
+                    inputRange,
+                    outputRange: [0.8, 1.2, 0.8],
+                    extrapolate: 'clamp',
+                  });
+
+                  const opacity = scrollX.interpolate({
+                    inputRange,
+                    outputRange: [0.3, 1, 0.3],
+                    extrapolate: 'clamp',
+                  });
+
+                  return (
+                    <Animated.View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        {
+                          transform: [{ scale }],
+                          opacity,
+                        },
+                      ]}
                     />
-                  )}
-                </React.Fragment>
-              ))}
+                  );
+                })}
+              </View>
             </View>
           ))}
         </ScrollView>
@@ -353,168 +479,189 @@ const RecommendedScheduleCard = ({ onSchedulePress, onViewMorePress }) => {
 
 const styles = StyleSheet.create({
     container: {
-      marginTop: 15,
-      paddingBottom: 20,
+        marginTop: 5,
+        paddingBottom: 10,
     },
     header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 15,
-      marginBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 5,
+        marginBottom: 10,
     },
     headerTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: '#333',
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
     },
     viewAllText: {
-      fontSize: 14,
-      color: colors.Zypsii_color,
+        fontSize: 14,
+        color: colors.Zypsii_color,
     },
     scrollContent: {
-      paddingHorizontal: 15,
-      paddingBottom: 20,
+        paddingHorizontal: 5,
+        paddingBottom: 20,
     },
     suggestionCard: {
-      backgroundColor: '#fff',
-      borderRadius: 12,
-      marginRight: 15,
-      padding: 15,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginRight: 15,
+        padding: 15,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     suggestionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
     },
     suggestionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#333',
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
     },
     addButton: {
-      backgroundColor: '#f8f8f8',
-      padding: 6,
-      borderRadius: 12,
+        backgroundColor: '#f8f8f8',
+        padding: 6,
+        borderRadius: 12,
+    },
+    placesScrollContent: {
+        flexDirection: 'row',
+        paddingRight: 15,
+    },
+    placeCardContainer: {
+    
+        marginRight: 15,
+        paddingHorizontal: 5,
     },
     placeCard: {
-      backgroundColor: '#f8f8f8',
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 12,
+        backgroundColor: '#f8f8f8',
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    placeHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    markerContainer: {
-      width: 45,
-      alignItems: 'center',
-    },
-    marker: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-      marginRight: 6,
-      alignItems: 'center',
+    dayHeader: {
+        backgroundColor: colors.Zypsii_color,
+        padding: 12,
     },
     dayMarker: {
-      backgroundColor: colors.Zypsii_color,
-      minWidth: 60,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    markerText: {
-      fontSize: 12,
-      color: '#fff',
-      fontWeight: 'bold',
+    dayText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#fff',
     },
     dateText: {
-      fontSize: 10,
-      color: '#fff',
-      marginTop: 2,
+        fontSize: 14,
+        color: '#fff',
+    },
+    placeContent: {
+        padding: 16,
+    },
+    placeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
     },
     placeIcon: {
-      fontSize: 20,
-      marginRight: 10,
+        fontSize: 32,
+        marginRight: 12,
     },
     placeInfo: {
-      flex: 1,
+        flex: 1,
+    },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     placeName: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#333',
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+        flex: 1,
     },
     placeTime: {
-      fontSize: 12,
-      color: '#666',
-      marginTop: 4,
-    },
-    activitiesContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-    activityTag: {
-      backgroundColor: '#fff',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-      marginRight: 8,
-      marginBottom: 8,
-    },
-    activityText: {
-      fontSize: 12,
-      color: '#666',
-    },
-    vehicleContainer: {
-      marginLeft: 10,
-      padding: 4,
-      backgroundColor: '#f0f0f0',
-      borderRadius: 6,
-    },
-    vehicleIcon: {
-      fontSize: 16,
-    },
-    placeDescription: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#666',
         marginTop: 4,
-        lineHeight: 16,
+    },
+    placeDescription: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
+        marginBottom: 12,
     },
     placeMeta: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginTop: 8,
+        marginBottom: 12,
         gap: 8,
     },
     metaItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f0f0f0',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        backgroundColor: '#fff',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         borderRadius: 4,
     },
     metaText: {
-        fontSize: 10,
+        fontSize: 12,
         color: '#666',
         marginLeft: 4,
     },
-    moreActivities: {
-        backgroundColor: '#f0f0f0',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+    activitiesContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: 12,
+        gap: 8,
+    },
+    activityTag: {
+        backgroundColor: '#fff',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         borderRadius: 4,
     },
-    moreActivitiesText: {
-        fontSize: 10,
+    activityText: {
+        fontSize: 12,
         color: '#666',
+    },
+    vehicleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    vehicleIcon: {
+        fontSize: 20,
+    },
+    viewButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f0f0f0',
+        padding: 8,
+        borderRadius: 8,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: colors.Zypsii_color,
+    },
+    viewButtonText: {
+        color: colors.Zypsii_color,
+        fontSize: 14,
+        fontWeight: '600',
+        marginRight: 8,
     },
     directionContainer: {
         height: 120,
@@ -671,6 +818,19 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 2,
+    },
+    paginationDots: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: colors.Zypsii_color,
+        marginHorizontal: 4,
     },
 });
 

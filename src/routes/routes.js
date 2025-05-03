@@ -5,6 +5,7 @@ import navigationService from './navigationService';
 import * as Notifications from 'expo-notifications';
 import * as Screen from '../screens';
 import TripMap from '../screens/TripMap/TripMap';
+import PlaceDetailsScreen from '../screens/Searchbar/PlaceDetailsScreen';
 
 const NavigationStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -45,7 +46,7 @@ function Drawer() {
       <NavigationStack.Screen name="CreateSplit" component={Screen.CreateSplit} />
       <NavigationStack.Screen name="SplitDetail" component={Screen.SplitDetail} />
       <NavigationStack.Screen name="TripMap" component={TripMap} />
-
+      <NavigationStack.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
     </NavigationStack.Navigator>
   );
 }

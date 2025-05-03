@@ -29,7 +29,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Stories from '../../components/Stories/Stories';
 import Post from '../../components/Posts/Post';
 import DiscoverByNearest from '../../components/DiscoverByNearest/DiscoverByNearest';
-import Schedule from '../MySchedule/Schedule/AllSchedule';
 import SkeletonLoader from '../../components/Loader/SkeletonLoader';
 import { useFocusEffect } from '@react-navigation/native';
 import { base_url } from '../../utils/base_url';
@@ -37,7 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStatusBar } from '../../utils/useStatusBar';
 import ChatSupport from '../../components/ChatSupport/ChatSupport';
 import FloatingSupportButton from '../../components/FloatingChatButton/FloatingChatButton';
-
+import AllSchedule from '../MySchedule/Schedule/AllSchedule';
 
 
 function MainLanding(props) {
@@ -600,7 +599,7 @@ function MainLanding(props) {
           // }}
           renderItem={({ item }) => (
             <View style={{ marginRight: 0 }}>
-              <Schedule item={item} />
+              <AllSchedule item={item} />
             </View>
           )}
         />

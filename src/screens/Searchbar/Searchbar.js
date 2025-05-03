@@ -38,7 +38,7 @@ function SearchPage() {
     console.log('Access Token:', accessToken); // Log token for debugging
 
     const url = activeTab === "People"
-      ? `${base_url}/user/getProfile?filter=users&search=${text}`
+      ? `${base_url}/user/getProfile?search=${encodeURIComponent(text)}`
       : `${base_url}/schedule/places/getNearest?searchPlaceName=${encodeURIComponent(text)}`;
 
     try {
@@ -74,17 +74,18 @@ function SearchPage() {
           }));
           setSearchResults(formattedData);
         } else {
-          // Format people data (existing logic)
-          const formattedData = [{
-            id: data.data._id,
-            image: data.data.profileImage || 'https://via.placeholder.com/50',
-            name: data.data.fullName,
-            tagline: data.data.userName,
-            email: data.data.email,
-            website: data.data.website,
-            bio: data.data.bio,
-            location: data.data.location
-          }];
+          // Format people data (updated for array of users)
+          const formattedData = data.data.map(user => ({
+            id: user._id,
+            image: user.profileImage || 'https://via.placeholder.com/50',
+            name: user.fullName,
+            tagline: user.userName,
+            email: user.email,
+            website: user.website,
+            bio: user.bio,
+            location: user.location,
+            placeDetails: user.placeDetails
+          }));
           setSearchResults(formattedData);
         }
       } else {
@@ -105,6 +106,7 @@ function SearchPage() {
 
   // Render each search result item
   const renderItem = ({ item }) => (
+    <>
     <TouchableOpacity
       onPress={() => {
         if (activeTab === "Places") {
@@ -143,16 +145,7 @@ function SearchPage() {
                 <Text style={styles.ratingText}>{item.rating || '0'}</Text>
                 <Text style={styles.distanceText}>{item.distance}</Text>
               </View>
-              <RecommendCard
-                onSchedulePress={() => {
-                  setSelectedPlace(item);
-                  setShowScheduleModal(true);
-                }}
-                onViewMorePress={() => {
-                  setSelectedPlace(item);
-                  setShowViewMoreModal(true);
-                }}
-              />
+             
             </>
           )}
           {item.bio && <Text style={styles.bioText}>{item.bio}</Text>}
@@ -161,9 +154,25 @@ function SearchPage() {
               🌐 {item.website}
             </Text>
           )}
+          
         </View>
+        
       </View>
+      
     </TouchableOpacity>
+    {activeTab === "Places" && (
+      <RecommendCard
+        onSchedulePress={() => {
+          setSelectedPlace(item);
+          setShowScheduleModal(true);
+        }}
+        onViewMorePress={() => {
+          setSelectedPlace(item);
+          setShowViewMoreModal(true);
+        }}
+      />
+    )}
+  </>
   );
 
   // Display number of results
@@ -213,7 +222,7 @@ function SearchPage() {
       </View>
 
 
-      <RecommendCard />
+      {/* <RecommendCard /> */}
       {/* Results count */}
       {searchResults.length > 0 && renderResultCount()}
 
