@@ -48,11 +48,15 @@ const styles = StyleSheet.create({
   subtitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    flexWrap: 'wrap',
   },
   detailSubtitle: {
     fontSize: 16,
     color: colors.fontThirdColor,
+    flex: 1,
+    marginRight: 10,
   },
   icon: {
     marginRight: 5,
@@ -127,19 +131,22 @@ const styles = StyleSheet.create({
   ratingsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...alignment.MLlarge
+    marginRight: 10,
   },
-  
-  ratingsText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.fontPrimaryColor,
-    marginHorizontal: 3,
+  ratingText: {
+    fontSize: 14,
+    color: colors.fontMainColor,
+    marginLeft: 4,
   },
-  
-  ratingsCount: {
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  distanceText: {
     fontSize: 14,
     color: colors.fontThirdColor,
+    marginLeft: 4,
   },
   overlayHeader: {
     position: 'absolute',

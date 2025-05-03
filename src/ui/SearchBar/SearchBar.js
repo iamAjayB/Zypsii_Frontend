@@ -18,7 +18,7 @@ function SearchBar(props) {
         activeOpacity={0}
         onPress={props.onPress}>
         <Ionicons
-          name="ios-search"
+          name="search"
           size={scale(25)}
           color={colors.buttonBackground}
         />

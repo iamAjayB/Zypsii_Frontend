@@ -38,7 +38,7 @@ function BackHeader(props) {
             activeOpacity={0.7}
             style={styles.iconButton}
             onPress={() => handleSearchPress()}>
-            <Ionicons name="ios-search" size={24} color="#fff" />
+            <Ionicons name="search" size={24} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.7}
