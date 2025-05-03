@@ -24,11 +24,11 @@ function Destination({ route, navigation }) {
   const [isSaved, setIsSaved] = useState(false);
   const [discoverbynearest, setDiscoverbyNearest] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Safe access to nested properties with optional chaining and nullish coalescing
   const item_id = params?.product?.id ?? params?.id ?? null;
   const image1 = params?.product?.image ?? params?.image ?? null;
-  
+
   const [nextPageToken, setNextPageToken] = useState(null);
   // Fetch data from an open-source API (JSONPlaceholder API for demonstration)
   // useEffect(() => {
@@ -62,7 +62,7 @@ function Destination({ route, navigation }) {
     try {
       setLoading(true);
       const accessToken = await AsyncStorage.getItem('accessToken');
-      
+
       const url = token
         ? `${base_url}/schedule/places/getNearest?nextPageToken=${token}`
         : `${base_url}/schedule/places/getNearest`;
@@ -80,7 +80,7 @@ function Destination({ route, navigation }) {
 
       const result = await response.json();
       console.log(result)
-      
+
       if (!result.data || !Array.isArray(result.data)) {
         throw new Error('Invalid data format received');
       }
@@ -112,7 +112,7 @@ function Destination({ route, navigation }) {
   const [destinationData, setDestinationData] = useState(null) // ✅ Store fetched data
 
   useEffect(() => {
-    const fetchDestinationData = async() => {
+    const fetchDestinationData = async () => {
       try {
         const accessToken = await AsyncStorage.getItem('accessToken');
         const response = await fetch(`${base_url}/schedule/places/getNearest`, {
@@ -134,7 +134,7 @@ function Destination({ route, navigation }) {
   const [tutorialVideos, setTutorialVideos] = useState([])
 
   useEffect(() => {
-    const fetchTutorialVideos = async() => {
+    const fetchTutorialVideos = async () => {
       try {
         const response = await fetch() // Replace with your backend URL
         const data = await response.json()
@@ -151,7 +151,7 @@ function Destination({ route, navigation }) {
   const [tabs, setDescriptionexplore] = useState([])
 
   useEffect(() => {
-    const fetchDescriptionexplore = async() => {
+    const fetchDescriptionexplore = async () => {
       try {
         const response = await fetch(`${base_url}/descriptionexplore`) // Replace with your backend URL
         const data = await response.json()
@@ -302,7 +302,7 @@ function Destination({ route, navigation }) {
   //     console.error('❌ Error sending comment:', error);
   //   }
   // };
-  const handleSendComment = async() => {
+  const handleSendComment = async () => {
     if (!comment.trim()) return // Prevent empty comments
 
     try {
@@ -357,7 +357,7 @@ function Destination({ route, navigation }) {
           'Authorization': `Bearer ${accessToken}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -392,7 +392,7 @@ function Destination({ route, navigation }) {
             'Authorization': `Bearer ${accessToken}`
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -450,7 +450,7 @@ function Destination({ route, navigation }) {
             <ActivityIndicator size="large" color={colors.Zypsii_color} />
           </View>
         ) : (
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
             bounces={true}
@@ -485,8 +485,13 @@ function Destination({ route, navigation }) {
 
               {/* Subtitle with map button */}
               <View style={styles.subtitleContainer}>
-                <SimpleLineIcons name="location-pin" size={18} color={colors.fontThirdColor} />
-                <Text style={styles.detailSubtitle}>{params?.product?.subtitle || subtitle}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <SimpleLineIcons name="location-pin" size={18} color={colors.fontThirdColor} />
+                  <Text style={styles.detailSubtitle}>
+                    {(params?.product?.subtitle || subtitle)?.substring(0, 17)}
+                    {(params?.product?.subtitle || subtitle)?.length > 17 ? '...' : ''}
+                  </Text>
+                </View>
 
                 {/* Ratings */}
                 <View style={styles.ratingsContainer}>
@@ -508,7 +513,6 @@ function Destination({ route, navigation }) {
                   <Text style={titleStyles.mapButtonText}>Map</Text>
                 </TouchableOpacity>
               </View>
-
               {/* Quick Action Icons */}
               <View style={actionStyles.actionContainer}>
                 {/* <TouchableOpacity style={actionStyles.actionItem} onPress={handleCall}>
@@ -609,8 +613,8 @@ function Destination({ route, navigation }) {
                   keyExtractor={(item) => item.id}
                   data={discoverbynearest}
                   renderItem={({ item }) => (
-                    <DiscoverByNearest 
-                      styles={styles.itemCardContainer} 
+                    <DiscoverByNearest
+                      styles={styles.itemCardContainer}
                       {...item}
                       rating={parseInt(item.rating) || 0}
                       distance={item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null}
