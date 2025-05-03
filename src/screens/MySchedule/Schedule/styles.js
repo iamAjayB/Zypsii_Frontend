@@ -95,6 +95,26 @@ export const styles = StyleSheet.create({
     color: '#777',
     marginTop: scale(5),
   },
+  ratingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: scale(5),
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    marginLeft: scale(4),
+    fontSize: scale(14),
+    color: colors.Zypsii_color,
+  },
+  nameText: {
+    fontSize: scale(14),
+    color: '#333',
+    fontWeight: '500',
+  },
   joinedButton: {
     backgroundColor: colors.btncolor,
     borderRadius: scale(30),

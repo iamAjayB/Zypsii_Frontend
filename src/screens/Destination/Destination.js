@@ -489,7 +489,7 @@ function Destination({ route, navigation }) {
                 <Text style={styles.detailSubtitle}>{params?.product?.subtitle || subtitle}</Text>
 
                 {/* Ratings */}
-                <View style={styles.ratingContainer}>
+                <View style={styles.ratingsContainer}>
                   <AntDesign name="star" size={18} color={colors.Zypsii_color} />
                   <Text style={styles.ratingText}>{params?.product?.rating || '0'}</Text>
                 </View>
@@ -511,12 +511,12 @@ function Destination({ route, navigation }) {
 
               {/* Quick Action Icons */}
               <View style={actionStyles.actionContainer}>
-                <TouchableOpacity style={actionStyles.actionItem} onPress={handleCall}>
+                {/* <TouchableOpacity style={actionStyles.actionItem} onPress={handleCall}>
                   <View style={actionStyles.actionIconContainer}>
                     <Feather name="phone-call" size={20} color="#FFFFFF" />
                   </View>
                   <Text style={actionStyles.actionText}>Call</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <TouchableOpacity style={actionStyles.actionItem} onPress={handleOpenWebsite}>
                   <View style={actionStyles.actionIconContainer}>
@@ -670,30 +670,32 @@ const stylescomment = StyleSheet.create({
   },
   commentCard: {
     backgroundColor: "#f8f9fa",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2, // Shadow for Android
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.Zypsii_color,
   },
   commentHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   commentUser: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: "bold",
+    marginLeft: 10,
+    fontSize: 15,
+    fontWeight: "600",
     color: "#333",
   },
   commentText: {
     fontSize: 14,
     color: "#555",
-    lineHeight: 18,
+    lineHeight: 20,
   },
 });
 
@@ -701,44 +703,64 @@ const stylescomment = StyleSheet.create({
 // Additional styles for tabs
 const tabStyles = {
   tabSection: {
-    marginTop: 20
+    marginTop: 25,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
   },
   tabScrollContainer: {
-    paddingVertical: 10
+    paddingVertical: 10,
   },
   tab: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginRight: 10,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0'
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 12,
+    borderRadius: 25,
+    backgroundColor: '#F5F5F5',
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
   activeTab: {
-    backgroundColor: colors.Zypsii_color
+    backgroundColor: colors.Zypsii_color,
+    shadowColor: colors.Zypsii_color,
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666'
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
   },
   activeTabText: {
-    color: '#FFF'
+    color: '#FFF',
   },
   tabContent: {
-    marginTop: 15,
-    paddingHorizontal: 5,
-    paddingVertical: 10
+    marginTop: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 15,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
   },
   tabDescription: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#555'
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#444',
   },
   noTabsText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
     textAlign: 'center',
-    padding: 10
+    padding: 15,
   }
 }
 
@@ -748,49 +770,58 @@ const titleStyles = {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5
+    marginBottom: 8,
+    paddingHorizontal: 15,
   },
   followButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 25,
     backgroundColor: colors.Zypsii_color,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    shadowColor: colors.Zypsii_color,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   followingButton: {
-    backgroundColor: '#E0E0E0'
+    backgroundColor: '#E8E8E8',
   },
   followButtonText: {
     color: '#FFFFFF',
-    fontWeight: '500',
-    fontSize: 12
+    fontWeight: '600',
+    fontSize: 14,
   },
   followingButtonText: {
-    color: '#555555'
+    color: '#666666',
   },
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 'auto',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.Zypsii_color
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.Zypsii_color,
+    backgroundColor: 'rgba(52, 152, 219, 0.1)',
   },
   mapButtonText: {
-    color: colors.Zypsii_color || '#3498db',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '500'
+    color: colors.Zypsii_color,
+    fontSize: 14,
+    marginLeft: 6,
+    fontWeight: '600',
   },
   saveButton: {
     position: 'absolute',
     top: 50,
     right: 20,
     zIndex: 10,
-    padding: 8
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 20,
   }
 }
 
@@ -799,76 +830,108 @@ const actionStyles = {
   actionContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 15,
-    paddingHorizontal: 10
+    marginTop: 20,
+    paddingHorizontal: 15,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    paddingVertical: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
   },
   actionItem: {
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    flex: 1,
   },
   actionIconContainer: {
-    width: 45,
-    height: 45,
+    width: 50,
+    height: 50,
     borderRadius: 25,
     backgroundColor: colors.Zypsii_color,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5
+    marginBottom: 8,
+    shadowColor: colors.Zypsii_color,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#555',
-    fontWeight: '500'
+    fontWeight: '600',
   }
 }
 
 // Styles for YouTube videos
 const videoStyles = {
   videoSection: {
-    marginTop: 20
+    marginTop: 25,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
   },
   videoScrollContainer: {
-    paddingVertical: 10
+    paddingVertical: 10,
   },
   videoCard: {
-    width: 180,
-    marginRight: 15
+    width: 200,
+    marginRight: 15,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   thumbnailContainer: {
-    width: 180,
-    height: 100,
-    borderRadius: 8,
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#f0f0f0',
-    marginBottom: 8,
-    position: 'relative'
+    marginBottom: 10,
+    position: 'relative',
   },
   thumbnailPlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0e0e0'
+    backgroundColor: '#e0e0e0',
   },
   thumbnail: {
     width: '100%',
-    height: '100%'
+    height: '100%',
   },
   playButton: {
     position: 'absolute',
     right: 10,
     bottom: 10,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    width: 35,
+    height: 35,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   videoTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#333'
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    paddingHorizontal: 10,
+    marginBottom: 5,
   }
 }
 
