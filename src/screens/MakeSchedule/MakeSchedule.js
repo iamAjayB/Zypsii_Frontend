@@ -340,13 +340,30 @@ function MakeSchedule() {
   }, [route.params]);
 
   const pickImage = async () => {
+    // Request permission first
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please grant permission to access your photos to select an image.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.5, // Compress image to 50% quality
-      maxWidth: 1200, // Limit width
-      maxHeight: 1200, // Limit height
+      quality: 0.5,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+      allowsMultipleSelection: false,
+      selectionLimit: 1,
+      base64: false,
+      exif: false,
     });
 
     if (!result.cancelled) {

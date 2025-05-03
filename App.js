@@ -7,8 +7,11 @@ import AppContainer from './src/routes/routes';
 import { colors } from './src/utils/colors';
 import { Spinner } from './src/components';
 import { ScheduleProvider } from './src/context/ScheduleContext';
-import { AuthProvider } from './src/components/Auth/AuthContext'; // Import the AuthProvider
+import { AuthProvider } from './src/components/Auth/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Provider } from 'react-redux';
+import { store } from './src/redux/store';
+
 export default function App() {
   const [fontLoaded, setFontLoaded] = useState(false);
 
@@ -71,12 +74,13 @@ export default function App() {
         backgroundColor={colors.headerbackground}
       />
 
-      {/* Wrap the app with AuthProvider and ScheduleProvider */}
-      <AuthProvider>
-        <ScheduleProvider>
-          <AppContainer />
-        </ScheduleProvider>
-      </AuthProvider>
+      <Provider store={store}>
+        <AuthProvider>
+          <ScheduleProvider>
+            <AppContainer />
+          </ScheduleProvider>
+        </AuthProvider>
+      </Provider>
 
       {/* FlashMessage for global notifications */}
       <FlashMessage position="top" />
