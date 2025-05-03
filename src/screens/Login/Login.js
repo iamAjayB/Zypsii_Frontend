@@ -21,7 +21,11 @@ const SignInScreen = () => {
 
   // Google login state and function
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+    clientId: Platform.select({
+      ios: '1041802076420-3aomh29ianv3jto94ve7pa8748kg5mkb.apps.googleusercontent.com',
+      android: '1041802076420-ebfavrc88drh2ooealh4i5qv6efjivab.apps.googleusercontent.com',
+      default: '1041802076420-pi7qln0r9tqb2nj8gju3286qti3alkj4.apps.googleusercontent.com'
+    }),
   });
 
   useEffect(() => {
