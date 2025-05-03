@@ -133,39 +133,63 @@ const Stories = () => {
     }
   };
 
-  const uploadStory = async (mediaAsset) => {
-    try {
-      const accessToken = await AsyncStorage.getItem('accessToken');
-      const isVideo = mediaAsset.type === 'video';
+  const uploadStory = async (imageAsset) => {
+    const storyData = {
+      title: "My Story", // Default title
+      description: "Check out my story!", // Default description
+      videoUrl: imageAsset.uri,
+      thumbnailUrl: imageAsset.uri,
+      tags: []
+    };
+    const accessToken = await AsyncStorage.getItem('accessToken');
 
+    try {
       const response = await fetch(`${base_url}/story/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: 'Just for testing 1',
-          description: 'for test the data',
-          videoUrl: isVideo ? mediaAsset.uri : null,
-          imageUrl: !isVideo ? mediaAsset.uri : null,
-          thumbnailUrl: mediaAsset.uri,
-          mediaType: isVideo ? 'video' : 'image'
-        }),
+        body: JSON.stringify(storyData),
       });
 
       const data = await response.json();
       if (response.ok) {
-        console.log('Story uploaded successfully:', data);
-        // Refresh the stories list after successful upload
+        console.log('Story uploaded successfully:', data.data);
         fetchStories();
+        const newStory = {
+          user_id: userId,
+          user_image: 'https://via.placeholder.com/150', // Default profile picture
+          user_name: 'User', // Default username
+          stories: [{
+            story_id: data.data._id,
+            story_image: data.data.thumbnailUrl,
+            swipeText: 'Swipe to view more',
+            onPress: () => console.log('story swiped'),
+          }]
+        };
+
+        // Check if user already exists in stories
+        const existingUserIndex = storyInfo.findIndex(story => story.user_id === userId);
+        if (existingUserIndex !== -1) {
+          // Update existing user's stories
+          setStoryInfo(prev => {
+            const updated = [...prev];
+            updated[existingUserIndex].stories = [
+              ...updated[existingUserIndex].stories,
+              newStory.stories[0]
+            ];
+            return updated;
+          });
+        } else {
+          // Add new user with story
+          setStoryInfo(prev => [...prev, newStory]);
+        }
       } else {
         console.error('Failed to upload story:', data.message);
-        Alert.alert('Error', data.message || 'Failed to upload story');
       }
     } catch (error) {
       console.error('Error uploading story:', error);
-      Alert.alert('Error', 'Failed to upload story. Please try again.');
     }
   };
 

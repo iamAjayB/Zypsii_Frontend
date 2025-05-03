@@ -28,10 +28,9 @@ function SearchPage() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [showViewMoreModal, setShowViewMoreModal] = useState(false);
-  // Fetch search results based on the active tab (People or Places)
   const fetchSearchResults = async (text) => {
     if (text.trim() === "") {
-      setSearchResults([]); // Clear results if search is empty
+      setSearchResults([]); 
       return;
     }
     const accessToken = await AsyncStorage.getItem('accessToken');
@@ -52,13 +51,7 @@ function SearchPage() {
 
       const data = await response.json();
 
-      console.log('API Response:', {
-        url,
-        rawData: data,
-        activeTab,
-        searchText: text,
-        status: response.status
-      });
+  
 
       if (data.success && data.data) {
         if (activeTab === "Places") {
