@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "783245975353",
+    "firebase_url": "https://zypsii-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "zypsii",
+    "storage_bucket": "zypsii.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:783245975353:android:6b8184f83559549723d2e8",
+        "android_client_info": {
+          "package_name": "com.SmartKal.founder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpRXXc7pu9DcTs253g-fKiak1hHyzusFE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
