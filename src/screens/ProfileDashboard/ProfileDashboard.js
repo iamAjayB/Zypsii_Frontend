@@ -85,21 +85,7 @@ function ProfileDashboard(props) {
         showsVerticalScrollIndicator={false}
       >
         <ProfileContainer profileInfo={profileInfo}/>
-        <View style={styles.tabContainer}>
-          <TouchableOpacity activeOpacity={1}>
-            <TextDefault textColor={colors.fontBrown} H5>
-              My Active Orders (0)
-            </TextDefault>
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => navigation.navigate('PreviousOrders')}>
-            <TextDefault H5>
-              Previous Orders (0)
-            </TextDefault>
-          </TouchableOpacity>
-        </View>
-        {/* <CardContainer /> */}
+       
       </ScrollView>
       <View style={{height:200,backgroundColor:'white'}}></View>
     </SafeAreaView>
