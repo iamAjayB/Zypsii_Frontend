@@ -17,6 +17,9 @@ function BackHeader(props) {
   const handleProfilePress = () => {
     navigation.navigate('ProfileDashboard');
   };
+  const handleChatPress = () => {
+    navigation.navigate('MessageList');
+  };
   return (
     <View style={styles.container}>
       <View style={styles.subContainer}>
@@ -39,6 +42,12 @@ function BackHeader(props) {
             style={styles.iconButton}
             onPress={() => handleSearchPress()}>
             <Ionicons name="search" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.iconButton}
+            onPress={() => handleChatPress()}>
+            <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.7}

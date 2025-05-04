@@ -17,8 +17,7 @@ export default function App() {
 
   useEffect(() => {
     loadAppData();
-    // const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MGVmZDUxN2I4M2FmOGVmNmFiZmEzYyIsImVtYWlsIjoiamVudUBnbWFpbC5jb20iLCJ1c2VyTmFtZSI6IkplbnVfWllfNTM1IiwiaWF0IjoxNzQ2MjUxNzM0LCJleHAiOjE3NDY1MTA5MzR9.we3mNXLQwViTOWDlKD6ChP34oxQs8fwJvX76iM-YzYg'
-    // const user= AsyncStorage.setItem('token', token);
+ 
   }, []);
 
   async function loadAppData() {

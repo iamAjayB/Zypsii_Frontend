@@ -27,7 +27,7 @@
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.jebilinjebilin.ShopMart",
+      "bundleIdentifier": "com.SmartKal.founder",
       "config": {
         "googleMapsApiKey": "###### Key #######"
       },
@@ -55,8 +55,8 @@
       "androidCollapsedTitle": "Zypsii"
     },
     "android": {
-      "versionCode": 5,
-      "package": "com.jebilinjebilin.ShopMart",
+      "versionCode": 7,
+      "package": "com.SmartKal.founder",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "config": {
