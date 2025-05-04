@@ -10,7 +10,8 @@ import {
   Image,
   ActivityIndicator,
   BackHandler,
-  StyleSheet
+  StyleSheet,
+  Text
 } from 'react-native';
 import SwiperFlatList from 'react-native-swiper-flatlist';
 import styles from './styles';
@@ -44,6 +45,7 @@ function MainLanding(props) {
   const { scheduleData } = useSchedule();
   const [selectedButton, setSelectedButton] = useState('All');
   const buttons = ['All', 'Schedule', 'Shorts', 'Posts'];
+  const [unreadMessages, setUnreadMessages] = useState(0);
   
   // Loading states
   const [isDiscoverByInterestLoading, setIsDiscoverByInterestLoading] = useState(true);
@@ -98,6 +100,32 @@ function MainLanding(props) {
       return () => backHandler.remove();
     }, [])
   );
+
+  // Add useEffect to fetch unread messages
+  useEffect(() => {
+    const fetchUnreadMessages = async () => {
+      try {
+        const accessToken = await AsyncStorage.getItem('accessToken');
+        if (!accessToken) return;
+
+        const response = await fetch(`${base_url}/api/messages/unread`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadMessages(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching unread messages:', error);
+      }
+    };
+
+    fetchUnreadMessages();
+  }, []);
 
   // Combined API calls in a single useEffect
   useEffect(() => {
@@ -826,6 +854,23 @@ function MainLanding(props) {
               color="#000"
               style={styles.icon}
             />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('MessageList')}
+            style={styles.notificationIconWrapper}
+          >
+            <MaterialIcons
+              name="chat"
+              size={28}
+              color="#000"
+              style={styles.icon}
+            />
+            {unreadMessages > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationText}>{unreadMessages}</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
