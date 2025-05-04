@@ -47,21 +47,21 @@ const SignInScreen = () => {
 
   const registerForPushNotificationsAsync = async () => {
     let token;
-    
+
     if (Device.isDevice) {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       if (finalStatus !== 'granted') {
         alert('Failed to get push token for push notification!');
         return;
       }
-      
+
       token = (await Notifications.getExpoPushTokenAsync()).data;
     } else {
       alert('Must use physical device for Push Notifications');
@@ -87,17 +87,17 @@ const SignInScreen = () => {
 
     setLoading(true);
     try {
-      const expoPushToken = await registerForPushNotificationsAsync();
-      
+      //const expoPushToken = await registerForPushNotificationsAsync();
+
       const response = await fetch(`${base_url}/user/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          userNameOrEmail, 
+        body: JSON.stringify({
+          userNameOrEmail,
           password,
-          expoPushToken 
+          //expoPushToken
         }),
       });
 
@@ -112,7 +112,7 @@ const SignInScreen = () => {
           await AsyncStorage.setItem('user', JSON.stringify(userDetails));
           // Use the login function from AuthContext to set the user
           login(userDetails);
-          
+
           navigation.navigate('Drawer', { screen: 'MainLanding' });
         } else {
           Alert.alert('Error', data.message || 'Login failed');
@@ -141,9 +141,9 @@ const SignInScreen = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             googleToken: id_token,
-            expoPushToken 
+            expoPushToken
           }),
         });
 
@@ -158,8 +158,9 @@ const SignInScreen = () => {
 
             // Use the login function from AuthContext to set the user
             login(userDetails);
-            
-navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
+
+            navigation.navigate('Drawer', { screen: 'MainLanding' });
+          } else {
             Alert.alert('Error', data.message || 'Google login failed');
           }
         } else {
@@ -202,7 +203,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
     } catch (error) {
       console.error('Error in forgot password:', error);
       Alert.alert(
-        'Error', 
+        'Error',
         'Failed to process your request. Please check your internet connection and try again.'
       );
     } finally {
@@ -249,7 +250,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
     } catch (error) {
       console.error('Error in updating password:', error);
       Alert.alert(
-        'Error', 
+        'Error',
         'Failed to process your request. Please check your internet connection and try again.'
       );
     } finally {
@@ -258,12 +259,12 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -296,7 +297,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
             />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.forgotPassword}
             onPress={() => setForgotPasswordModal(true)}
           >
@@ -348,7 +349,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
             <Text style={styles.modalSubtitle}>
               Enter your email address and we'll send you an OTP to reset your password.
             </Text>
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Enter your email"
@@ -359,7 +360,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
               autoCapitalize="none"
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalButton}
               onPress={handleForgotPassword}
               disabled={forgotPasswordLoading}
@@ -371,7 +372,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setForgotPasswordModal(false)}
             >
@@ -394,7 +395,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
             <Text style={styles.modalSubtitle}>
               Please enter the 4-digit OTP sent to your email.
             </Text>
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Enter OTP"
@@ -423,7 +424,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
               secureTextEntry
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalButton}
               onPress={handleUpdatePassword}
               disabled={forgotPasswordLoading}
@@ -435,7 +436,7 @@ navigation.navigate('Drawer', { screen: 'MainLanding' });          } else {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setOtpModal(false)}
             >
