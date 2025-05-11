@@ -128,13 +128,16 @@ function SearchPage() {
         <View style={styles.personDetails}>
         <View style={styles.nameRow}>
             <Text style={styles.personName}>{item.name}</Text>
-            {activeTab === "People" && (
-              <FollowButton 
-                userId={item.id} 
-                style={styles.followButton} 
-              />
-            )}
+            {/* Add the FollowButton here for People tab */}
+            {activeTab === "People" && <FollowButton userId={item.id} />}
           </View>
+
+          {activeTab === "People" ? (
+            <Text style={styles.personTagline}>
+              {item.tagline}
+            </Text>
+          ) : null}
+          
           {activeTab === "Places" && (
             <>
               <View style={styles.ratingContainer}>

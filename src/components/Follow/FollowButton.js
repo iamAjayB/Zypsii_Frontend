@@ -1,42 +1,61 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFollow } from './FollowContext';
-import { colors } from '../../utils';
+import { useAuth } from '../Auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../../utils/colors';
 
-const FollowButton = ({ userId, style }) => {
-  const { following, toggleFollow } = useFollow();
-  const [isLoading, setIsLoading] = React.useState(false);
-  
-  const isFollowing = following.includes(userId);
+const FollowButton = ({ userId }) => {
+  const { user } = useAuth();
+  const { 
+    isFollowing, 
+    followUser, 
+    unfollowUser, 
+    isLoading 
+  } = useFollow();
 
   const handlePress = async () => {
-    setIsLoading(true);
-    await toggleFollow(userId);
-    setIsLoading(false);
+    if (!user?._id) {
+      console.warn("User not logged in");
+      return;
+    }
+    
+    try {
+      if (isFollowing(userId)) {
+        await unfollowUser(user._id, userId);
+      } else {
+        await followUser(user._id, userId);
+      }
+    } catch (error) {
+      console.error("Follow action failed:", error.message);
+      // You might want to show an error message to the user here
+    }
   };
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        isFollowing ? styles.following : styles.notFollowing,
-        style
+        isFollowing(userId) ? styles.following : styles.notFollowing,
+        isLoading && styles.disabled
       ]}
       onPress={handlePress}
-      disabled={isLoading}
+      disabled={isLoading || !user?._id}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={isFollowing ? '#fff' : colors.Zypsii_color} />
+        <ActivityIndicator size="small" color={isFollowing(userId) ? '#fff' : colors.primary} />
       ) : (
         <>
           <Ionicons 
-            name={isFollowing ? 'checkmark' : 'add'} 
+            name={isFollowing(userId) ? 'checkmark' : 'add'} 
             size={16} 
-            color={isFollowing ? '#fff' : colors.Zypsii_color} 
+            color={isFollowing(userId) ? '#fff' : colors.primary} 
           />
-          <Text style={[styles.buttonText, isFollowing && styles.followingText]}>
-            {isFollowing ? 'Following' : 'Follow'}
+          <Text style={[
+            styles.buttonText,
+            isFollowing(userId) && styles.followingText
+          ]}>
+            {isFollowing(userId) ? 'Following' : 'Follow'}
           </Text>
         </>
       )}
@@ -52,19 +71,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
     borderWidth: 1,
-    gap: 4
+    borderColor: colors.primary,
   },
   following: {
-    backgroundColor: colors.Zypsii_color,
-    borderColor: colors.Zypsii_color,
+    backgroundColor: colors.primary,
   },
   notFollowing: {
     backgroundColor: 'transparent',
-    borderColor: colors.Zypsii_color,
+  },
+  disabled: {
+    opacity: 0.6,
   },
   buttonText: {
+    marginLeft: 5,
     fontSize: 14,
-    fontWeight: '600',
+    color: colors.primary,
   },
   followingText: {
     color: '#fff',
