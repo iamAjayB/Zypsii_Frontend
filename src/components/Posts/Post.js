@@ -8,6 +8,7 @@ import Entypo from 'react-native-vector-icons/Entypo';
 const { width } = Dimensions.get('window');
 
 const Post = ({ item }) => {
+  console.log('Post item:', item); // Log the entire post item for debugging
   const [like, setLike] = useState(false);
   
   const renderImage = ({ item: imageUrl }) => {
@@ -55,8 +56,17 @@ const Post = ({ item }) => {
   };
 
   // Render image directly if only one image, else use FlatList
-  const hasImages = item.mediaType === 'image' && item.mediaUrl && item.mediaUrl.length > 0;
-  const isSingleImage = hasImages && item.mediaUrl.length === 1;
+  const hasImages = item.mediaType === 'image' && item.imageUrl && item.imageUrl.length > 0;
+  const isSingleImage = hasImages && item.imageUrl.length === 1;
+
+  // Defensive check for first image URL (now using imageUrl)
+  const firstImageUrl =
+    Array.isArray(item.imageUrl) && item.imageUrl.length > 0 && typeof item.imageUrl[0] === 'string' && item.imageUrl[0].trim() !== ''
+      ? item.imageUrl[0]
+      : 'https://via.placeholder.com/150';
+
+  // Log the URL before rendering
+  console.log('Rendering post image:', firstImageUrl);
 
   return (
     <View style={styles.postContainer}>
@@ -68,25 +78,15 @@ const Post = ({ item }) => {
         <Feather name="more-vertical" style={styles.moreIcon} />
       </View>
 
-      {isSingleImage && (
+      {/* Only render the image if the URL is a non-empty string */}
+      {hasImages && firstImageUrl && firstImageUrl !== '' && (
         <View style={styles.postImageContainer}>
           <Image
-            source={{ uri: item.mediaUrl[0] }}
+            source={{ uri: firstImageUrl }}
             style={styles.postImage}
             resizeMode="cover"
           />
         </View>
-      )}
-      {!isSingleImage && hasImages && (
-        <FlatList
-          data={item.mediaUrl}
-          renderItem={renderImage}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={true}
-          keyExtractor={(url, index) => index.toString()}
-          style={styles.imageList}
-        />
       )}
 
       <View style={styles.actionsContainer}>
@@ -98,7 +98,7 @@ const Post = ({ item }) => {
             />
           </TouchableOpacity>
           <TouchableOpacity>
-            <Ionic name="ios-chatbubble-outline" style={styles.icon} />
+            <Ionic name="chatbubble-outline" style={styles.icon} />
           </TouchableOpacity>
           <TouchableOpacity>
             <Feather name="navigation" style={styles.icon} />
@@ -138,8 +138,7 @@ const Post = ({ item }) => {
 const styles = StyleSheet.create({
   postContainer: {
     width: '96%',
-    // maxWidth: 500,
-    // alignSelf: 'center',
+    alignSelf: 'center',
     paddingBottom: 10,
     borderBottomColor: 'gray',
     borderBottomWidth: 0.1,
