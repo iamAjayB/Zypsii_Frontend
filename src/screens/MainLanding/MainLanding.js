@@ -465,7 +465,11 @@ function MainLanding(props) {
           updatedAt: short.updatedAt
         }));
         
-        setAllShorts(shortsList);
+        // Filter only mp4 videos
+        const mp4ShortsList = shortsList.filter(
+          item => typeof item.videoUrl === 'string' && item.videoUrl.toLowerCase().endsWith('.mp4')
+        );
+        setAllShorts(mp4ShortsList);
         setShortsPagination(shortsData.pagination || {});
       } else {
         setAllShorts([]);
@@ -602,6 +606,7 @@ function MainLanding(props) {
         <FlatList
           data={all_shorts}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}
           renderItem={({ item }) => {
             const videoSource = getVideoSource(item.videoUrl);
             const isValidVideo = isValidVideoUrl(item.videoUrl);
@@ -689,7 +694,6 @@ function MainLanding(props) {
               </TouchableOpacity>
             );
           }}
-          contentContainerStyle={styles.shortsListContainer}
         />
       </View>
     );

@@ -276,11 +276,14 @@ const styles = StyleSheet.create({
     marginTop: 0
   },
   videoContainer: {
-    marginHorizontal: scale(10),
-    width: 150,
-    height: 200,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+    height: 280,
     borderRadius: 20,
     overflow: 'hidden',
+    marginRight: 15,
+    backgroundColor: '#000',
   },
   video: {
     width: '100%',
@@ -480,24 +483,12 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   shortItemContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  videoContainer: {
     width: '100%',
-    height: 200,
-    backgroundColor: colors.gray,
-    position: 'relative',
+    maxWidth: 500,
+    alignSelf: 'center',
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    marginBottom: 16,
   },
   videoWrapper: {
     width: '100%',
