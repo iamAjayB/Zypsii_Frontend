@@ -313,7 +313,7 @@ const DummyScreen = ({ navigation }) => {
 
               return (
                 <View style={{ marginBottom: 10 }}>
-                  <Post item={postData} />
+                  <Post item={postData} isFromProfile={true} />
                 </View>
               );
             }}
@@ -335,7 +335,7 @@ const DummyScreen = ({ navigation }) => {
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => handleSchedulePress(item)}>
-                <Schedule item={item} />
+                <Schedule item={item} isFromProfile={true} />
               </TouchableOpacity>
             )}
           />
