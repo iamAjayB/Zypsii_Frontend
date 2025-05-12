@@ -137,7 +137,8 @@ const Post = ({ item }) => {
 
 const styles = StyleSheet.create({
   postContainer: {
-    width: '96%',
+    width: '100%',
+    maxWidth: 500,
     alignSelf: 'center',
     paddingBottom: 10,
     borderBottomColor: 'gray',
@@ -172,17 +173,21 @@ const styles = StyleSheet.create({
   },
   postImageContainer: {
     width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
     aspectRatio: 1,
     backgroundColor: '#f5f5f5',
-    alignSelf: 'center',
     borderRadius: 10,
     overflow: 'hidden',
+    paddingHorizontal: 16,
     marginLeft: 0,
-    marginRight: 0,
+    marginRight: 15,
   },
   postImage: {
     width: '100%',
     height: '100%',
+    alignSelf: 'center',
+    borderRadius: 10,
   },
   imageList: {
     width: '100%',

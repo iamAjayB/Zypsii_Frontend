@@ -366,6 +366,7 @@ function MainLanding(props) {
               postType: item.postType,
               mediaType: item.mediaType,
               mediaUrl: mediaUrls,
+              imageUrl: mediaUrls,
               createdBy: item.createdBy,
               tags: Array.isArray(item.tags) ? item.tags : [],
               likesCount: item.likesCount || 0,
@@ -892,7 +893,7 @@ function MainLanding(props) {
           data={all_posts}
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}
         />
       )}
     </View>
