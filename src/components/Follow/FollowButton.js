@@ -1,5 +1,5 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFollow } from './FollowContext';
 import { useAuth } from '../Auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,14 +13,16 @@ const FollowButton = ({ userId }) => {
     unfollowUser, 
     isLoading 
   } = useFollow();
+  const [error, setError] = useState(null);
 
   const handlePress = async () => {
     if (!user?._id) {
-      console.warn("User not logged in");
+      Alert.alert('Error', 'Please log in to follow users');
       return;
     }
     
     try {
+      setError(null);
       if (isFollowing(userId)) {
         await unfollowUser(user._id, userId);
       } else {
@@ -28,34 +30,40 @@ const FollowButton = ({ userId }) => {
       }
     } catch (error) {
       console.error("Follow action failed:", error.message);
-      // You might want to show an error message to the user here
+      setError(error.message);
+      Alert.alert('Error', error.message || 'Failed to update follow status');
     }
   };
+
+  const buttonLoading = isLoading(userId);
+  const following = isFollowing(userId);
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        isFollowing(userId) ? styles.following : styles.notFollowing,
-        isLoading && styles.disabled
+        following ? styles.following : styles.notFollowing,
+        buttonLoading && styles.disabled,
+        error && styles.error
       ]}
       onPress={handlePress}
-      disabled={isLoading || !user?._id}
+      disabled={buttonLoading || !user?._id}
     >
-      {isLoading ? (
-        <ActivityIndicator size="small" color={isFollowing(userId) ? '#fff' : colors.primary} />
+      {buttonLoading ? (
+        <ActivityIndicator size="small" color={following ? '#fff' : colors.primary} />
       ) : (
         <>
           <Ionicons 
-            name={isFollowing(userId) ? 'checkmark' : 'add'} 
+            name={following ? 'remove' : 'add'} 
             size={16} 
-            color={isFollowing(userId) ? '#fff' : colors.primary} 
+            color={following ? '#fff' : colors.primary} 
           />
           <Text style={[
             styles.buttonText,
-            isFollowing(userId) && styles.followingText
+            following && styles.followingText,
+            error && styles.errorText
           ]}>
-            {isFollowing(userId) ? 'Following' : 'Follow'}
+            {following ? 'Unfollow' : 'Follow'}
           </Text>
         </>
       )}
@@ -82,6 +90,9 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
+  error: {
+    borderColor: 'red',
+  },
   buttonText: {
     marginLeft: 5,
     fontSize: 14,
@@ -89,6 +100,9 @@ const styles = StyleSheet.create({
   },
   followingText: {
     color: '#fff',
+  },
+  errorText: {
+    color: 'red',
   },
 });
 

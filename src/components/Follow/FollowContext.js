@@ -6,7 +6,7 @@ const FollowContext = createContext();
 
 export const FollowProvider = ({ children }) => {
   const [following, setFollowing] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({});
 
   // Load followed users from storage when app starts
   useEffect(() => {
@@ -23,10 +23,32 @@ export const FollowProvider = ({ children }) => {
     loadFollowing();
   }, []);
 
+  const setLoading = (userId, isLoading) => {
+    setLoadingStates(prev => ({
+      ...prev,
+      [userId]: isLoading
+    }));
+  };
+
   const followUser = async (followerId, followingId) => {
-    setIsLoading(true);
+    if (!followerId || !followingId) {
+      console.error('Invalid IDs:', { followerId, followingId });
+      return;
+    }
+
+    setLoading(followingId, true);
     try {
       const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('No access token found');
+      }
+
+      console.log('Following user with data:', {
+        followerId,
+        followingId,
+        url: `${base_url}/follow/followUser/${followerId}/${followingId}`
+      });
+
       const response = await fetch(
         `${base_url}/follow/followUser/${followerId}/${followingId}`,
         {
@@ -38,27 +60,50 @@ export const FollowProvider = ({ children }) => {
         }
       );
 
-
-      if (!response.ok) throw new Error('Failed to follow user');
-    
       const data = await response.json();
-      console.log("Follow response:", data);
-            
-      if (data.success) {
-        setFollowing(prev => [...prev, followingId]);
-        await AsyncStorage.setItem('following', JSON.stringify([...following, followingId]));
+      console.log('Follow response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to follow user');
+      }
+
+      // Accept both 'success' and 'status' as true
+      if (data.success === true || data.status === true) {
+        setFollowing(prev => [...new Set([...prev, followingId])]);
+        await AsyncStorage.setItem('following', JSON.stringify([...new Set([...following, followingId])]));
+      } else if (data.message && data.message.toLowerCase().includes('already follow')) {
+        // If already following, just update state
+        setFollowing(prev => [...new Set([...prev, followingId])]);
+      } else {
+        throw new Error(data.message || 'Follow operation failed');
       }
     } catch (error) {
       console.error('Error following user:', error);
+      throw error; // Re-throw to handle in the component
     } finally {
-      setIsLoading(false);
+      setLoading(followingId, false);
     }
   };
 
   const unfollowUser = async (followerId, followingId) => {
-    setIsLoading(true);
+    if (!followerId || !followingId) {
+      console.error('Invalid IDs:', { followerId, followingId });
+      return;
+    }
+
+    setLoading(followingId, true);
     try {
       const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('No access token found');
+      }
+
+      console.log('Unfollowing user with data:', {
+        followerId,
+        followingId,
+        url: `${base_url}/follow/unfollowUser/${followerId}/${followingId}`
+      });
+
       const response = await fetch(
         `${base_url}/follow/unfollowUser/${followerId}/${followingId}`,
         {
@@ -71,19 +116,32 @@ export const FollowProvider = ({ children }) => {
       );
 
       const data = await response.json();
-      
-      if (data.success) {
+      console.log('Unfollow response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to unfollow user');
+      }
+
+      // Accept both 'success' and 'status' as true
+      if (data.success === true || data.status === true) {
         setFollowing(prev => prev.filter(id => id !== followingId));
         await AsyncStorage.setItem('following', JSON.stringify(following.filter(id => id !== followingId)));
+      } else if (data.message && data.message.toLowerCase().includes('not following')) {
+        // If already not following, just update state
+        setFollowing(prev => prev.filter(id => id !== followingId));
+      } else {
+        throw new Error(data.message || 'Unfollow operation failed');
       }
     } catch (error) {
       console.error('Error unfollowing user:', error);
+      throw error; // Re-throw to handle in the component
     } finally {
-      setIsLoading(false);
+      setLoading(followingId, false);
     }
   };
 
   const isFollowing = (userId) => following.includes(userId);
+  const isLoading = (userId) => loadingStates[userId] || false;
 
   return (
     <FollowContext.Provider value={{ 
