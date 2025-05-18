@@ -545,11 +545,48 @@ const DummyScreen = ({ navigation }) => {
         return (
           <>
             <FlatList
-              vertical
-              showsVerticalScrollIndicator={false}
               data={all_shorts}
+              numColumns={3}
+              key="shorts-grid"
+              renderItem={({ item }) => {
+                if (!item) return null;
+                
+                return (
+                  <TouchableOpacity 
+                    style={gridStyles.gridItem}
+                    onPress={() => handleVideoPress(item)}
+                  >
+                    {item.videoImage ? (
+                      <Image
+                        source={{ uri: item.videoImage }}
+                        style={gridStyles.gridImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[gridStyles.gridImage, gridStyles.placeholderImage]}>
+                        <MaterialIcons name="play-circle" size={40} color="#ccc" />
+                      </View>
+                    )}
+                    <View style={gridStyles.gridItemInfo}>
+                      <Text style={gridStyles.gridItemTitle} numberOfLines={1}>
+                        {item.videoTitle || 'Untitled'}
+                      </Text>
+                      <View style={gridStyles.gridItemStats}>
+                        <View style={gridStyles.statItem}>
+                          <MaterialIcons name="favorite" size={14} color="#870E6B" />
+                          <Text style={gridStyles.statText}>{item.likes || '0'}</Text>
+                        </View>
+                        <View style={gridStyles.statItem}>
+                          <MaterialIcons name="visibility" size={14} color="#870E6B" />
+                          <Text style={gridStyles.statText}>{item.views || '0'}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
               keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
-              renderItem={renderShortItem}
+              contentContainerStyle={gridStyles.gridContainer}
               ListEmptyComponent={() => (
                 <View style={{ padding: 20, alignItems: 'center' }}>
                   <Text>No shorts available</Text>
@@ -613,7 +650,7 @@ const DummyScreen = ({ navigation }) => {
       <View style={styles.buttonsContainer}>
         <TouchableOpacity style={styles.editProfileButton}>
           <Text style={styles.buttonText}>Edit Profile</Text>
-        </TouchableOpacity>
+      </TouchableOpacity>
         <TouchableOpacity style={styles.shareButton}>
           <Text style={styles.buttonText}>Share</Text>
         </TouchableOpacity>
@@ -791,13 +828,13 @@ const videoStyles = {
 const fullScreenStyles = {
   container: {
     flex: 1,
-    backgroundColor: 'black',
+    backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   video: {
     width: screenWidth,
-    height: screenHeight,
+    height: screenHeight * 0.7,
     backgroundColor: 'black',
   },
   closeButton: {
@@ -806,6 +843,8 @@ const fullScreenStyles = {
     right: 20,
     zIndex: 1000,
     padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
   },
   videoInfo: {
     position: 'absolute',
@@ -813,7 +852,7 @@ const fullScreenStyles = {
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   videoTitle: {
     fontSize: 18,
