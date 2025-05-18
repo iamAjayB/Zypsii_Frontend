@@ -122,4 +122,3 @@ function AppContainer() {
 }
 
 export default AppContainer;
-export default AppContainer;
