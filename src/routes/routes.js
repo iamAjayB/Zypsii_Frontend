@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+ import React, { useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import navigationService from './navigationService';
@@ -7,6 +7,7 @@ import * as Screen from '../screens';
 import TripMap from '../screens/TripMap/TripMap';
 import PlaceDetailsScreen from '../screens/Searchbar/PlaceDetailsScreen';
 import PostDetail from '../screens/Zipsiprofile/PostDetail';
+import { useAuth } from '../components/Auth/AuthContext';
 
 const NavigationStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -56,6 +57,7 @@ function Drawer() {
 
 // Main App Container
 function AppContainer() {
+
   // function _handleNotification(notification) {
   //   try {
   //     if (notification.origin === 'selected') {
@@ -69,8 +71,9 @@ function AppContainer() {
   //     console.log(e);
   //   }
   // }
+  const { user, loading } = useAuth();
 
-  // useEffect(() => {
+   // useEffect(() => {
   //   Notifications.setNotificationHandler({
   //     handleNotification: async () => ({
   //       shouldShowAlert: true,
@@ -84,15 +87,35 @@ function AppContainer() {
   //   return () => subscription.remove();
   // }, []);
 
+  if (loading) {
+    return null; // or show a loading spinner
+  }
+
   return (
     <NavigationContainer
       ref={ref => {
         navigationService.setGlobalRef(ref);
       }}>
       <MainStack.Navigator screenOptions={{ headerShown: false }}>
-        {/* <MainStack.Screen name="Onboarding" component={Screen.OnboardingScreen} /> */}
-        <MainStack.Screen name="Login" component={Screen.Login} />
-        <MainStack.Screen name="Drawer" component={Drawer} />
+        {user ? (
+          <MainStack.Screen 
+            name="Drawer" 
+            component={Drawer}
+            options={{
+              headerShown: false,
+              animation: 'none'
+            }}
+          />
+        ) : (
+          <MainStack.Screen 
+            name="Login" 
+            component={Screen.Login}
+            options={{
+              headerShown: false,
+              animation: 'none'
+            }}
+          />
+        )}
       </MainStack.Navigator>
     </NavigationContainer>
   );
