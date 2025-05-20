@@ -595,6 +595,19 @@ function MainLanding(props) {
           showsVerticalScrollIndicator={false}
           snapToInterval={height}
           decelerationRate="fast"
+          onChangeIndex={({ index }) => {
+            // Stop all videos when swiping
+            const stopVideoScript = `
+              var videos = document.getElementsByTagName('video');
+              for(var i = 0; i < videos.length; i++) {
+                videos[i].pause();
+                videos[i].currentTime = 0;
+              }
+            `;
+            if (this.webview) {
+              this.webview.injectJavaScript(stopVideoScript);
+            }
+          }}
           renderItem={({ item }) => {
             const videoSource = getVideoSource(item.videoUrl);
             const isValidVideo = isValidVideoUrl(item.videoUrl);
@@ -613,6 +626,22 @@ function MainLanding(props) {
                         startInLoadingState={true}
                         mediaPlaybackRequiresUserAction={false}
                         allowsInlineMediaPlayback={true}
+                        onLoad={() => {
+                          // Auto-play the video when loaded
+                          const autoPlayScript = `
+                            var video = document.getElementsByTagName('video')[0];
+                            if (video) {
+                              video.play();
+                              video.controls = false;
+                              video.style.width = '100%';
+                              video.style.height = '100%';
+                              video.style.objectFit = 'cover';
+                              video.loop = true;
+                            }
+                          `;
+                          this.webview.injectJavaScript(autoPlayScript);
+                        }}
+                        ref={(ref) => (this.webview = ref)}
                         onError={(syntheticEvent) => {
                           const { nativeEvent } = syntheticEvent;
                           console.warn('WebView error: ', nativeEvent);
