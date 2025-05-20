@@ -40,6 +40,7 @@ import ChatSupport from '../../components/ChatSupport/ChatSupport';
 import FloatingSupportButton from '../../components/FloatingChatButton/FloatingChatButton';
 import AllSchedule from '../MySchedule/Schedule/AllSchedule';
 import RecommendCard from '../../components/Recommendation/RecommendCard';
+import FollowButton from '../../components/Follow/FollowButton';
 
 const { height, width } = Dimensions.get('window');
 
@@ -669,12 +670,19 @@ function MainLanding(props) {
 
                 {/* Video info overlay */}
                 <View style={styles.videoInfoOverlay}>
-                  <TextDefault textColor={colors.white} H5 bold numberOfLines={2} style={styles.videoTitle}>
-                    {item.title}
-                  </TextDefault>
-                  <TextDefault textColor={colors.white} H6 numberOfLines={2} style={styles.videoDescription}>
-                    {item.description}
-                  </TextDefault>
+                  <View style={styles.userInfoContainer}>
+                    <View style={styles.userInfo}>
+                      <TextDefault textColor={colors.white} H5 bold numberOfLines={2} style={styles.videoTitle}>
+                        {item.title}
+                      </TextDefault>
+                      <TextDefault textColor={colors.white} H6 numberOfLines={2} style={styles.videoDescription}>
+                        {item.description}
+                      </TextDefault>
+                    </View>
+                    <View style={styles.followButtonContainer}>
+                      <FollowButton userId={item.createdBy} />
+                    </View>
+                  </View>
                 </View>
               </View>
             );

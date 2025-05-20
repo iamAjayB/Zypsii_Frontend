@@ -523,6 +523,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 8,
   },
+  userInfoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  userInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  followButtonContainer: {
+    marginTop: 5,
+  },
   videoTitle: {
     color: colors.white,
     fontSize: scale(16),
