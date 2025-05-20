@@ -1,4 +1,4 @@
- import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import navigationService from './navigationService';
@@ -107,14 +107,24 @@ function AppContainer() {
             }}
           />
         ) : (
-          <MainStack.Screen 
-            name="Login" 
-            component={Screen.Login}
-            options={{
-              headerShown: false,
-              animation: 'none'
-            }}
-          />
+          <>
+            <MainStack.Screen 
+              name="Login" 
+              component={Screen.Login}
+              options={{
+                headerShown: false,
+                animation: 'none'
+              }}
+            />
+            <MainStack.Screen 
+              name="SignUp" 
+              component={Screen.SignUp}
+              options={{
+                headerShown: false,
+                animation: 'none'
+              }}
+            />
+          </>
         )}
       </MainStack.Navigator>
     </NavigationContainer>

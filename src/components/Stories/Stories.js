@@ -99,9 +99,9 @@ const Stories = () => {
               createdAt: story.createdAt
             }))
           };
-
+         console.log(currentUserId)
           // Check if the story belongs to the current user
-          if (userStory.userId === currentUserId || userStory.userId === "680fd7026a4fd4878b3de62a") {
+          if (userStory.userId === currentUserId) {
             userStories.push(transformedStory);
           } else {
             otherStories.push(transformedStory);
@@ -200,8 +200,13 @@ const Stories = () => {
     }
     setProgress(0);
 
+    if (!selectedUser || !selectedUser.stories || !selectedUser.stories[currentStoryIndex]) {
+      console.warn('No story available to display');
+      return;
+    }
+
     const currentStory = selectedUser.stories[currentStoryIndex];
-    const duration = getStoryDuration(currentStory.mediaType);
+    const duration = currentStory.mediaType === 'video' ? VIDEO_DURATION : STORY_DURATION;
 
     const startTime = Date.now();
     const timer = setInterval(() => {
@@ -591,26 +596,30 @@ const Stories = () => {
       <View style={styles.container}>
         {renderImagePickerModal()}
         <View style={styles.storiesContainer}>
-          {renderYourStory()}
-          {stories.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.storyItemContainer}
-              onPress={() => handleStoryPress(item)}
-              activeOpacity={0.7}
-            >
-              <View style={[
-                styles.storyCircle,
-                !item.stories?.length && styles.disabledStoryCircle
-              ]}>
-                <Image
-                  source={{ uri: item.user_image }}
-                  style={styles.storyImage}
-                />
-              </View>
-              <Text style={styles.storyName}>{item.user_name}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.storiesLeftSection}>
+            {renderYourStory()}
+          </View>
+          <View style={styles.storiesRightSection}>
+            {stories.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.storyItemContainer}
+                onPress={() => handleStoryPress(item)}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.storyCircle,
+                  !item.stories?.length && styles.disabledStoryCircle
+                ]}>
+                  <Image
+                    source={{ uri: item.user_image }}
+                    style={styles.storyImage}
+                  />
+                </View>
+                <Text style={styles.storyName}>{item.user_name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <Modal
@@ -785,6 +794,14 @@ const styles = StyleSheet.create({
   storiesContainer: {
     flexDirection: 'row',
     padding: 10,
+  },
+  storiesLeftSection: {
+    marginRight: 15,
+  },
+  storiesRightSection: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   storyVideo: {
     width: '100%',
