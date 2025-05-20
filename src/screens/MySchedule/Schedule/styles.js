@@ -61,10 +61,13 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: scale(5),
+    width: '100%',
   },
   routeItem: {
     flexDirection: 'column',
     alignItems: 'flex-start',
+    flex: 1,
+    marginRight: scale(5),
   },
   routeLabel: {
     fontSize: scale(12),
@@ -75,10 +78,14 @@ export const styles = StyleSheet.create({
     fontSize: scale(14),
     color: '#555',
     marginTop: scale(5),
+    flexWrap: 'wrap',
+    flexShrink: 1,
+    maxWidth: '100%',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   dash: {
     fontSize: scale(12),

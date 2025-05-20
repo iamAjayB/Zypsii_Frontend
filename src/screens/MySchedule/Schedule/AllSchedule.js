@@ -14,6 +14,8 @@ const AllSchedule = ({item, isFromProfile}) => {
   const [isJoining, setIsJoining] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [fromPlace, setFromPlace] = useState('');
+  const [toPlace, setToPlace] = useState('');
 
   useEffect(() => {
     const loadUserId = async () => {
@@ -28,7 +30,13 @@ const AllSchedule = ({item, isFromProfile}) => {
       }
     };
     loadUserId();
-  }, []);
+
+    // Set place names from locationDetails
+    if (item.locationDetails && item.locationDetails.length >= 2) {
+      setFromPlace(item.locationDetails[0].address || 'Unknown location');
+      setToPlace(item.locationDetails[item.locationDetails.length - 1].address || 'Unknown location');
+    }
+  }, [item]);
 
   const handleDelete = async () => {
     try {
@@ -183,8 +191,8 @@ const AllSchedule = ({item, isFromProfile}) => {
               <Text style={styles.routeLabel}>From</Text>
               <View style={styles.locationRow}>
                 <Icon name="location-outline" size={16} color="#333" />
-                <Text style={styles.routeText}>
-                  {item.from.length > 5 ? item.from.slice(0, 5) + '...' : item.from}
+                <Text style={styles.routeText} numberOfLines={1} ellipsizeMode="tail">
+                  {fromPlace}
                 </Text>
               </View>
             </View>
@@ -192,8 +200,8 @@ const AllSchedule = ({item, isFromProfile}) => {
               <Text style={styles.routeLabel}>To</Text>
               <View style={styles.locationRow}>
                 <Icon name="location-outline" size={16} color="#333" />
-                <Text style={styles.routeText}>
-                  {item.to.length > 5 ? item.to.slice(0, 5) + '...' : item.to}
+                <Text style={styles.routeText} numberOfLines={1} ellipsizeMode="tail">
+                  {toPlace}
                 </Text>
               </View>
             </View>
