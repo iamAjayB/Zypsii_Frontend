@@ -16,6 +16,11 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const DummyScreen = ({ navigation }) => {
   const [activeIcon, setActiveIcon] = useState('th-large'); // Default active icon
   const [userId, setUserId] = useState(null);
+
+  // Function to handle settings press
+  const handleSettingsPress = () => {
+    navigation.navigate('ProfileDashboard');
+  };
   const [profileInfo, setProfileInfo] = useState({
     id: '',
     name: '',
@@ -603,6 +608,16 @@ const DummyScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar backgroundColor={colors.white} barStyle="dark-content" />
+      <View style={styles.header}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={handleSettingsPress}
+        >
+          <Ionicons name="settings-outline" size={24} color={colors.black} />
+        </TouchableOpacity>
+      </View>
       <View style={styles.protractorShape} />
       <View style={styles.backgroundCurvedContainer} />
       {/* Header Section */}
@@ -626,7 +641,7 @@ const DummyScreen = ({ navigation }) => {
           source={{uri:profileInfo.image}} // Local profile image
           style={styles.profileImage}
         />
-        <Text style={styles.name}>{profileInfo.name || 'Jenish'}</Text>
+        <Text style={styles.name}>{profileInfo.name || '-----'}</Text>
         <Text style={styles.description}>{profileInfo.notes}</Text>
       </TouchableOpacity>
 

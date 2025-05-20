@@ -91,7 +91,7 @@ function BottomTab({ screen }) {
 
       {/* Profile Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('ProfileDashboard')}
+        onPress={() => navigation.navigate('DummyScreen')}
         style={styles.footerBtnContainer}
       >
         <View style={styles.profileContainer}>

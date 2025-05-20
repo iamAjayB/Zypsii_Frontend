@@ -3,6 +3,19 @@ import { scale, verticalScale } from '../../utils';
 import { colors } from '../../utils';
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    backgroundColor: colors.white,
+    zIndex: 1,
+  },
+  settingsButton: {
+    padding: 8,
+    borderRadius: 20,
+  },
   container: {
     flex: 1,
     overflow: 'visible', // Allow elements to show outside the parent bounds
