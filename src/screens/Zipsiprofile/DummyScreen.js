@@ -610,13 +610,21 @@ const DummyScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar backgroundColor={colors.white} barStyle="dark-content" />
       <View style={styles.header}>
-        <View style={{ flex: 1 }} />
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={handleSettingsPress}
-        >
-          <Ionicons name="settings-outline" size={24} color={colors.black} />
-        </TouchableOpacity>
+        <View style={styles.topIconsRow}>
+          <View style={styles.circle}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.settingsContainer}>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={handleSettingsPress}
+            >
+              <Ionicons name="settings-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
       <View style={styles.protractorShape} />
       <View style={styles.backgroundCurvedContainer} />
@@ -624,23 +632,28 @@ const DummyScreen = ({ navigation }) => {
       <View style={styles.header}>
         {/* Icons Row */}
         <View style={styles.topIconsRow}>
-          <View style={styles.circle}>
+          {/* <View style={styles.circle}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="chevron-back" size={24} color={colors.white} />
             </TouchableOpacity>
-          </View>
+          </View> */}
         </View>
       </View>
 
       {/* Profile Section */}
       <TouchableOpacity
         style={styles.profileContainer}
-        onPress={() => navigation.goBack()}
       >
-        <Image
-          source={{uri:profileInfo.image}} // Local profile image
-          style={styles.profileImage}
-        />
+        {profileInfo.image ? (
+          <Image
+            source={{ uri: profileInfo.image }}
+            style={styles.profileImage}
+          />
+        ) : (
+          <View style={[styles.profileImage, styles.defaultProfileImage]}>
+            <Ionicons name="person" size={50} color={colors.white} />
+          </View>
+        )}
         <Text style={styles.name}>{profileInfo.name || '-----'}</Text>
         <Text style={styles.description}>{profileInfo.notes}</Text>
       </TouchableOpacity>

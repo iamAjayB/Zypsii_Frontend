@@ -6,7 +6,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 10,
     backgroundColor: colors.white,
@@ -85,6 +85,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 5,
     borderColor: '#870E6B',
+  },
+  defaultProfileImage: {
+    backgroundColor: '#870E6B',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   name: {
     fontSize: 24,

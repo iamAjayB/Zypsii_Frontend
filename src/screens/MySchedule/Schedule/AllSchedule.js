@@ -172,7 +172,7 @@ const AllSchedule = ({item, isFromProfile}) => {
     <View style={styles.container}>
       <TouchableOpacity
         key={item.id}
-        style={styles.card}
+        style={[styles.card, { padding: 10 }]}
         onPress={() => handleCardPress(item)}
       >
         {isFromProfile &&  (
@@ -183,38 +183,33 @@ const AllSchedule = ({item, isFromProfile}) => {
             <Icon name="ellipsis-vertical" size={20} color="#333" />
           </TouchableOpacity>
         )}
-        <Image source={{ uri: item.imageUrl }} style={styles.image} />
-        <View style={styles.cardContent}>
-          <Text style={styles.title}>{item.title}</Text>
+        <Image source={{ uri: item.imageUrl }} style={[styles.image, { height: 120 }]} />
+        <View style={[styles.cardContent, { padding: 8 }]}>
+          <Text style={[styles.title, { fontSize: 16, marginBottom: 4 }]}>{item.title}</Text>
           <View style={styles.routeRow}>
             <View style={styles.routeItem}>
-              <Text style={styles.routeLabel}>From</Text>
+              <Text style={[styles.routeLabel, { fontSize: 12 }]}>From</Text>
               <View style={styles.locationRow}>
-                <Icon name="location-outline" size={16} color="#333" />
-                <Text style={styles.routeText} numberOfLines={1} ellipsizeMode="tail">
-                  {fromPlace}
+                <Icon name="location-outline" size={14} color="#333" />
+                <Text style={[styles.routeText, { fontSize: 13 }]}>
+                  {fromPlace.length > 20 ? fromPlace.slice(0, 20) + '...' : fromPlace}
                 </Text>
               </View>
             </View>
-            <View style={styles.routeItem}>
-              <Text style={styles.routeLabel}>To</Text>
+            <View style={[styles.routeItem, { marginTop: 4 }]}>
+              <Text style={[styles.routeLabel, { fontSize: 12 }]}>To</Text>
               <View style={styles.locationRow}>
-                <Icon name="location-outline" size={16} color="#333" />
-                <Text style={styles.routeText} numberOfLines={1} ellipsizeMode="tail">
-                  {toPlace}
+                <Icon name="location-outline" size={14} color="#333" />
+                <Text style={[styles.routeText, { fontSize: 13 }]}>
+                  {toPlace.length > 20 ? toPlace.slice(0, 20) + '...' : toPlace}
                 </Text>
               </View>
             </View>
           </View>
-          <Text style={styles.date}>📅 {item.date}</Text>
-          <Text style={styles.riders}>🏍️ ({item.riders})</Text>
-          {/* <View style={styles.ratingContainer}>
-            <View style={styles.ratingStars}>
-              <AntDesign name="star" size={18} color={colors.Zypsii_color} />
-              <Text style={styles.ratingText}>{item.rating || '0.0'}</Text>
-            </View>
-            <Text style={styles.nameText}>{item.fullName}</Text>
-          </View> */}
+          <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.date, { marginRight: 10, fontSize: 11 }]}>📅 {item.date}</Text>
+            <Text style={[styles.riders, { fontSize: 11 }]}>🏍️ ({item.riders})</Text>
+          </View>
         </View>
         {!isScheduleCreator && (
           <TouchableOpacity 

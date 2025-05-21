@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, Image } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { BackHeader, BottomTab } from "../../components";
@@ -9,6 +9,8 @@ import { TextDefault } from '../../components';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DiscoverByNearest from '../../components/DiscoverByNearest/DiscoverByNearest';
 import { base_url } from '../../utils/base_url';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 //const baseUrl = 'https://admin.zypsii.com';
 const Map = ({ route }) => {
   const navigation = useNavigation();
@@ -16,10 +18,106 @@ const Map = ({ route }) => {
     navigation.goBack();
   };
   const [discoverbynearest, setDiscoverbyNearest] = useState([]);
-  const { locations = [] } = route.params || {};
+  const [scheduleData, setScheduleData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPlaces, setSelectedPlaces] = useState([]);
+  const mapRef = useRef(null);
+  const { tripId } = route.params || {};
 
-  // Calculate initial region based on locations
+  useEffect(() => {
+    fetchScheduleData();
+  }, [tripId]);
+
+  const fetchScheduleData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      const user = await AsyncStorage.getItem('user');
+      const currentUserId = user ? JSON.parse(user)._id : null;
+      
+      if (!token || !currentUserId) {
+        console.error('Missing token or userId');
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get(
+        `${base_url}/schedule/listing/scheduleDescription/${tripId}/${currentUserId}?offset=0&limit=10`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      console.log('Schedule Response:', response.data);
+      
+      if (response.data && response.data.success && response.data.data) {
+        setScheduleData(response.data.data);
+        // Set all places as selected by default
+        const allPlaces = response.data.data.flatMap(day => day.planDescription || []);
+        setSelectedPlaces(allPlaces);
+      } else {
+        console.log('No schedule data found');
+        setScheduleData([]);
+        setSelectedPlaces([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching schedule data:', error.response?.data || error.message);
+      setScheduleData([]);
+      setSelectedPlaces([]);
+      setLoading(false);
+    }
+  };
+
+  // Get all locations from all days
+  const getAllLocations = () => {
+    return scheduleData.flatMap(day => day.planDescription || []);
+  };
+
+  // Update map region when selections change
+  useEffect(() => {
+    if (mapRef.current && selectedPlaces.length > 0) {
+      const locations = selectedPlaces;
+      const latitudes = locations.map(loc => loc.location.lat);
+      const longitudes = locations.map(loc => loc.location.lng);
+      
+      const minLat = Math.min(...latitudes);
+      const maxLat = Math.max(...latitudes);
+      const minLng = Math.min(...longitudes);
+      const maxLng = Math.max(...longitudes);
+
+      mapRef.current.animateToRegion({
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLng + maxLng) / 2,
+        latitudeDelta: Math.abs(maxLat - minLat) * 1.5,
+        longitudeDelta: Math.abs(maxLng - minLng) * 1.5,
+      }, 1000);
+    }
+  }, [selectedPlaces]);
+
+  const handlePlaceSelect = (place) => {
+    setSelectedPlaces(prev => {
+      // If place is already selected, remove it
+      if (prev.some(p => p._id === place._id)) {
+        return prev.filter(p => p._id !== place._id);
+      }
+      // Add new place to selection
+      return [...prev, place];
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPlaces.length === getAllLocations().length) {
+      setSelectedPlaces([]); // Deselect all
+    } else {
+      setSelectedPlaces(getAllLocations()); // Select all
+    }
+  };
+
+  // Calculate initial region based on selected locations
   const getInitialRegion = () => {
+    const locations = selectedPlaces.length > 0 ? selectedPlaces : getAllLocations();
     if (locations.length === 0) {
       return {
         latitude: 13.0827,
@@ -45,8 +143,9 @@ const Map = ({ route }) => {
     };
   };
 
-  // Get route coordinates from locations
+  // Get route coordinates from selected locations
   const getRouteCoordinates = () => {
+    const locations = selectedPlaces.length > 0 ? selectedPlaces : getAllLocations();
     return locations.map(loc => ({
       latitude: loc.location.lat,
       longitude: loc.location.lng
@@ -58,20 +157,49 @@ const Map = ({ route }) => {
       try {
         const response = await fetch(`${base_url}/schedule/places/getNearest`);
         const data = await response.json();
-        const formattedData = data.slice(0, 100).map(item => ({
-          id: item.id,
-          image: item.image,
-          title: item.name,
-          subtitle: item.subtitle,
-        }));
-        setDiscoverbyNearest(formattedData);
+        
+        if (data && data.data && Array.isArray(data.data)) {
+          const formattedData = data.data.slice(0, 100).map(item => ({
+            id: item._id || item.id,
+            image: item.image,
+            title: item.name,
+            subtitle: item.subtitle,
+          }));
+          setDiscoverbyNearest(formattedData);
+        } else {
+          console.log('No discover data found');
+          setDiscoverbyNearest([]);
+        }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching discover data:', error);
+        setDiscoverbyNearest([]);
       }
     };
 
     fetchDiscoverbyNearest();
   }, []);
+
+  const handleZoomIn = () => {
+    if (mapRef.current) {
+      mapRef.current.getCamera().then((camera) => {
+        mapRef.current.animateCamera({
+          ...camera,
+          zoom: camera.zoom + 1
+        }, { duration: 300 });
+      });
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapRef.current) {
+      mapRef.current.getCamera().then((camera) => {
+        mapRef.current.animateCamera({
+          ...camera,
+          zoom: Math.max(1, camera.zoom - 1)
+        }, { duration: 300 });
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -84,50 +212,105 @@ const Map = ({ route }) => {
       <View style={styles.mainContent}>
         <Text style={styles.title}>Trip Locations</Text>
 
+        <View style={styles.placesHeader}>
+          <Text style={styles.selectedCount}>
+            {selectedPlaces.length} places selected
+          </Text>
+          <TouchableOpacity 
+            style={styles.selectAllButton}
+            onPress={handleSelectAll}
+          >
+            <Text style={styles.selectAllText}>
+              {selectedPlaces.length === getAllLocations().length ? 'Deselect All' : 'Select All'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView horizontal style={styles.placesList}>
+          {getAllLocations().map((place) => (
+            <TouchableOpacity
+              key={place._id}
+              style={[
+                styles.placeItem,
+                selectedPlaces.some(p => p._id === place._id) && styles.selectedPlace
+              ]}
+              onPress={() => handlePlaceSelect(place)}
+            >
+              <Text style={[
+                styles.placeText,
+                selectedPlaces.some(p => p._id === place._id) && styles.selectedPlaceText
+              ]}>
+                {place.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <View style={styles.fromToContainer}>
-          {locations.length > 0 && (
+          {selectedPlaces.length > 0 && (
             <>
               <View style={styles.locationInfo}>
                 <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.darkGray} />
                 <Text style={styles.locationText}>
-                  {locations[0].name}
+                  {selectedPlaces[0].name}
                 </Text>
               </View>
               <MaterialCommunityIcons name="arrow-right" size={20} color={colors.darkGray} style={styles.arrowIcon} />
               <View style={styles.locationInfo}>
                 <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.darkGray} />
                 <Text style={styles.locationText}>
-                  {locations[locations.length - 1].name}
+                  {selectedPlaces[selectedPlaces.length - 1].name}
                 </Text>
               </View>
             </>
           )}
         </View>
 
-        <MapView
-          style={styles.map}
-          initialRegion={getInitialRegion()}
-        >
-          {locations.map((location, index) => (
-            <Marker
-              key={location._id}
-              coordinate={{
-                latitude: location.location.lat,
-                longitude: location.location.lng
-              }}
-              title={location.name}
-              description={location.address}
-            />
-          ))}
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={getInitialRegion()}
+          >
+            {selectedPlaces.map((location) => (
+              <Marker
+                key={location._id}
+                coordinate={{
+                  latitude: location.location.lat,
+                  longitude: location.location.lng
+                }}
+                title={location.name}
+                description={location.address}
+              />
+            ))}
 
-          {locations.length > 1 && (
-            <Polyline
-              coordinates={getRouteCoordinates()}
-              strokeColor="#007AFF"
-              strokeWidth={4}
-            />
-          )}
-        </MapView>
+            {selectedPlaces.length > 1 && (
+              <Polyline
+                coordinates={selectedPlaces.map(loc => ({
+                  latitude: loc.location.lat,
+                  longitude: loc.location.lng
+                }))}
+                strokeColor="#007AFF"
+                strokeWidth={4}
+              />
+            )}
+          </MapView>
+
+          <View style={styles.zoomControls}>
+            <TouchableOpacity 
+              style={styles.zoomButton}
+              onPress={handleZoomIn}
+            >
+              <MaterialCommunityIcons name="plus" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.zoomButton}
+              onPress={handleZoomOut}
+            >
+              <MaterialCommunityIcons name="minus" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <Text style={styles.explore}>Explore Travel</Text>
 
@@ -188,23 +371,37 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   fromToContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    marginHorizontal: 15,
   },
   locationInfo: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   locationText: {
     fontSize: 16,
-    fontWeight: "bold",
-    ...alignment.MLmedium,
+    fontWeight: 'bold',
+    marginLeft: 10,
     color: colors.darkGray,
+    flex: 1,
   },
   arrowIcon: {
-    marginHorizontal: 5,
+    marginHorizontal: 10,
   },
   title: {
     textAlign: "center",
@@ -213,10 +410,44 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.fontMainColor,
   },
-  map: {
+  mapContainer: {
+    position: 'relative',
     width: Dimensions.get("window").width * 0.9,
-    alignSelf: "center",
+    alignSelf: 'center',
     height: Dimensions.get("window").height * 0.4,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    backgroundColor: 'transparent',
+  },
+  zoomButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: colors.btncolor,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 5,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  explore: {
+    ...alignment.Psmall,
+    fontWeight: "bold",
+    alignSelf: "center",
+    fontSize: 16,
   },
   discoverRow: {
     flexDirection: "row",
@@ -236,12 +467,6 @@ const styles = StyleSheet.create({
     color: colors.btncolor,
     fontWeight: "500",
   },
-  explore: {
-    ...alignment.Psmall,
-    fontWeight: "bold",
-    alignSelf: "center",
-    fontSize: 16,
-  },
   discoverList: {
     marginBottom: 80,
   },
@@ -251,6 +476,53 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 3,
+  },
+  placesList: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  placeItem: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: colors.grayLinesColor,
+    borderWidth: 1,
+    borderColor: colors.graycolor,
+  },
+  selectedPlace: {
+    backgroundColor: colors.btncolor,
+    borderColor: colors.btncolor,
+  },
+  placeText: {
+    color: colors.darkGray,
+    fontWeight: 'bold',
+  },
+  selectedPlaceText: {
+    color: colors.white,
+  },
+  placesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    marginBottom: 10,
+  },
+  selectedCount: {
+    fontSize: 16,
+    color: colors.darkGray,
+    fontWeight: 'bold',
+  },
+  selectAllButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    backgroundColor: colors.btncolor,
+    borderRadius: 20,
+  },
+  selectAllText: {
+    color: colors.white,
+    fontWeight: 'bold',
   },
 });
 
