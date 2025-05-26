@@ -14,9 +14,27 @@ import axios from 'axios';
 //const baseUrl = 'https://admin.zypsii.com';
 const Map = ({ route }) => {
   const navigation = useNavigation();
-  const backPressed = () => {
+  
+  const handleBackPress = () => {
     navigation.goBack();
   };
+
+  const handleSearchPress = () => {
+    navigation.navigate('SearchPage');
+  };
+
+  const handleChatPress = () => {
+    navigation.navigate('MessageList');
+  };
+
+  const handleNotificationPress = () => {
+    navigation.navigate('Notification');
+  };
+
+  const handleProfilePress = () => {
+    navigation.navigate('ProfileDashboard');
+  };
+
   const [discoverbynearest, setDiscoverbyNearest] = useState([]);
   const [scheduleData, setScheduleData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -207,9 +225,22 @@ const Map = ({ route }) => {
       <View style={styles.backgroundCurvedContainer} />
 
       {/* Back Header */}
-      <BackHeader backPressed={backPressed} /> 
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 999 }}>
+        <BackHeader 
+          backPressed={handleBackPress}
+          onSearchPress={handleSearchPress}
+          onChatPress={handleChatPress}
+          onNotificationPress={handleNotificationPress}
+          onProfilePress={handleProfilePress}
+          title="Trip Locations"
+          showSearch={true}
+          showChat={true}
+          showNotification={true}
+          showProfile={true}
+        />
+      </View>
 
-      <View style={styles.mainContent}>
+      <View style={[styles.mainContent, { marginTop: 60 }]}>
         <Text style={styles.title}>Trip Locations</Text>
 
         <View style={styles.placesHeader}>

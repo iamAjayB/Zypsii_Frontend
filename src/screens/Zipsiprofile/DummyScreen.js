@@ -10,6 +10,7 @@ import Schedule from '../MySchedule/Schedule/AllSchedule';
 import { base_url } from '../../utils/base_url';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import { ProfileSkeleton, StatsSkeleton, GridSkeleton, ScheduleSkeleton } from '../../components/SkeletonLoader';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -39,10 +40,16 @@ const DummyScreen = ({ navigation }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [placeNames, setPlaceNames] = useState({});
 
+  // Add new loading states
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [shortsLoading, setShortsLoading] = useState(true);
+
   // First useEffect to get user ID
   useEffect(() => {
     const getUserId = async () => {
       try {
+        setProfileLoading(true);
         const accessToken = await AsyncStorage.getItem('accessToken');
         if (!accessToken) {
           throw new Error('No access token found');
@@ -77,6 +84,8 @@ const DummyScreen = ({ navigation }) => {
         }
       } catch (error) {
         console.error('Error fetching user ID:', error);
+      } finally {
+        setProfileLoading(false);
       }
     };
 
@@ -166,6 +175,7 @@ const DummyScreen = ({ navigation }) => {
         }
 
         // Fetch posts
+        setPostsLoading(true);
         const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=all&limit=20`, {
           method: 'GET',
           headers: {
@@ -210,14 +220,6 @@ const DummyScreen = ({ navigation }) => {
                 .filter(Boolean);
 
               setAllPosts(processedPosts);
-
-              // Store pagination info if needed
-              const pagination = {
-                total: response.totalCount || 0,
-                limit: response.limit || 20,
-                offset: response.offset || 0,
-                totalPages: Math.ceil((response.totalCount || 0) / (response.limit || 20))
-              };
             } else {
               console.error('Invalid posts response format:', response);
               setAllPosts([]);
@@ -230,6 +232,7 @@ const DummyScreen = ({ navigation }) => {
           console.error('Posts fetch failed:', postsResponse.status);
           setAllPosts([]);
         }
+        setPostsLoading(false);
 
         // Fetch schedules with limit
         setScheduleLoading(true);
@@ -251,6 +254,7 @@ const DummyScreen = ({ navigation }) => {
         setScheduleLoading(false);
 
         // Fetch shorts
+        setShortsLoading(true);
         const shortsResponse = await fetch(`${base_url}/shorts/listing`, {
           method: 'GET',
           headers: {
@@ -282,6 +286,7 @@ const DummyScreen = ({ navigation }) => {
             setAllShorts(shortsData);
           }
         }
+        setShortsLoading(false);
 
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -291,7 +296,7 @@ const DummyScreen = ({ navigation }) => {
     };
 
     fetchAllData();
-  }, []); // Run once when component mounts
+  }, []);
 
   // Add console logs for state changes
   useEffect(() => {
@@ -421,11 +426,13 @@ const DummyScreen = ({ navigation }) => {
     );
   };
 
-  // Render content based on active icon
+  // Modify the renderContent function to use skeleton loaders
   const renderContent = () => {
     switch (activeIcon) {
       case 'th-large':
-        return (
+        return postsLoading ? (
+          <GridSkeleton />
+        ) : (
           <FlatList
             data={all_posts}
             numColumns={3}
@@ -477,7 +484,9 @@ const DummyScreen = ({ navigation }) => {
           />
         );
       case 'briefcase':
-        return (
+        return scheduleLoading ? (
+          <ScheduleSkeleton />
+        ) : (
           <FlatList
             data={all_schedule}
             key="schedule"
@@ -534,20 +543,15 @@ const DummyScreen = ({ navigation }) => {
             contentContainerStyle={scheduleStyles.scheduleList}
             ListEmptyComponent={() => (
               <View style={{ padding: 20, alignItems: 'center' }}>
-                {scheduleLoading ? (
-                  <View style={scheduleStyles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#870E6B" />
-                    <Text style={scheduleStyles.loadingText}>Loading schedules...</Text>
-                  </View>
-                ) : (
-                  <Text>No schedules available</Text>
-                )}
+                <Text>No schedules available</Text>
               </View>
             )}
           />
         );
       case 'play-circle':
-        return (
+        return shortsLoading ? (
+          <GridSkeleton />
+        ) : (
           <>
             <FlatList
               data={all_shorts}
@@ -641,38 +645,46 @@ const DummyScreen = ({ navigation }) => {
       </View>
 
       {/* Profile Section */}
-      <TouchableOpacity
-        style={styles.profileContainer}
-      >
-        {profileInfo.image ? (
-          <Image
-            source={{ uri: profileInfo.image }}
-            style={styles.profileImage}
-          />
-        ) : (
-          <View style={[styles.profileImage, styles.defaultProfileImage]}>
-            <Ionicons name="person" size={50} color={colors.white} />
-          </View>
-        )}
-        <Text style={styles.name}>{profileInfo.name || '-----'}</Text>
-        <Text style={styles.description}>{profileInfo.notes}</Text>
-      </TouchableOpacity>
+      {profileLoading ? (
+        <ProfileSkeleton />
+      ) : (
+        <TouchableOpacity
+          style={styles.profileContainer}
+        >
+          {profileInfo.image ? (
+            <Image
+              source={{ uri: profileInfo.image }}
+              style={styles.profileImage}
+            />
+          ) : (
+            <View style={[styles.profileImage, styles.defaultProfileImage]}>
+              <Ionicons name="person" size={50} color={colors.white} />
+            </View>
+          )}
+          <Text style={styles.name}>{profileInfo.name || '-----'}</Text>
+          <Text style={styles.description}>{profileInfo.notes}</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Stats Section */}
-      <View style={styles.statsContainer}>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>Posts</Text>
-          <Text style={styles.statNumber}>{profileInfo.Posts || '0'}</Text>
+      {profileLoading ? (
+        <StatsSkeleton />
+      ) : (
+        <View style={styles.statsContainer}>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Posts</Text>
+            <Text style={styles.statNumber}>{profileInfo.Posts || '0'}</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Followers</Text>
+            <Text style={styles.statNumber}>{profileInfo.Followers || '0'}</Text>
+          </View>
+          <View style={styles.statLast}>
+            <Text style={styles.statLabel}>Following</Text>
+            <Text style={styles.statNumber}>{profileInfo.Following || '0'}</Text>
+          </View>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>Followers</Text>
-          <Text style={styles.statNumber}>{profileInfo.Followers || '0'}</Text>
-        </View>
-        <View style={styles.statLast}>
-          <Text style={styles.statLabel}>Following</Text>
-          <Text style={styles.statNumber}>{profileInfo.Following || '0'}</Text>
-        </View>
-      </View>
+      )}
 
       {/* Buttons Section */}
       <View style={styles.buttonsContainer}>

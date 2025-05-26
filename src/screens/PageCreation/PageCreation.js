@@ -260,7 +260,7 @@ const ProfilePage = () => {
             />
           </View>
 
-          <View style={styles.inputContainer}>
+          {/* <View style={styles.inputContainer}>
             <Text style={styles.label}>Location</Text>
             <TextInput
               style={styles.input}
@@ -268,7 +268,7 @@ const ProfilePage = () => {
               onChangeText={setLocation}
               placeholder="Enter your location"
             />
-          </View>
+          </View> */}
         </View>
       </ScrollView>
     </View>
