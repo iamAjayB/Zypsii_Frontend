@@ -27,10 +27,9 @@ function Drawer() {
       <NavigationStack.Screen name="WhereToGo" component={Screen.DiscoverPlace} />
       <NavigationStack.Screen name="MySchedule" component={Screen.MySchedule}/>
       <NavigationStack.Screen name="Destination" component={Screen.Destination}/>
-      <NavigationStack.Screen name= "MakeSchedule" component={Screen.MakeSchedule}/>
+      <NavigationStack.Screen name="MakeSchedule" component={Screen.MakeSchedule}/>
       <NavigationStack.Screen name="TripDetail" component={Screen.TripDetail}/>
       <NavigationStack.Screen name="Map" component={Screen.Map}/>
-      <NavigationStack.Screen name='Schedule' component={Screen.Schedule}/>
       <NavigationStack.Screen name="DiscoverPlace" component={Screen.DiscoverPlace} />
       <NavigationStack.Screen name='SearchPage' component={Screen.SearchPage}/>
       <NavigationStack.Screen name='Notification' component={Screen.Notification}/>
@@ -57,35 +56,7 @@ function Drawer() {
 
 // Main App Container
 function AppContainer() {
-
-  // function _handleNotification(notification) {
-  //   try {
-  //     if (notification.origin === 'selected') {
-  //       if (notification.data.order) {
-  //         navigationService.navigate('OrderDetail', {
-  //           _id: notification.data._id
-  //         });
-  //       }
-  //     }
-  //   } catch (e) {
-  //     console.log(e);
-  //   }
-  // }
   const { user, loading } = useAuth();
-
-   // useEffect(() => {
-  //   Notifications.setNotificationHandler({
-  //     handleNotification: async () => ({
-  //       shouldShowAlert: true,
-  //       shouldPlaySound: false,
-  //       shouldSetBadge: false
-  //     })
-  //   });
-  //   const subscription = Notifications.addNotificationResponseReceivedListener(
-  //     _handleNotification
-  //   );
-  //   return () => subscription.remove();
-  // }, []);
 
   if (loading) {
     return null; // or show a loading spinner
@@ -96,33 +67,27 @@ function AppContainer() {
       ref={ref => {
         navigationService.setGlobalRef(ref);
       }}>
-      <MainStack.Navigator screenOptions={{ headerShown: false }}>
+      <MainStack.Navigator 
+        screenOptions={{ 
+          headerShown: false,
+          animation: 'none'
+        }}
+        initialRouteName={user ? "Drawer" : "Login"}
+      >
         {user ? (
           <MainStack.Screen 
             name="Drawer" 
             component={Drawer}
-            options={{
-              headerShown: false,
-              animation: 'none'
-            }}
           />
         ) : (
           <>
             <MainStack.Screen 
               name="Login" 
               component={Screen.Login}
-              options={{
-                headerShown: false,
-                animation: 'none'
-              }}
             />
             <MainStack.Screen 
               name="SignUp" 
               component={Screen.SignUp}
-              options={{
-                headerShown: false,
-                animation: 'none'
-              }}
             />
           </>
         )}

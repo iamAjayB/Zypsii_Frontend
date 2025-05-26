@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList, ScrollView, Modal, Dimensions, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, Image,Alert , TouchableOpacity, FlatList, ScrollView, Modal, Dimensions, StatusBar, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import styles from './styles';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -78,7 +78,7 @@ const DummyScreen = ({ navigation }) => {
             Posts: userData.posts || '0',
             Followers: userData.followers || '0',
             Following: userData.following || '0',
-            image: userData.profileImage || '',
+            image: userData.profilePicture || '',
             notes: userData.bio || ''
           });
         }
@@ -124,34 +124,28 @@ const DummyScreen = ({ navigation }) => {
       const processedData = await Promise.all(
         scheduleData.map(async (item) => {
           if (!item) return null;
-
-          const locationDetails = Array.isArray(item.locationDetails) ? item.locationDetails : [];
-          const firstLocation = locationDetails[0]?.location;
-          const lastLocation = locationDetails[locationDetails.length - 1]?.location;
-
-          let fromPlace = '';
-          let toPlace = '';
-
-          if (firstLocation) {
-            fromPlace = await getPlaceName(firstLocation.lat, firstLocation.lng);
-          }
-
-          if (lastLocation) {
-            toPlace = await getPlaceName(lastLocation.lat, lastLocation.lng);
-          }
-
           return {
             id: item._id || Math.random().toString(),
             title: item.tripName || 'Untitled Trip',
-            fromPlace: fromPlace || 'Location not available',
-            toPlace: toPlace || 'Location not available',
+            fromPlace: item.locationDetails?.[0]?.address || 'Unknown location',
+            toPlace: item.locationDetails?.[item.locationDetails.length - 1]?.address || 'Unknown location',
             date: Array.isArray(item.Dates) && item.Dates.length > 0 ? item.Dates[0].date : '',
             riders: String(item.numberOfDays || 0),
             imageUrl: item.bannerImage || '',
             travelMode: item.travelMode || '',
             createdBy: item.createdBy || '',
             createdAt: item.createdAt || '',
-            updatedAt: item.updatedAt || ''
+            updatedAt: item.updatedAt || '',
+            rawLocation: {
+              from: {
+                latitude: item.location?.from?.latitude,
+                longitude: item.location?.from?.longitude
+              },
+              to: {
+                latitude: item.location?.to?.latitude,
+                longitude: item.location?.to?.longitude
+              }
+            }
           };
         })
       );
@@ -190,7 +184,6 @@ const DummyScreen = ({ navigation }) => {
             
             if (response.success && Array.isArray(response.data)) {
               const postsData = response.data;
-              console.log(postsData);
               
               const processedPosts = postsData
                 .filter(item => item && typeof item === 'object')
@@ -311,6 +304,93 @@ const DummyScreen = ({ navigation }) => {
   useEffect(() => {
 
   }, [all_shorts]);
+
+  const handleDelete = (scheduleId) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this schedule?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const accessToken = await AsyncStorage.getItem('accessToken');
+              const user = await AsyncStorage.getItem('user');
+
+              console.log(scheduleId);
+              console.log(user)
+              const response = await fetch(
+                `${base_url}/schedule/delete/descriptions/${scheduleId}/${user._id}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              if (response.ok) {
+                Alert.alert('Deleted', 'The schedule has been deleted.');
+                // Optional: Refresh data or update state
+              } else {
+                const errorData = await response.json();
+                Alert.alert('Error', errorData.message || 'Failed to delete schedule.');
+              }
+            } catch (error) {
+              console.error('Delete error:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteShort = (shortId) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this short?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const accessToken = await AsyncStorage.getItem('accessToken');
+              const user = await AsyncStorage.getItem('user');
+
+              const response = await fetch(
+                `${base_url}/shorts/delete/${shortId}/${user._id}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              if (response.ok) {
+                Alert.alert('Deleted', 'The short has been deleted.');
+                // Update the shorts list by filtering out the deleted item
+                setAllShorts(prevShorts => prevShorts.filter(short => short.id !== shortId));
+              } else {
+                const errorData = await response.json();
+                Alert.alert('Error', errorData.message || 'Failed to delete short.');
+              }
+            } catch (error) {
+              console.error('Delete error:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Local images for grid view (th-large)
   const images = {
@@ -535,6 +615,13 @@ const DummyScreen = ({ navigation }) => {
                         <MaterialIcons name="group" size={16} color="#666" />
                         <Text style={scheduleStyles.ridersText}>{item.riders} Riders</Text>
                       </View>
+                      <View style={scheduleStyles.ridersContainer}>
+                    <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                      <MaterialIcons name="delete" size={16} color={colors.Zypsii_color} />
+                    </TouchableOpacity>
+                    <Text style={scheduleStyles.ridersText}></Text>
+                  </View>
+
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -589,6 +676,15 @@ const DummyScreen = ({ navigation }) => {
                           <MaterialIcons name="visibility" size={14} color="#870E6B" />
                           <Text style={gridStyles.statText}>{item.views || '0'}</Text>
                         </View>
+                        <TouchableOpacity 
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteShort(item.id);
+                          }}
+                          style={gridStyles.deleteButton}
+                        >
+                          <MaterialIcons name="delete" size={14} color="#870E6B" />
+                        </TouchableOpacity>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -687,14 +783,14 @@ const DummyScreen = ({ navigation }) => {
       )}
 
       {/* Buttons Section */}
-      <View style={styles.buttonsContainer}>
+      {/* <View style={styles.buttonsContainer}>
         <TouchableOpacity style={styles.editProfileButton}>
           <Text style={styles.buttonText}>Edit Profile</Text>
       </TouchableOpacity>
         <TouchableOpacity style={styles.shareButton}>
           <Text style={styles.buttonText}>Share</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {/* Gray Line */}
       <View style={styles.separatorLine} />
@@ -878,6 +974,7 @@ const fullScreenStyles = {
     backgroundColor: 'black',
   },
   closeButton: {
+    display: 'none',
     position: 'absolute',
     top: 40,
     right: 20,
@@ -967,6 +1064,9 @@ const gridStyles = {
     color: '#666',
     marginLeft: 2,
   },
+  deleteButton: {
+    padding: 4,
+  },
 };
 
 // Add new styles for schedule
@@ -1007,9 +1107,10 @@ const scheduleStyles = {
     flex: 1,
   },
   routeLabel: {
-    fontSize: 12,
+    fontSize: 15,
     color: '#666',
     marginBottom: 4,
+    fontWeight: 'bold',
   },
   locationRow: {
     flexDirection: 'row',

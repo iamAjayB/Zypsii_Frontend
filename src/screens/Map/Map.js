@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, Image } from "react-native";
+import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, Image, Share } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { BackHeader, BottomTab } from "../../components";
 import { alignment, colors } from "../../utils";
@@ -59,7 +59,7 @@ const Map = ({ route }) => {
       }
 
       const response = await axios.get(
-        `${base_url}/schedule/listing/scheduleDescription/${tripId}/${currentUserId}?offset=0&limit=10`,
+        `${base_url}/schedule/listing/scheduleDescription/${tripId}/${currentUserId}?offset=0&limit=1`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -173,7 +173,23 @@ const Map = ({ route }) => {
   useEffect(() => {
     const fetchDiscoverbyNearest = async () => {
       try {
-        const response = await fetch(`${base_url}/schedule/places/getNearest`);
+        const accessToken = await AsyncStorage.getItem('accessToken');
+        if (!accessToken) {
+          console.error('No access token found');
+          return;
+        }
+
+        const response = await fetch(`${base_url}/schedule/places/getNearest`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
         
         if (data && data.data && Array.isArray(data.data)) {
@@ -181,7 +197,9 @@ const Map = ({ route }) => {
             id: item._id || item.id,
             image: item.image,
             title: item.name,
-            subtitle: item.subtitle,
+            subtitle: item.address || 'No address',
+            rating: parseFloat(item.rating) || 0,
+            distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null
           }));
           setDiscoverbyNearest(formattedData);
         } else {
@@ -219,6 +237,27 @@ const Map = ({ route }) => {
     }
   };
 
+  const handleExportLocations = async () => {
+    if (selectedPlaces.length === 0) {
+      alert('Please select at least one location to export');
+      return;
+    }
+
+    const locationsText = selectedPlaces.map((place, index) => {
+      return `${index + 1}. ${place.name}\n   Address: ${place.address}\n   Coordinates: ${place.location.lat}, ${place.location.lng}\n`;
+    }).join('\n');
+
+    try {
+      await Share.share({
+        message: `Selected Locations:\n\n${locationsText}`,
+        title: 'Trip Locations Export'
+      });
+    } catch (error) {
+      console.error('Error sharing locations:', error);
+      alert('Failed to export locations');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.protractorShape} />
@@ -247,14 +286,23 @@ const Map = ({ route }) => {
           <Text style={styles.selectedCount}>
             {selectedPlaces.length} places selected
           </Text>
-          <TouchableOpacity 
-            style={styles.selectAllButton}
-            onPress={handleSelectAll}
-          >
-            <Text style={styles.selectAllText}>
-              {selectedPlaces.length === getAllLocations().length ? 'Deselect All' : 'Select All'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={[styles.headerButton, styles.exportButton]}
+              onPress={handleExportLocations}
+            >
+              <MaterialCommunityIcons name="export" size={20} color={colors.white} />
+              <Text style={styles.headerButtonText}>Export</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.selectAllButton}
+              onPress={handleSelectAll}
+            >
+              <Text style={styles.selectAllText}>
+                {selectedPlaces.length === getAllLocations().length ? 'Deselect All' : 'Select All'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView horizontal style={styles.placesList}>
@@ -400,6 +448,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 90,
     zIndex: 2,
+    paddingBottom: 20,
   },
   fromToContainer: {
     flexDirection: 'row',
@@ -499,7 +548,8 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   discoverList: {
-    marginBottom: 80,
+    marginBottom: 100,
+    paddingBottom: 20,
   },
   bottomTabContainer: {
     position: "absolute",
@@ -507,6 +557,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 3,
+    backgroundColor: colors.white,
   },
   placesList: {
     flexDirection: 'row',
@@ -554,6 +605,26 @@ const styles = StyleSheet.create({
   selectAllText: {
     color: colors.white,
     fontWeight: 'bold',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  exportButton: {
+    backgroundColor: colors.btncolor,
+  },
+  headerButtonText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    marginLeft: 5,
   },
 });
 

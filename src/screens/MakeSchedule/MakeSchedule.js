@@ -21,7 +21,7 @@ import * as ImagePicker from 'expo-image-picker'; // Image picker for cover imag
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateSchedule, updateDayLocation, setSubmitted } from '../../redux/slices/scheduleSlice';
+import { updateSchedule, updateDayLocation, setSubmitted, resetSchedule } from '../../redux/slices/scheduleSlice';
 import styles from "./styles";
 import { base_url } from "../../utils/base_url";
 import { colors } from '../../utils/colors';
@@ -55,6 +55,22 @@ function MakeSchedule() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeType, setTimeType] = useState('start'); // 'start' or 'end'
+
+  // Reset schedule data when component mounts
+  useEffect(() => {
+    // Reset the schedule state when component mounts
+    dispatch(resetSchedule());
+    
+    // Add navigation listener to reset when leaving the screen
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      dispatch(resetSchedule());
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [dispatch, navigation]);
 
   // Function to update schedule state
   const updateScheduleState = (updates) => {
@@ -168,6 +184,7 @@ function MakeSchedule() {
         };
       });
 
+
       // Calculate number of days between dates
       const diffTime = Math.abs(endDate - startDate);
       const numberOfDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
@@ -225,9 +242,37 @@ function MakeSchedule() {
         return;
       }
 
-      // Log the size of the form data
-      console.log('Form data size:', formData._parts.length);
-      console.log('Base URL:', base_url);
+      // Log the form data being sent
+      console.log('=== Form Data Being Sent ===');
+      console.log('Trip Name:', tripName);
+      console.log('Travel Mode:', "Bike");
+      console.log('Visibility:', "Public");
+      console.log('\nLocation Data:');
+      console.log('From:', {
+        latitude: locationData.from.latitude,
+        longitude: locationData.from.longitude
+      });
+      console.log('To:', {
+        latitude: locationData.to.latitude,
+        longitude: locationData.to.longitude
+      });
+      console.log('\nDates:');
+      console.log('From:', startDate.toISOString().split('T')[0]);
+      console.log('To:', endDate.toISOString().split('T')[0]);
+      console.log('\nDay Plans:');
+      optimizedPlanDescription.forEach((plan, index) => {
+        console.log(`\nDay ${index + 1}:`, {
+          Description: plan.Description,
+          date: plan.date,
+          startTime: plan.startTime,
+          endTime: plan.endTime,
+          location: {
+            latitude: plan.location.latitude,
+            longitude: plan.location.longitude
+          }
+        });
+      });
+      console.log('==========================\n');
 
       const response = await fetch(`${base_url}/schedule/create`, {
         method: 'POST',
@@ -240,9 +285,6 @@ function MakeSchedule() {
 
       // Log the raw response for debugging
       const responseText = await response.text();
-      console.log('Raw server response:', responseText);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
 
       let data;
       try {
@@ -253,7 +295,6 @@ function MakeSchedule() {
         
         data = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('Error parsing response:', parseError);
         if (response.status === 413) {
           throw new Error('The data being sent is too large. Please reduce the size of your images or data.');
         } else if (response.status === 404) {
@@ -273,7 +314,6 @@ function MakeSchedule() {
         navigation.navigate('MySchedule');
       } else {
         if (data.errors) {
-          console.log('Validation errors:', data.errors);
           const errorMessages = Object.values(data.errors).flat();
           Alert.alert('Validation Error', errorMessages.join('\n'));
         } else {
@@ -281,16 +321,10 @@ function MakeSchedule() {
         }
       }
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
       Alert.alert(
         'Error',
         error.message || 'Failed to save schedule. Please try again.',
-        [
-          {
-            text: 'OK',
-            onPress: () => console.log('Error acknowledged')
-          }
-        ]
+        [{ text: 'OK' }]
       );
     } finally {
       setIsLoading(false);
@@ -303,7 +337,9 @@ function MakeSchedule() {
       id: days.length + 1, 
       description: "", 
       latitude: "", 
-      longitude: "" 
+      longitude: "",
+      startTime: "09:00",
+      endTime: "17:00"
     };
     updateScheduleState({ days: [...days, newDay] });
   };
@@ -343,7 +379,18 @@ function MakeSchedule() {
   useEffect(() => {
     if (route.params?.latitude && route.params?.longitude && !isSubmitted) {
       const { latitude, longitude, dayId } = route.params;
-      dispatch(updateDayLocation({ dayId, latitude, longitude }));
+      // Update only the specific day's location
+      const updatedDays = days.map(day => {
+        if (day.id === dayId) {
+          return {
+            ...day,
+            latitude: latitude.toString(),
+            longitude: longitude.toString()
+          };
+        }
+        return day;
+      });
+      updateScheduleState({ days: updatedDays });
     }
   }, [route.params]);
 
@@ -460,7 +507,10 @@ function MakeSchedule() {
         },
         {
           text: 'OK',
-          onPress: () => navigation.goBack(),
+          onPress: () => {
+            dispatch(resetSchedule()); // Reset schedule before navigating back
+            navigation.goBack();
+          },
         },
       ],
       { cancelable: true }

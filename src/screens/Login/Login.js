@@ -31,7 +31,7 @@ const SignInScreen = () => {
       default: '1041802076420-pi7qln0r9tqb2nj8gju3286qti3alkj4.apps.googleusercontent.com'
     }),
   });
-
+  console.log(user);
   useEffect(() => {
     const checkUser = async () => {
       const storedUser = await AsyncStorage.getItem('user');
