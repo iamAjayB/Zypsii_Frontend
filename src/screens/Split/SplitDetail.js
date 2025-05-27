@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,752 +15,49 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { base_url } from '../../utils/base_url';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchSplitDetails,
+  addExpense,
+  updateExpense,
+  markAsPaid,
+  inviteFriend,
+  setActiveTab,
+  setAddParticipantModalVisible,
+  setAddExpenseModalVisible,
+  setInviteModalVisible,
+  setEditingExpenseId,
+  setEditedAmount,
+} from '../../redux/slices/splitSlice';
 
-// AddParticipantModal Component
-const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParticipants }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const searchUsers = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      const response = await fetch(`${base_url}/user/getProfile?search=${encodeURIComponent(query)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        // Format the data to match our UI needs
-        const formattedResults = data.data.map(user => ({
-          _id: user._id,
-          name: user.fullName,
-          email: user.email,
-          profileImage: user.profileImage || 'https://via.placeholder.com/50',
-          userName: user.userName
-        }));
-
-        // Filter out users who are already participants
-        const filteredResults = formattedResults.filter(user => 
-          !existingParticipants.some(p => p.user._id === user._id)
-        );
-        
-        setSearchResults(filteredResults);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Error searching users:', error);
-      Alert.alert('Error', 'Failed to search users');
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      searchUsers(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
-
-
-
-  const renderUserItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.userItemContainer}
-      onPress={() => onAddParticipant(item)}
-    >
-      <View style={styles.userInfoWrapper}>
-        <View style={styles.userAvatarContainer}>
-          <Text style={styles.userAvatarText}>
-            {item.name ? item.name.charAt(0).toUpperCase() : '?'}
-          </Text>
-        </View>
-        <View style={styles.userDetailsContainer}>
-          <Text style={styles.userNameText}>{item.name || 'Unknown User'}</Text>
-          <Text style={styles.userEmailText}>{item.email}</Text>
-        </View>
-      </View>
-      <View style={styles.addIconContainer}>
-        <Ionicons name="add-circle-outline" size={24} color={colors.Zypsii_color} />
-      </View>
-    </TouchableOpacity>
-  );
-
-  
- 
-
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={styles.modalSafeArea}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeaderWithSearch}>
-              <View style={styles.modalHeaderTop}>
-                <Text style={styles.modalTitle}>Add Participant</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <Ionicons name="close" size={24} color={colors.fontMainColor} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.searchWrapper}>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="search" size={20} color={colors.fontSecondColor} style={styles.searchIcon} />
-                  <TextInput
-                    style={styles.searchInputField}
-                    placeholder="Search users..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholderTextColor={colors.fontSecondColor}
-                    autoFocus={true}
-                  />
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity 
-                      onPress={() => setSearchQuery('')}
-                      style={styles.clearSearchButton}
-                    >
-                      <Ionicons name="close-circle" size={20} color={colors.fontSecondColor} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.Zypsii_color} />
-              </View>
-            ) : (
-              <FlatList
-                data={searchResults}
-                renderItem={renderUserItem}
-                keyExtractor={(item) => item._id}
-                contentContainerStyle={styles.searchResultsContainer}
-                ListEmptyComponent={
-                  <View style={styles.emptyResultsContainer}>
-                    <Text style={styles.emptyResultsText}>
-                      {searchQuery ? 'No users found' : 'Start typing to search users'}
-                    </Text>
-                  </View>
-                }
-              />
-            )}
-          </View>
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-};
-
-// Add this component at the top of the file, before AddExpenseModal
-const SelectPayerModal = ({ visible, onClose, participants, selectedPayer, onSelectPayer }) => {
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.fontMainColor} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Who paid?</Text>
-            <View style={styles.headerPlaceholder} />
-          </View>
-
-          <ScrollView style={styles.modalBody}>
-            {participants.map((participant) => (
-              <TouchableOpacity
-                key={participant.user?._id}
-                style={styles.payerSelectItem}
-                onPress={() => onSelectPayer(participant.user?._id)}
-              >
-                <View style={styles.payerInfo}>
-                  <View style={styles.avatarContainer}>
-                    <Text style={styles.avatarText}>
-                      {participant.user?.name ? participant.user.name.charAt(0).toUpperCase() : '?'}
-                    </Text>
-                  </View>
-                  <Text style={styles.payerName}>
-                    {participant.user?.name || 'Unknown User'}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.checkbox,
-                  selectedPayer === participant.user?._id && styles.checkboxSelected
-                ]}>
-                  {selectedPayer === participant.user?._id && (
-                    <Ionicons name="checkmark" size={18} color={colors.white} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
-  const [step, setStep] = useState(1);
-  const [totalAmount, setTotalAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [paidBy, setPaidBy] = useState('');
-  const [splitAmounts, setSplitAmounts] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isPayerModalVisible, setIsPayerModalVisible] = useState(false);
-  const [selectedParticipants, setSelectedParticipants] = useState(
-    participants.reduce((acc, p) => ({ ...acc, [p.user?._id]: true }), {})
-  );
-
-  const categories = [
-    'Food & Dining',
-    'Transportation',
-    'Accommodation',
-    'Entertainment',
-    'Shopping',
-    'Other'
-  ];
-
-  useEffect(() => {
-    if (participants && totalAmount) {
-      const selectedIds = Object.entries(selectedParticipants)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([id]) => id);
-      const selectedCount = selectedIds.length;
-      if (selectedCount > 0) {
-        const total = Math.floor(parseFloat(totalAmount));
-        const baseShare = Math.floor(total / selectedCount);
-        let remainder = total - (baseShare * selectedCount);
-
-        const newSplitAmounts = {};
-        participants.forEach((participant, idx) => {
-          if (selectedParticipants[participant.user?._id]) {
-            // Distribute the remainder to the first 'remainder' users
-            let share = baseShare;
-            if (remainder > 0) {
-              share += 1;
-              remainder -= 1;
-            }
-            newSplitAmounts[participant.user?._id] = {
-              value: share.toString(),
-              isManuallyEdited: false
-            };
-          } else {
-            newSplitAmounts[participant.user?._id] = {
-              value: '0',
-              isManuallyEdited: false
-            };
-          }
-        });
-        setSplitAmounts(newSplitAmounts);
-      }
-    }
-  }, [participants, totalAmount, selectedParticipants]);
-
-  const resetForm = () => {
-    setStep(1);
-    setTotalAmount('');
-    setDescription('');
-    setCategory('');
-    setPaidBy('');
-    setSplitAmounts({});
-    setIsSubmitting(false);
-    setErrors({});
-  };
-
-  const handleNext = () => {
-    if (step === 1) {
-      if (!description.trim()) {
-        setErrors(prev => ({ ...prev, description: 'Please enter a description' }));
-        return;
-      }
-      if (!category) {
-        setErrors(prev => ({ ...prev, category: 'Please select a category' }));
-        return;
-      }
-      setErrors({});
-      setStep(2);
-    }
-  };
-
-  const handleBack = () => {
-    if (step === 2) {
-      setStep(1);
-    } else {
-      handleClose();
-    }
-  };
-
-  const handleSplitEqually = () => {
-    if (!totalAmount || isNaN(parseFloat(totalAmount))) return;
-
-    const selectedCount = Object.values(selectedParticipants).filter(Boolean).length;
-    if (selectedCount > 0) {
-      const totalAmountNum = Math.floor(parseFloat(totalAmount));
-      const baseShare = Math.floor(totalAmountNum / selectedCount);
-      const remainder = totalAmountNum - (baseShare * selectedCount);
-      
-      const newSplitAmounts = {};
-      let remainingAmount = remainder;
-
-      Object.entries(selectedParticipants).forEach(([userId, isSelected], index) => {
-        if (isSelected) {
-          // Add 1 to the base share for the first 'remainder' number of participants
-          let share = baseShare;
-          if (remainingAmount > 0) {
-            share += 1;
-            remainingAmount -= 1;
-          }
-          newSplitAmounts[userId] = {
-            value: share.toString(),
-            isManuallyEdited: false
-          };
-        } else {
-          newSplitAmounts[userId] = {
-            value: '0',
-            isManuallyEdited: false
-          };
-        }
-      });
-
-      setSplitAmounts(newSplitAmounts);
-    }
-  };
-
-  const handleAmountChange = (value) => {
-    const cleanedValue = value.replace(/[^0-9.]/g, '');
-    const parts = cleanedValue.split('.');
-    if (parts.length > 2) return;
-    if (parts[1] && parts[1].length > 2) return;
-    setTotalAmount(cleanedValue);
-    setErrors(prev => ({ ...prev, amount: validateAmount(cleanedValue) }));
-  };
-
-  const validateAmount = (value) => {
-    const numValue = parseFloat(value);
-    if (!value || isNaN(numValue) || numValue <= 0) {
-      return 'Please enter a valid amount';
-    }
-    return null;
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (!paidBy) {
-        setErrors(prev => ({ ...prev, paidBy: 'Please select who paid' }));
-        return;
-      }
-
-      if (!totalAmount || isNaN(parseFloat(totalAmount)) || parseFloat(totalAmount) <= 0) {
-        setErrors(prev => ({ ...prev, amount: 'Please enter a valid amount' }));
-        return;
-      }
-
-      setIsSubmitting(true);
-      
-      const expenseData = {
-        description: description.trim(),
-        amount: parseFloat(totalAmount),
-        category,
-        paidBy: paidBy,
-        splitAmounts: splitAmounts,
-        date: new Date().toISOString()
-      };
-
-      await onAddExpense(expenseData);
-      handleClose();
-    } catch (error) {
-      console.error('Error submitting expense:', error);
-      Alert.alert('Error', error.message || 'Failed to add expense');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
-
-  const handleSplitAmountChange = (userId, value) => {
-    // Clean the input value to only allow numbers and decimal point
-    const newAmount = value.replace(/[^0-9.]/g, '');
-    const newAmountNum = parseFloat(newAmount || '0');
-    const totalAmountNum = parseFloat(totalAmount);
-
-    // Validate the input amount
-    if (newAmountNum > totalAmountNum) {
-      Alert.alert('Invalid Amount', 'Amount cannot be greater than total expense');
-      return;
-    }
-
-    // Get other selected participants (excluding the current one and any manually edited users)
-    const otherSelectedParticipants = Object.entries(selectedParticipants)
-      .filter(([id, isSelected]) => {
-        // Only include users who are selected AND haven't been manually edited
-        return isSelected && id !== userId && !splitAmounts[id]?.isManuallyEdited;
-      })
-      .map(([id]) => id);
-
-    const newSplitAmounts = { ...splitAmounts };
-
-    // Mark this user's amount as manually edited
-    newSplitAmounts[userId] = {
-      value: newAmount,
-      isManuallyEdited: true
-    };
-
-    // Calculate sum of all manually edited amounts
-    const manuallyEditedTotal = Object.entries(newSplitAmounts)
-      .filter(([id, amount]) => amount?.isManuallyEdited)
-      .reduce((sum, [_, amount]) => sum + parseFloat(amount.value || 0), 0);
-
-    const remainingAmount = totalAmountNum - manuallyEditedTotal;
-
-    if (manuallyEditedTotal >= totalAmountNum) {
-      // If manually entered amounts exceed or equal total, set all others to 0
-      otherSelectedParticipants.forEach(participantId => {
-        newSplitAmounts[participantId] = {
-          value: '0',
-          isManuallyEdited: false
-        };
-      });
-    } else {
-      // Split remaining amount equally among other participants (excluding manually edited users)
-      if (otherSelectedParticipants.length > 0) {
-        const sharePerParticipant = Math.max(0, (remainingAmount / otherSelectedParticipants.length).toFixed(2));
-        let totalDistributed = 0;
-        otherSelectedParticipants.forEach((participantId, index) => {
-          if (index === otherSelectedParticipants.length - 1) {
-            // Last participant gets the remaining amount to ensure total matches
-            const lastAmount = Math.max(0, (remainingAmount - totalDistributed).toFixed(2));
-            newSplitAmounts[participantId] = {
-              value: lastAmount,
-              isManuallyEdited: false
-            };
-          } else {
-            newSplitAmounts[participantId] = {
-              value: sharePerParticipant,
-              isManuallyEdited: false
-            };
-            totalDistributed += parseFloat(sharePerParticipant);
-          }
-        });
-      }
-    }
-
-    // Update the state with new split amounts
-    setSplitAmounts(newSplitAmounts);
-  };
-
-  const handleSelectPayer = (userId) => {
-    setPaidBy(userId);
-    setIsPayerModalVisible(false);
-    setErrors(prev => ({ ...prev, paidBy: null }));
-  };
-
-  const handleParticipantToggle = (userId) => {
-    setSelectedParticipants(prev => {
-      const newSelected = { ...prev, [userId]: !prev[userId] };
-      // Recalculate splits after selection change
-      if (totalAmount) {
-        const selectedIds = Object.entries(newSelected)
-          .filter(([_, isSelected]) => isSelected)
-          .map(([id]) => id);
-        const selectedCount = selectedIds.length;
-        if (selectedCount > 0) {
-          const equalShare = (parseFloat(totalAmount) / selectedCount).toFixed(2);
-          const newSplitAmounts = {};
-          participants.forEach(participant => {
-            if (newSelected[participant.user?._id]) {
-              newSplitAmounts[participant.user?._id] = {
-                value: equalShare,
-                isManuallyEdited: false
-              };
-            } else {
-              newSplitAmounts[participant.user?._id] = {
-                value: '0',
-                isManuallyEdited: false
-              };
-            }
-          });
-          setSplitAmounts(newSplitAmounts);
-        }
-      }
-      return newSelected;
-    });
-  };
-
-  const renderStep1 = () => (
-    <View style={styles.step1Container}>
-      <ScrollView style={styles.modalBody}>
-        <TextInput
-          style={styles.descriptionInput}
-          placeholder="What is this expense for?"
-          value={description}
-          onChangeText={(text) => {
-            setDescription(text);
-            setErrors(prev => ({ ...prev, description: null }));
-          }}
-          placeholderTextColor={colors.fontSecondColor}
-        />
-        {errors.description && (
-          <Text style={styles.errorText}>{errors.description}</Text>
-        )}
-
-        <View style={styles.categoryContainer}>
-          <Text style={styles.sectionLabel}>Category</Text>
-          <View style={styles.categoriesGrid}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryButton,
-                  category === cat && styles.categoryButtonActive
-                ]}
-                onPress={() => {
-                  setCategory(cat);
-                  setErrors(prev => ({ ...prev, category: null }));
-                }}
-              >
-                <Text style={[
-                  styles.categoryButtonText,
-                  category === cat && styles.categoryButtonTextActive
-                ]}>{cat}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {errors.category && (
-            <Text style={styles.errorText}>{errors.category}</Text>
-          )}
-        </View>
-      </ScrollView>
-      
-      <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={handleNext}
-        >
-          <Text style={styles.nextButtonText}>Next</Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.white} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderStep2 = () => (
-    <View style={styles.step2Container}>
-      <ScrollView style={styles.modalBody}>
-        <View style={styles.amountContainer}>
-          <Text style={styles.amountLabel}>₹</Text>
-          <TextInput
-            style={styles.amountInput}
-            value={totalAmount}
-            onChangeText={handleAmountChange}
-            keyboardType="numeric"
-            placeholder="0"
-            placeholderTextColor={colors.fontSecondColor}
-          />
-        </View>
-        {errors.amount && (
-          <Text style={styles.errorText}>{errors.amount}</Text>
-        )}
-
-        <TouchableOpacity
-          style={styles.paidByButton}
-          onPress={() => setIsPayerModalVisible(true)}
-        >
-          <View style={styles.paidByContent}>
-            <View style={styles.paidByLeft}>
-              <Text style={styles.paidByLabel}>Paid by</Text>
-              <Text style={[styles.paidByName, { color: colors.fontMainColor }]}>
-                {paidBy ? participants.find(p => p.user?._id === paidBy)?.user?.name : 'Select payer'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.fontMainColor} />
-          </View>
-        </TouchableOpacity>
-        {errors.paidBy && (
-          <Text style={styles.errorText}>{errors.paidBy}</Text>
-        )}
-
-        <View style={styles.splitListContainer}>
-          <View style={styles.splitListHeader}>
-            <Text style={styles.splitListTitle}>
-              {`${Object.values(selectedParticipants).filter(Boolean).length} Selected`}
-            </Text>
-            <TouchableOpacity onPress={handleSplitEqually} style={styles.splitEquallyButton}>
-              <Ionicons name="refresh" size={20} color={colors.Zypsii_color} />
-              <Text style={styles.splitEquallyText}>Split Equally</Text>
-            </TouchableOpacity>
-          </View>
-
-          {participants.map((participant) => (
-            <View key={participant.user?._id || Math.random()} style={styles.splitListItem}>
-              <TouchableOpacity 
-                style={styles.participantCheckbox}
-                onPress={() => handleParticipantToggle(participant.user?._id)}
-              >
-                <View style={[
-                  styles.checkbox,
-                  selectedParticipants[participant.user?._id] && styles.checkboxSelected
-                ]}>
-                  {selectedParticipants[participant.user?._id] && (
-                    <Ionicons name="checkmark" size={16} color={colors.white} />
-                  )}
-                </View>
-                <View style={styles.participantInfo}>
-                  <View style={styles.avatarContainer}>
-                    <Text style={styles.avatarText}>
-                      {participant.user?.name ? participant.user.name.charAt(0).toUpperCase() : '?'}
-                    </Text>
-                  </View>
-                  <Text style={styles.participantName}>{participant.user?.name || 'Unknown User'}</Text>
-                </View>
-              </TouchableOpacity>
-              <TextInput
-                style={[
-                  styles.splitAmountInput,
-                  !selectedParticipants[participant.user?._id] && styles.splitAmountInputDisabled
-                ]}
-                value={splitAmounts[participant.user?._id]?.value?.toString() || ''}
-                onChangeText={(value) => handleSplitAmountChange(participant.user?._id, value)}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor={colors.fontSecondColor}
-                editable={selectedParticipants[participant.user?._id]}
-              />
-            </View>
-          ))}
-        </View>
-
-        <SelectPayerModal
-          visible={isPayerModalVisible}
-          onClose={() => setIsPayerModalVisible(false)}
-          participants={participants}
-          selectedPayer={paidBy}
-          onSelectPayer={handleSelectPayer}
-        />
-      </ScrollView>
-
-      <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <>
-              <Text style={styles.submitButtonText}>Submit</Text>
-              <Ionicons name="checkmark" size={20} color={colors.white} />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={handleClose}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
-              <Ionicons name={step === 1 ? "close" : "arrow-back"} size={24} color={colors.fontMainColor} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {step === 1 ? 'Add Expense Details' : 'Split Amount'}
-            </Text>
-            <View style={styles.headerPlaceholder} />
-          </View>
-
-          {step === 1 ? renderStep1() : renderStep2()}
-        </View>
-      </View>
-    </Modal>
-  );
-};
+// Import components
+import AddParticipantModal from '../../components/Split/AddParticipantModal';
+import SelectPayerModal from '../../components/Split/SelectPayerModal';
+import AddExpenseModal from '../../components/Split/AddExpenseModal';
+import ExpenseItem from '../../components/Split/ExpenseItem';
+import ParticipantItem from '../../components/Split/ParticipantItem';
 
 function SplitDetail() {
   const navigation = useNavigation();
   const route = useRoute();
+  const dispatch = useDispatch();
   const { splitId } = route.params;
 
-  // State for tabs
-  const [activeTab, setActiveTab] = useState('participants');
-  const [split, setSplit] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isAddParticipantModalVisible, setIsAddParticipantModalVisible] = useState(false);
-  const [isAddExpenseModalVisible, setIsAddExpenseModalVisible] = useState(false);
-
-  // State for expense editing
-  const [editingExpenseId, setEditingExpenseId] = useState(null);
-  const [editedAmount, setEditedAmount] = useState('');
-  const [isUpdatingExpense, setIsUpdatingExpense] = useState(false);
-
-  // State for invite modal
-  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteName, setInviteName] = useState('');
+  const {
+    currentSplit: split,
+    loading,
+    error,
+    activeTab,
+    isAddParticipantModalVisible,
+    isAddExpenseModalVisible,
+    isInviteModalVisible,
+    editingExpenseId,
+    editedAmount,
+  } = useSelector((state) => state.split);
 
   useEffect(() => {
-    fetchSplitDetails();
-  }, [splitId]);
-
-  const fetchSplitDetails = async () => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      const response = await axios.get(`${base_url}/api/splits/${splitId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setSplit(response.data);
-      console.log(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching split details:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to fetch split details');
-      setLoading(false);
-    }
-  };
+    dispatch(fetchSplitDetails(splitId));
+  }, [splitId, dispatch]);
 
   const handleUpdateExpense = async (expenseId, newAmount) => {
     try {
@@ -769,181 +66,16 @@ function SplitDetail() {
         return;
       }
 
-      setIsUpdatingExpense(true);
-      const token = await AsyncStorage.getItem('accessToken');
-      const response = await axios.put(
-        `${base_url}/api/splits/${splitId}/expenses/${expenseId}`,
-        {
-          newAmount: parseFloat(newAmount)
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data) {
-        setSplit(response.data);
-        setEditingExpenseId(null);
-        setEditedAmount('');
-        Alert.alert('Success', 'Expense amount updated successfully');
-      }
+      await dispatch(updateExpense({ splitId, expenseId, newAmount })).unwrap();
+      Alert.alert('Success', 'Expense amount updated successfully');
     } catch (error) {
       console.error('Error updating expense:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to update expense');
-    } finally {
-      setIsUpdatingExpense(false);
+      Alert.alert('Error', error.message || 'Failed to update expense');
     }
   };
-
-  const renderExpenseItem = ({ item }) => {
-    // If paidBy is an object, use it. If it's an ID, find the user in participants.
-    let paidByUser = item.paidBy;
-    if (typeof paidByUser === 'string' && split && split.participants) {
-      const found = split.participants.find(p => p.user?._id === paidByUser);
-      paidByUser = found ? found.user : null;
-    }
-    
-    // Format date properly
-    const expenseDate = item.date ? new Date(item.date).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    }) : 'No date';
-
-    // Defensive checks for amount and description
-    const safeAmount = (item.amount !== undefined && item.amount !== null && !isNaN(Number(item.amount))) ? parseFloat(item.amount).toFixed(2) : '0.00';
-    const safeDescription = item.description && item.description.trim() ? item.description : 'No description';
-
-    return (
-      <View style={styles.expenseItem}>
-        <View style={styles.expenseHeader}>
-          <View style={styles.expenseMainInfo}>
-            <Text style={styles.expenseDescription} numberOfLines={2}>
-              {safeDescription}
-            </Text>
-            {editingExpenseId === item._id ? (
-              <View style={styles.amountEditContainer}>
-                <TextInput
-                  style={styles.amountInput}
-                  value={editedAmount}
-                  onChangeText={setEditedAmount}
-                  keyboardType="numeric"
-                  autoFocus
-                  placeholder="Enter amount"
-                  placeholderTextColor={colors.fontSecondColor}
-                />
-                <View style={styles.amountEditButtons}>
-                  {isUpdatingExpense ? (
-                    <ActivityIndicator size="small" color={colors.Zypsii_color} />
-                  ) : (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.amountEditButton, styles.saveButton]}
-                        onPress={() => handleUpdateExpense(item._id, editedAmount)}
-                      >
-                        <Ionicons name="checkmark" size={20} color={colors.white} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.amountEditButton, styles.cancelButton]}
-                        onPress={() => {
-                          setEditingExpenseId(null);
-                          setEditedAmount('');
-                        }}
-                      >
-                        <Ionicons name="close" size={20} color={colors.white} />
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                onPress={() => {
-                  setEditingExpenseId(item._id);
-                  setEditedAmount(item.amount ? item.amount.toString() : '');
-                }}
-              >
-                <Text style={styles.expenseAmount}>₹{safeAmount}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.expenseDetails}>
-          <View style={styles.expenseDetailRow}>
-            <View style={styles.expenseDetailItem}>
-              <Ionicons name="calendar-outline" size={16} color={colors.fontSecondColor} />
-              <Text style={styles.expenseDetailText}>{expenseDate}</Text>
-            </View>
-            <View style={styles.expenseDetailItem}>
-              <Ionicons name="pricetag-outline" size={16} color={colors.fontSecondColor} />
-              <Text style={styles.expenseDetailText}>{item.category || 'Other'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.paidByContainer}>
-            <View style={styles.paidByInfo}>
-              <View style={styles.paidByAvatar}>
-                <Text style={styles.paidByAvatarText}>
-                  {paidByUser?.name ? paidByUser.name.charAt(0).toUpperCase() : 
-                   paidByUser?.email ? paidByUser.email.charAt(0).toUpperCase() : '?'}
-                </Text>
-              </View>
-              <View style={styles.paidByTextContainer}>
-                <Text style={styles.paidByLabel}>Paid by</Text>
-                <Text style={[styles.paidByEmail, { color: colors.Zypsii_color }]} numberOfLines={1}>
-                  {paidByUser?.name || paidByUser?.email || 'Unknown user'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderParticipantItem = ({ item }) => (
-    <View style={styles.participantItem}>
-      <View style={styles.participantInfo}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {item.user?.email ? item.user.email[0].toUpperCase() : '?'}
-          </Text>
-        </View>
-        <View style={styles.participantDetails}>
-          <Text style={styles.participantName}>{item.user?.email || 'Unknown User'}</Text>
-          <Text style={styles.participantContact}>Amount: ₹{item.amount || 0}</Text>
-          <Text style={[
-            styles.paymentStatus,
-            { color: item.paid ? colors.greenColor : colors.error }
-          ]}>
-            {item.paid ? 'Paid' : 'Pending'}
-          </Text>
-        </View>
-      </View>
-      {!item.paid && (
-        <TouchableOpacity
-          style={styles.payButton}
-          onPress={() => handleMarkAsPaid(item._id)}
-        >
-          <Text style={styles.payButtonText}>Mark as Paid</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-  
 
   const handleAddExpense = async (expenseData) => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
-      // Validate expense data
       if (!expenseData.description || !expenseData.description.trim()) {
         throw new Error('Description is required');
       }
@@ -956,115 +88,37 @@ function SplitDetail() {
         throw new Error('Category is required');
       }
 
-      // Format the data
-      const formattedExpenseData = {
-        ...expenseData,
-        amount: parseFloat(expenseData.amount),
-        description: expenseData.description.trim(),
-        category: expenseData.category.trim(),
-        date: new Date().toISOString(), // Ensure proper date format
-        splitId: splitId
-      };
-
-      const response = await axios.post(
-        `${base_url}/api/splits/${splitId}/expenses`,
-        formattedExpenseData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data) {
-        // Update the split details in state
-        await fetchSplitDetails();
-        setSplit(response.data);
-        Alert.alert('Success', 'Expense added successfully');
-      } else {
-        throw new Error('Failed to add expense');
-      }
+      await dispatch(addExpense({ splitId, expenseData })).unwrap();
+      Alert.alert('Success', 'Expense added successfully');
     } catch (error) {
       console.error('Error adding expense:', error);
-      let errorMessage = 'Failed to add expense';
-      
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert(
-        'Error',
-        errorMessage
-      );
-      throw error;
+      Alert.alert('Error', error.message || 'Failed to add expense');
     }
   };
 
   const handleMarkAsPaid = async (participantId) => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
-      await axios.put(`${base_url}/api/splits/${splitId}/participants/paid`, {
-        participantId: participantId
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      fetchSplitDetails(); // Refresh the data
+      await dispatch(markAsPaid({ splitId, participantId })).unwrap();
       Alert.alert('Success', 'Payment marked as completed');
     } catch (error) {
       console.error('Error marking payment:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to mark payment');
+      Alert.alert('Error', error.message || 'Failed to mark payment');
     }
   };
 
-  const handleInviteFriend = async () => {
-    if (!inviteEmail.trim()) {
+  const handleInviteFriend = async (email, name) => {
+    if (!email.trim()) {
       Alert.alert('Error', 'Please enter email');
       return;
     }
 
     try {
-      const token = await AsyncStorage.getItem('accessToken');
-      await axios.post(`${base_url}/api/splits/${splitId}/participants`, {
-        email: inviteEmail.trim(),
-        amount: split.totalAmount / (split.participants.length + 1)
-        }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      setInviteEmail('');
-      setIsInviteModalVisible(false);
-      fetchSplitDetails(); 
-      Alert.alert('Success', 'Friend has been invited to the split');
+      await dispatch(inviteFriend({ splitId, email, name })).unwrap();
+      Alert.alert('Success', 'Invitation sent successfully');
+      dispatch(setInviteModalVisible(false));
     } catch (error) {
       console.error('Error inviting friend:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to invite friend');
-    }
-  };
-
-  const handleAddParticipant = async (user) => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      await axios.post(`${base_url}/api/splits/${splitId}/participants`, {
-        userId: user._id
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      setIsAddParticipantModalVisible(false);
-      fetchSplitDetails(); 
-      Alert.alert('Success', 'Participant added successfully');
-    } catch (error) {
-      console.error('Error adding participant:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to add participant');
+      Alert.alert('Error', error.message || 'Failed to send invitation');
     }
   };
 
@@ -1077,10 +131,6 @@ function SplitDetail() {
       </SafeAreaView>
     );
   }
-
-  // Debug logs to inspect data
-  console.log('Split data:', split);
-  console.log('Expenses:', split?.expenses);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1095,7 +145,7 @@ function SplitDetail() {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => setIsAddParticipantModalVisible(true)}
+            onPress={() => dispatch(setAddParticipantModalVisible(true))}
           >
             <Ionicons name="person-add" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -1111,7 +161,7 @@ function SplitDetail() {
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'participants' && styles.activeTab]}
-          onPress={() => setActiveTab('participants')}
+          onPress={() => dispatch(setActiveTab('participants'))}
         >
           <Ionicons 
             name="people-outline" 
@@ -1125,7 +175,7 @@ function SplitDetail() {
 
         <TouchableOpacity
           style={[styles.tab, activeTab === 'expenses' && styles.activeTab]}
-          onPress={() => setActiveTab('expenses')}
+          onPress={() => dispatch(setActiveTab('expenses'))}
         >
           <Ionicons 
             name="receipt-outline" 
@@ -1142,7 +192,23 @@ function SplitDetail() {
         <>
           <FlatList
             data={split.expenses}
-            renderItem={renderExpenseItem}
+            renderItem={({ item }) => (
+              <ExpenseItem
+                item={item}
+                editingExpenseId={editingExpenseId}
+                editedAmount={editedAmount}
+                isUpdatingExpense={false}
+                onEditPress={() => {
+                  dispatch(setEditingExpenseId(item._id));
+                  dispatch(setEditedAmount(item.amount ? item.amount.toString() : ''));
+                }}
+                onUpdateExpense={handleUpdateExpense}
+                onCancelEdit={() => {
+                  dispatch(setEditingExpenseId(null));
+                  dispatch(setEditedAmount(''));
+                }}
+              />
+            )}
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContainer}
             ListEmptyComponent={
@@ -1153,7 +219,7 @@ function SplitDetail() {
           />
           <TouchableOpacity
             style={styles.floatingButton}
-            onPress={() => setIsAddExpenseModalVisible(true)}
+            onPress={() => dispatch(setAddExpenseModalVisible(true))}
           >
             <Ionicons name="add" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -1161,7 +227,12 @@ function SplitDetail() {
       ) : (
         <FlatList
           data={split.participants}
-          renderItem={renderParticipantItem}
+          renderItem={({ item }) => (
+            <ParticipantItem
+              item={item}
+              onMarkAsPaid={handleMarkAsPaid}
+            />
+          )}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
         />
@@ -1169,8 +240,8 @@ function SplitDetail() {
 
       <AddParticipantModal
         visible={isAddParticipantModalVisible}
-        onClose={() => setIsAddParticipantModalVisible(false)}
-        onAddParticipant={handleAddParticipant}
+        onClose={() => dispatch(setAddParticipantModalVisible(false))}
+        onAddParticipant={() => {}}
         existingParticipants={split?.participants || []}
       />
 
@@ -1178,7 +249,7 @@ function SplitDetail() {
         visible={isInviteModalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setIsInviteModalVisible(false)}
+        onRequestClose={() => dispatch(setInviteModalVisible(false))}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -1186,20 +257,20 @@ function SplitDetail() {
             <TextInput
               style={styles.input}
               placeholder="Friend's Email"
-              value={inviteEmail}
-              onChangeText={setInviteEmail}
+              value={''}
+              onChangeText={(text) => {}}
               keyboardType="email-address"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setIsInviteModalVisible(false)}
+                onPress={() => dispatch(setInviteModalVisible(false))}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.inviteButton]}
-                onPress={handleInviteFriend}
+                onPress={() => {}}
               >
                 <Text style={styles.inviteButtonText}>Invite</Text>
               </TouchableOpacity>
@@ -1210,7 +281,7 @@ function SplitDetail() {
 
       <AddExpenseModal
         visible={isAddExpenseModalVisible}
-        onClose={() => setIsAddExpenseModalVisible(false)}
+        onClose={() => dispatch(setAddExpenseModalVisible(false))}
         onAddExpense={handleAddExpense}
         participants={split?.participants || []}
       />

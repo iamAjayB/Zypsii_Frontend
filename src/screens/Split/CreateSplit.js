@@ -16,11 +16,13 @@ import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url';
+import UserSearchResult from '../../components/Split/UserSearchResult';
+import SelectedUserItem from '../../components/Split/SelectedUserItem';
+import SearchResultsContainer from '../../components/Split/SearchResultsContainer';
 
 function CreateSplit() {
   const navigation = useNavigation();
   const [title, setTitle] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -33,7 +35,6 @@ function CreateSplit() {
   const [allSearchResults, setAllSearchResults] = useState([]);
   const RESULTS_PER_PAGE = 6;
 
-  // Fetch creator info on mount
   useEffect(() => {
     (async () => {
       const user = JSON.parse(await AsyncStorage.getItem('user'));
@@ -44,7 +45,6 @@ function CreateSplit() {
     })();
   }, []);
 
-  // Search users API
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -66,7 +66,6 @@ function CreateSplit() {
         });
         const data = await response.json();
         if (data.success && data.data) {
-          // Filter out users who are already in selectedUsers
           const filtered = data.data.filter(u => 
             !selectedUsers.some(su => su._id === u._id)
           );
@@ -103,9 +102,8 @@ function CreateSplit() {
   };
 
   const handleToggleUser = (user) => {
-    // Check if user is already in selectedUsers
     if (selectedUsers.some(su => su._id === user._id)) {
-      return; // Skip if already selected
+      return;
     }
     
     setTempSelectedUsers(prev => {
@@ -120,7 +118,6 @@ function CreateSplit() {
 
   const handleAddSelectedUsers = () => {
     if (tempSelectedUsers.length > 0) {
-      // Filter out any users that might have been added to selectedUsers since temp selection
       const newUsers = tempSelectedUsers.filter(user => 
         !selectedUsers.some(su => su._id === user._id)
       );
@@ -136,7 +133,6 @@ function CreateSplit() {
   };
 
   const handleRemoveUser = (userId) => {
-    // Prevent removing the creator
     if (userInfo && userId === userInfo._id) return;
     setSelectedUsers(prev => prev.filter(u => u._id !== userId));
   };
@@ -153,7 +149,6 @@ function CreateSplit() {
     const accessToken = await AsyncStorage.getItem('accessToken');
     setLoading(true);
     try {
-      // Prepare participants array
       const participants = selectedUsers.map(u => ({
         user: { _id: u._id, email: u.email },
         amount: 0,
@@ -207,7 +202,6 @@ function CreateSplit() {
           />
         </View>
 
-        {/* Search and select members */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Add Members</Text>
           <TextInput
@@ -218,96 +212,27 @@ function CreateSplit() {
           />
           {searching && <ActivityIndicator size="small" color={colors.Zypsii_color} style={{ marginTop: 8 }} />}
           {searchResults.length > 0 && (
-            <View style={styles.searchResultsContainer}>
-              {searchResults.map(user => {
-                const isAlreadySelected = selectedUsers.some(su => su._id === user._id);
-                return (
-                  <TouchableOpacity 
-                    key={user._id} 
-                    style={[
-                      styles.searchResultItem,
-                      isAlreadySelected && styles.searchResultItemDisabled
-                    ]} 
-                    onPress={() => handleToggleUser(user)}
-                    disabled={isAlreadySelected}
-                  >
-                    <View style={styles.userInfoContainer}>
-                      <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>
-                          {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.userDetails}>
-                        <Text style={styles.userName}>{user.fullName || user.email}</Text>
-                        <Text style={styles.userEmail}>{user.email}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.checkboxContainer}>
-                      {isAlreadySelected ? (
-                        <View style={styles.alreadySelectedBadge}>
-                          <Text style={styles.alreadySelectedText}>Added</Text>
-                        </View>
-                      ) : (
-                        <View style={[
-                          styles.checkbox,
-                          tempSelectedUsers.some(u => u._id === user._id) && styles.checkboxSelected
-                        ]}>
-                          {tempSelectedUsers.some(u => u._id === user._id) && (
-                            <Ionicons name="checkmark" size={16} color={colors.white} />
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-              {hasMore && (
-                <TouchableOpacity
-                  style={styles.loadMoreButton}
-                  onPress={loadMoreResults}
-                >
-                  <Text style={styles.loadMoreText}>Load More</Text>
-                </TouchableOpacity>
-              )}
-              {tempSelectedUsers.length > 0 && (
-                <TouchableOpacity
-                  style={styles.addSelectedButton}
-                  onPress={handleAddSelectedUsers}
-                >
-                  <Text style={styles.addSelectedButtonText}>
-                    Add Selected ({tempSelectedUsers.length})
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <SearchResultsContainer
+              searchResults={searchResults}
+              tempSelectedUsers={tempSelectedUsers}
+              selectedUsers={selectedUsers}
+              hasMore={hasMore}
+              onToggleUser={handleToggleUser}
+              onLoadMore={loadMoreResults}
+              onAddSelected={handleAddSelectedUsers}
+            />
           )}
         </View>
 
-        {/* Selected members */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Selected Members</Text>
           {selectedUsers.map(user => (
-            <View key={user._id} style={styles.selectedUserItem}>
-              <View style={styles.userInfoContainer}>
-                <View style={styles.avatarContainer}>
-                  <Text style={styles.avatarText}>
-                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.userDetails}>
-                  <Text style={styles.userName}>{user.fullName || user.email}</Text>
-                  <Text style={styles.userEmail}>{user.email}</Text>
-                </View>
-              </View>
-              {(!userInfo || user._id !== userInfo._id) && (
-                <TouchableOpacity 
-                  style={styles.removeButton}
-                  onPress={() => handleRemoveUser(user._id)}
-                >
-                  <Ionicons name="close-circle" size={24} color={colors.error} />
-                </TouchableOpacity>
-              )}
-            </View>
+            <SelectedUserItem
+              key={user._id}
+              user={user}
+              isCreator={userInfo && user._id === userInfo._id}
+              onRemove={handleRemoveUser}
+            />
           ))}
         </View>
 
@@ -383,121 +308,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.7,
-  },
-  searchResultsContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-    overflow: 'hidden',
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  searchResultItemDisabled: {
-    opacity: 0.7,
-    backgroundColor: colors.grayBackground,
-  },
-  userInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.Zypsii_color,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  userDetails: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.fontMainColor,
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: colors.fontSecondColor,
-  },
-  checkboxContainer: {
-    marginLeft: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.grayLinesColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: colors.Zypsii_color,
-    borderColor: colors.Zypsii_color,
-  },
-  addSelectedButton: {
-    backgroundColor: colors.Zypsii_color,
-    padding: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.grayLinesColor,
-  },
-  addSelectedButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  selectedUserItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.grayBackground,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  removeButton: {
-    padding: 4,
-  },
-  alreadySelectedBadge: {
-    backgroundColor: colors.grayBackground,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  alreadySelectedText: {
-    color: colors.fontSecondColor,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  loadMoreButton: {
-    padding: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.grayLinesColor,
-    backgroundColor: colors.grayBackground,
-  },
-  loadMoreText: {
-    color: colors.Zypsii_color,
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
 
