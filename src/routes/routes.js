@@ -6,6 +6,8 @@ import * as Notifications from 'expo-notifications';
 import * as Screen from '../screens';
 import TripMap from '../screens/TripMap/TripMap';
 import PlaceDetailsScreen from '../screens/Searchbar/PlaceDetailsScreen';
+import PostDetail from '../screens/Zipsiprofile/PostDetail';
+import { useAuth } from '../components/Auth/AuthContext';
 
 const NavigationStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -21,6 +23,7 @@ function Drawer() {
       <NavigationStack.Screen name="ProfileDashboard" component={Screen.ProfileDashboard} />
       <NavigationStack.Screen name="Review" component={Screen.Review} />
       <NavigationStack.Screen name="DummyScreen" component={Screen.DummyScreen} />
+      <NavigationStack.Screen name="PostDetail" component={PostDetail} />
       <NavigationStack.Screen name="WhereToGo" component={Screen.DiscoverPlace} />
       <NavigationStack.Screen name="MySchedule" component={Screen.MySchedule}/>
       <NavigationStack.Screen name="Destination" component={Screen.Destination}/>
@@ -46,49 +49,49 @@ function Drawer() {
       <NavigationStack.Screen name="SplitDetail" component={Screen.SplitDetail} />
       <NavigationStack.Screen name="TripMap" component={TripMap} />
       <NavigationStack.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <NavigationStack.Screen name='ShortsUpload' component={Screen.ShortsUpload}/>
+      
     </NavigationStack.Navigator>
   );
 }
 
 // Main App Container
 function AppContainer() {
-  // function _handleNotification(notification) {
-  //   try {
-  //     if (notification.origin === 'selected') {
-  //       if (notification.data.order) {
-  //         navigationService.navigate('OrderDetail', {
-  //           _id: notification.data._id
-  //         });
-  //       }
-  //     }
-  //   } catch (e) {
-  //     console.log(e);
-  //   }
-  // }
+  const { user, loading } = useAuth();
 
-  // useEffect(() => {
-  //   Notifications.setNotificationHandler({
-  //     handleNotification: async () => ({
-  //       shouldShowAlert: true,
-  //       shouldPlaySound: false,
-  //       shouldSetBadge: false
-  //     })
-  //   });
-  //   const subscription = Notifications.addNotificationResponseReceivedListener(
-  //     _handleNotification
-  //   );
-  //   return () => subscription.remove();
-  // }, []);
+  if (loading) {
+    return null; // or show a loading spinner
+  }
 
   return (
     <NavigationContainer
       ref={ref => {
         navigationService.setGlobalRef(ref);
       }}>
-      <MainStack.Navigator screenOptions={{ headerShown: false }}>
-        {/* <MainStack.Screen name="Onboarding" component={Screen.OnboardingScreen} /> */}
-        <MainStack.Screen name="Login" component={Screen.Login} />
-        <MainStack.Screen name="Drawer" component={Drawer} />
+      <MainStack.Navigator 
+        screenOptions={{ 
+          headerShown: false,
+          animation: 'none'
+        }}
+        initialRouteName={user ? "Drawer" : "Login"}
+      >
+        {user ? (
+          <MainStack.Screen 
+            name="Drawer" 
+            component={Drawer}
+          />
+        ) : (
+          <>
+            <MainStack.Screen 
+              name="Login" 
+              component={Screen.Login}
+            />
+            <MainStack.Screen 
+              name="SignUp" 
+              component={Screen.SignUp}
+            />
+          </>
+        )}
       </MainStack.Navigator>
     </NavigationContainer>
   );
