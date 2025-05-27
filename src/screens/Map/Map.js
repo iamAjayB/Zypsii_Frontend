@@ -271,7 +271,7 @@ const Map = ({ route }) => {
           onChatPress={handleChatPress}
           onNotificationPress={handleNotificationPress}
           onProfilePress={handleProfilePress}
-          title="Trip Locations"
+          title=""
           showSearch={true}
           showChat={true}
           showNotification={true}
@@ -279,7 +279,7 @@ const Map = ({ route }) => {
         />
       </View>
 
-      <View style={[styles.mainContent, { marginTop: 60 }]}>
+      <View style={[styles.mainContent, { marginTop: 20 }]}>
         <Text style={styles.title}>Trip Locations</Text>
 
         <View style={styles.placesHeader}>

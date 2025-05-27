@@ -183,9 +183,10 @@ const TripDetail = ({ route, navigation }) => {
         <BackHeader 
           backPressed={backPressed}
           navigation={navigation}
-          style={{ marginTop: 20, fontSize: 20 }}
+          title="Trip Details"
+          style={{ marginTop: 20 }}
         />
-        <Text style={{ marginTop: 100, textAlign: 'center', fontSize: 30, fontWeight: 'bold' }}>Trip Details</Text>
+        <Text style={{ marginTop: 10, textAlign: 'center', fontSize: 30, fontWeight: 'bold' }}></Text>
 
 
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>

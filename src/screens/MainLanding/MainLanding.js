@@ -811,7 +811,7 @@ function MainLanding(props) {
           data={all_schedule}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={({ item }) => (
-            <View style={{ marginBottom: 15 }}>
+            <View style={{ marginBottom: -20 }}>
               <AllSchedule item={item} />
             </View>
           )}

@@ -54,7 +54,7 @@ function BackHeader(props) {
         {/* Back Arrow Inside Circle */}
         <TouchableOpacity
           activeOpacity={0.7}
-          style={[styles.leftContainer, styles.backButton]}
+          style={styles.backButton}
           onPress={handleBackPress}>
           <MaterialIcons name="chevron-left" size={28} color="#fff" />
         </TouchableOpacity>
