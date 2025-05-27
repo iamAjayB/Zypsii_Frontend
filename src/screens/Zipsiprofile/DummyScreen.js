@@ -706,130 +706,117 @@ const DummyScreen = ({ navigation }) => {
     }
   };
 
+  const handleBackPress = () => {
+    console.log('Back button pressed');
+    navigation.goBack();
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={colors.white} barStyle="dark-content" />
-      <View style={styles.header}>
-        <View style={styles.topIconsRow}>
-          <View style={styles.circle}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={24} color={colors.white} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.settingsContainer}>
-            <TouchableOpacity
-              style={styles.settingsButton}
-              onPress={handleSettingsPress}
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.topIconsRow}>
+            <TouchableOpacity 
+              onPress={handleBackPress}
+              style={styles.circle}
             >
-              <Ionicons name="settings-outline" size={24} color={colors.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-      <View style={styles.protractorShape} />
-      <View style={styles.backgroundCurvedContainer} />
-      {/* Header Section */}
-      <View style={styles.header}>
-        {/* Icons Row */}
-        <View style={styles.topIconsRow}>
-          {/* <View style={styles.circle}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="chevron-back" size={24} color={colors.white} />
             </TouchableOpacity>
-          </View> */}
-        </View>
-      </View>
-
-      {/* Profile Section */}
-      {profileLoading ? (
-        <ProfileSkeleton />
-      ) : (
-        <TouchableOpacity
-          style={styles.profileContainer}
-        >
-          {profileInfo.image ? (
-            <Image
-              source={{ uri: profileInfo.image }}
-              style={styles.profileImage}
-            />
-          ) : (
-            <View style={[styles.profileImage, styles.defaultProfileImage]}>
-              <Ionicons name="person" size={50} color={colors.white} />
+            <View style={styles.settingsContainer}>
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={handleSettingsPress}
+              >
+                <Ionicons name="settings-outline" size={24} color={colors.white} />
+              </TouchableOpacity>
             </View>
-          )}
-          <Text style={styles.name}>{profileInfo.name || '-----'}</Text>
-          <Text style={styles.description}>{profileInfo.notes}</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Stats Section */}
-      {profileLoading ? (
-        <StatsSkeleton />
-      ) : (
-        <View style={styles.statsContainer}>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Posts</Text>
-            <Text style={styles.statNumber}>{profileInfo.Posts || '0'}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Followers</Text>
-            <Text style={styles.statNumber}>{profileInfo.Followers || '0'}</Text>
-          </View>
-          <View style={styles.statLast}>
-            <Text style={styles.statLabel}>Following</Text>
-            <Text style={styles.statNumber}>{profileInfo.Following || '0'}</Text>
           </View>
         </View>
-      )}
+        <View style={styles.protractorShape} />
+        <View style={styles.backgroundCurvedContainer} />
 
-      {/* Buttons Section */}
-      {/* <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.editProfileButton}>
-          <Text style={styles.buttonText}>Edit Profile</Text>
-      </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton}>
-          <Text style={styles.buttonText}>Share</Text>
-        </TouchableOpacity>
-      </View> */}
+        {/* Profile Section */}
+        {profileLoading ? (
+          <ProfileSkeleton />
+        ) : (
+          <View style={styles.profileContainer}>
+            <TouchableOpacity>
+              {profileInfo.image ? (
+                <Image
+                  source={{ uri: profileInfo.image }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={[styles.profileImage, styles.defaultProfileImage]}>
+                  <Ionicons name="person" size={50} color={colors.white} />
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.name}>{profileInfo.name || '-----'}</Text>
+            <Text style={styles.description}>{profileInfo.notes}</Text>
+          </View>
+        )}
 
-      {/* Gray Line */}
-      <View style={styles.separatorLine} />
+        {/* Stats Section */}
+        {profileLoading ? (
+          <StatsSkeleton />
+        ) : (
+          <View style={styles.statsContainer}>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>Posts</Text>
+              <Text style={styles.statNumber}>{profileInfo.Posts || '0'}</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>Followers</Text>
+              <Text style={styles.statNumber}>{profileInfo.Followers || '0'}</Text>
+            </View>
+            <View style={styles.statLast}>
+              <Text style={styles.statLabel}>Following</Text>
+              <Text style={styles.statNumber}>{profileInfo.Following || '0'}</Text>
+            </View>
+          </View>
+        )}
 
-      {/* Icons Section */}
-      <View style={styles.iconsContainer}>
-        <TouchableOpacity
-          style={[
-            styles.iconBox,
-            activeIcon === 'th-large' && styles.activeIconBox,
-          ]}
-          onPress={() => setActiveIcon('th-large')}
-        >
-          <Icon name="th-large" size={30} color="#870E6B" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.iconBox,
-            activeIcon === 'briefcase' && styles.activeIconBox,
-          ]}
-          onPress={() => setActiveIcon('briefcase')}
-        >
-          <Icon name="briefcase" size={30} color="#870E6B" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.iconBox,
-            activeIcon === 'play-circle' && styles.activeIconBox,
-          ]}
-          onPress={() => setActiveIcon('play-circle')}
-        >
-          <Icon name="play-circle" size={30} color="#870E6B" />
-        </TouchableOpacity>
-      </View>
+        {/* Gray Line */}
+        <View style={styles.separatorLine} />
 
-      {/* Content Section based on active icon */}
-      <View style={contentStyles.contentContainer}>
-        {renderContent()}
-      </View>
+        {/* Icons Section */}
+        <View style={styles.iconsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.iconBox,
+              activeIcon === 'th-large' && styles.activeIconBox,
+            ]}
+            onPress={() => setActiveIcon('th-large')}
+          >
+            <Icon name="th-large" size={30} color="#870E6B" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.iconBox,
+              activeIcon === 'briefcase' && styles.activeIconBox,
+            ]}
+            onPress={() => setActiveIcon('briefcase')}
+          >
+            <Icon name="briefcase" size={30} color="#870E6B" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.iconBox,
+              activeIcon === 'play-circle' && styles.activeIconBox,
+            ]}
+            onPress={() => setActiveIcon('play-circle')}
+          >
+            <Icon name="play-circle" size={30} color="#870E6B" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Content Section based on active icon */}
+        <View style={contentStyles.contentContainer}>
+          {renderContent()}
+        </View>
+      </ScrollView>
     </View>
   );
 };
