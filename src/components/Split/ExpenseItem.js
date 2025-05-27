@@ -59,7 +59,7 @@ const ExpenseItem = ({
                 {isUpdatingExpense ? (
                   <ActivityIndicator size="small" color={colors.Zypsii_color} />
                 ) : (
-                  <>
+                  <React.Fragment key="edit-buttons">
                     <TouchableOpacity
                       style={[styles.amountEditButton, styles.saveButton]}
                       onPress={() => onUpdateExpense(item._id, editedAmount)}
@@ -72,7 +72,7 @@ const ExpenseItem = ({
                     >
                       <Ionicons name="close" size={20} color={colors.white} />
                     </TouchableOpacity>
-                  </>
+                  </React.Fragment>
                 )}
               </View>
             </View>

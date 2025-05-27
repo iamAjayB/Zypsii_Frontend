@@ -29,6 +29,7 @@ import {
   setEditingExpenseId,
   setEditedAmount,
 } from '../../redux/slices/splitSlice';
+import { calculateSplitBalances, formatCurrency } from '../../utils/splitCalculations';
 
 // Import components
 import AddParticipantModal from '../../components/Split/AddParticipantModal';
@@ -36,6 +37,7 @@ import SelectPayerModal from '../../components/Split/SelectPayerModal';
 import AddExpenseModal from '../../components/Split/AddExpenseModal';
 import ExpenseItem from '../../components/Split/ExpenseItem';
 import ParticipantItem from '../../components/Split/ParticipantItem';
+import SplitBalanceCard from '../../components/Split/SplitBalanceCard';
 
 function SplitDetail() {
   const navigation = useNavigation();
@@ -74,6 +76,16 @@ function SplitDetail() {
     }
   };
 
+  const handleMarkAsPaid = async (userId) => {
+    try {
+      await dispatch(markAsPaid({ splitId, userId })).unwrap();
+      Alert.alert('Success', 'Payment marked as completed');
+    } catch (error) {
+      console.error('Error marking payment:', error);
+      Alert.alert('Error', error.message || 'Failed to mark payment as completed');
+    }
+  };
+
   const handleAddExpense = async (expenseData) => {
     try {
       if (!expenseData.description || !expenseData.description.trim()) {
@@ -96,16 +108,6 @@ function SplitDetail() {
     }
   };
 
-  const handleMarkAsPaid = async (participantId) => {
-    try {
-      await dispatch(markAsPaid({ splitId, participantId })).unwrap();
-      Alert.alert('Success', 'Payment marked as completed');
-    } catch (error) {
-      console.error('Error marking payment:', error);
-      Alert.alert('Error', error.message || 'Failed to mark payment');
-    }
-  };
-
   const handleInviteFriend = async (email, name) => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter email');
@@ -120,6 +122,129 @@ function SplitDetail() {
       console.error('Error inviting friend:', error);
       Alert.alert('Error', error.message || 'Failed to send invitation');
     }
+  };
+
+  const renderBalanceSection = () => {
+    if (!split) return null;
+    
+    const { balances } = calculateSplitBalances(split.participants, split.expenses);
+    const oweBalances = balances.filter(b => b.userId && b.status === 'owe');
+    const getBackBalances = balances.filter(b => b.userId && b.status === 'getBack');
+    
+    return (
+      <View style={styles.balanceSection}>
+        {oweBalances.length > 0 && (
+          <View style={styles.balanceSubsection}>
+            <Text style={styles.balanceSubtitle}>People who need to pay</Text>
+            <FlatList
+              data={oweBalances}
+              renderItem={({ item }) => {
+                if (!item || !item.userId) return null;
+                const participant = split.participants.find(p => p.user && p.user._id && p.user._id.toString() === item.userId.toString());
+                return (
+                  <View style={styles.balanceCard}>
+                    <View style={styles.balanceCardHeader}>
+                      <View style={styles.balanceCardUser}>
+                        <View style={styles.balanceCardAvatar}>
+                          <Text style={styles.balanceCardAvatarText}>
+                            {participant?.user?.name?.charAt(0) || '?'}
+                          </Text>
+                        </View>
+                        <View style={styles.balanceCardInfo}>
+                          <Text style={styles.balanceCardName}>{participant?.user?.name || 'Unknown'}</Text>
+                          <Text style={styles.balanceCardEmail}>{participant?.user?.email || ''}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.balanceCardAmount}>₹{item.amount.toFixed(2)}</Text>
+                    </View>
+                    {!participant?.paid && (
+                      <TouchableOpacity
+                        style={styles.payButton}
+                        onPress={() => handleMarkAsPaid(item.userId)}
+                      >
+                        <Text style={styles.payButtonText}>Mark as Paid</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              }}
+              keyExtractor={(item) => item.userId?.toString() || Math.random().toString()}
+              contentContainerStyle={styles.balanceList}
+            />
+          </View>
+        )}
+
+        {getBackBalances.length > 0 && (
+          <View style={styles.balanceSubsection}>
+            <Text style={styles.balanceSubtitle}>People who owe you</Text>
+            <FlatList
+              data={getBackBalances}
+              renderItem={({ item }) => {
+                if (!item || !item.userId) return null;
+                const participant = split.participants.find(p => p.user && p.user._id && p.user._id.toString() === item.userId.toString());
+                return (
+                  <View style={styles.balanceCard}>
+                    <View style={styles.balanceCardHeader}>
+                      <View style={styles.balanceCardUser}>
+                        <View style={styles.balanceCardAvatar}>
+                          <Text style={styles.balanceCardAvatarText}>
+                            {participant?.user?.name?.charAt(0) || '?'}
+                          </Text>
+                        </View>
+                        <View style={styles.balanceCardInfo}>
+                          <Text style={styles.balanceCardName}>{participant?.user?.name || 'Unknown'}</Text>
+                          <Text style={styles.balanceCardEmail}>{participant?.user?.email || ''}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.balanceCardAmount}>₹{item.amount.toFixed(2)}</Text>
+                    </View>
+                    {!participant?.paid && (
+                      <TouchableOpacity
+                        style={styles.payButton}
+                        onPress={() => handleMarkAsPaid(item.userId)}
+                      >
+                        <Text style={styles.payButtonText}>Mark as Paid</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              }}
+              keyExtractor={(item) => item.userId?.toString() || Math.random().toString()}
+              contentContainerStyle={styles.balanceList}
+            />
+          </View>
+        )}
+
+        {getBackBalances.length === 0 && oweBalances.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No payments due</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderParticipantsSection = () => {
+    if (!split) return null;
+    
+    const { balances } = calculateSplitBalances(split.participants, split.expenses);
+    
+    return (
+      <FlatList
+        data={split.participants}
+        renderItem={({ item }) => {
+          const participantBalance = balances.find(b => b.userId === item.user._id);
+          return (
+            <ParticipantItem
+              item={item}
+              balance={participantBalance}
+            />
+          );
+        }}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContainer}
+      />
+    );
   };
 
   if (loading || !split) {
@@ -153,9 +278,8 @@ function SplitDetail() {
       </View>
 
       <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>Total Expenses</Text>
-        <Text style={styles.totalAmount}>₹{split.totalAmount}</Text>
-        <Text style={styles.participantsText}>{split.participants.length} participants</Text>
+        <Text style={styles.summaryTitle}>Total to Get Back</Text>
+        <Text style={styles.totalAmount}>₹{split.totalGetBack?.toFixed(2) || '0.00'}</Text>
       </View>
 
       <View style={styles.tabsContainer}>
@@ -184,6 +308,20 @@ function SplitDetail() {
           />
           <Text style={[styles.tabText, activeTab === 'expenses' && styles.activeTabText]}>
             Expenses
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'balance' && styles.activeTab]}
+          onPress={() => dispatch(setActiveTab('balance'))}
+        >
+          <Ionicons 
+            name="wallet-outline" 
+            size={20} 
+            color={activeTab === 'balance' ? colors.btncolor : colors.fontSecondColor} 
+          />
+          <Text style={[styles.tabText, activeTab === 'balance' && styles.activeTabText]}>
+            Balance
           </Text>
         </TouchableOpacity>
       </View>
@@ -224,18 +362,10 @@ function SplitDetail() {
             <Ionicons name="add" size={24} color={colors.white} />
           </TouchableOpacity>
         </>
+      ) : activeTab === 'participants' ? (
+        renderParticipantsSection()
       ) : (
-        <FlatList
-          data={split.participants}
-          renderItem={({ item }) => (
-            <ParticipantItem
-              item={item}
-              onMarkAsPaid={handleMarkAsPaid}
-            />
-          )}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.listContainer}
-        />
+        renderBalanceSection()
       )}
 
       <AddParticipantModal
@@ -1101,6 +1231,105 @@ const styles = StyleSheet.create({
   splitAmountInputDisabled: {
     backgroundColor: colors.grayBackground,
     color: colors.fontSecondColor,
+  },
+  balanceSection: {
+    flex: 1,
+    padding: 16,
+  },
+  balanceHeader: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  balanceTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 12,
+  },
+  balanceTotals: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  balanceTotalLabel: {
+    fontSize: 14,
+    color: colors.fontSecondary,
+  },
+  balanceTotalValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.fontMainColor,
+  },
+  balanceList: {
+    paddingBottom: 16,
+  },
+  balanceSubsection: {
+    marginBottom: 24,
+  },
+  balanceSubtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  balanceCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.grayLinesColor,
+  },
+  balanceCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  balanceCardUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  balanceCardAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.btncolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  balanceCardAvatarText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  balanceCardInfo: {
+    flex: 1,
+  },
+  balanceCardName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 4,
+  },
+  balanceCardEmail: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+  },
+  balanceCardAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.Zypsii_color,
   },
 });
 

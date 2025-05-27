@@ -103,7 +103,7 @@ const initialState = {
   currentSplit: null,
   loading: false,
   error: null,
-  activeTab: 'participants',
+  activeTab: 'expenses',
   isAddParticipantModalVisible: false,
   isAddExpenseModalVisible: false,
   isInviteModalVisible: false,

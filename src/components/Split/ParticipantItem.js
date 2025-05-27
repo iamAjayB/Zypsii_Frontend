@@ -1,62 +1,68 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../../utils';
+import { formatCurrency } from '../../utils/splitCalculations';
 
-const ParticipantItem = ({ item, onMarkAsPaid }) => {
+const ParticipantItem = ({ item, balance }) => {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'getBack':
+        return colors.success;
+      case 'owe':
+        return colors.error;
+      default:
+        return colors.fontMainColor;
+    }
+  };
+
   return (
-    <View style={styles.participantItem}>
-      <View style={styles.participantInfo}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {item.user?.email ? item.user.email[0].toUpperCase() : '?'}
-          </Text>
-        </View>
-        <View style={styles.participantDetails}>
-          <Text style={styles.participantName}>{item.user?.email || 'Unknown User'}</Text>
-          <Text style={styles.participantContact}>Amount: ₹{item.amount || 0}</Text>
-          <Text style={[
-            styles.paymentStatus,
-            { color: item.paid ? colors.greenColor : colors.error }
-          ]}>
-            {item.paid ? 'Paid' : 'Pending'}
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <View style={styles.avatarContainer}>
+        <Text style={styles.avatarText}>
+          {item.user.fullName ? item.user.fullName[0].toUpperCase() : item.user.email[0].toUpperCase()}
+        </Text>
       </View>
-      {!item.paid && (
-        <TouchableOpacity
-          style={styles.payButton}
-          onPress={() => onMarkAsPaid(item._id)}
-        >
-          <Text style={styles.payButtonText}>Mark as Paid</Text>
-        </TouchableOpacity>
+      
+      <View style={styles.details}>
+        <Text style={styles.name}>
+          {item.user.fullName || item.user.email}
+        </Text>
+        <Text style={styles.email}>{item.user.email}</Text>
+      </View>
+
+      {balance && balance.status !== 'settled' && (
+        <View style={styles.balanceContainer}>
+          <Text style={[styles.balance, { color: getStatusColor(balance.status) }]}>
+            {balance.status === 'getBack' ? '+' : '-'}
+            {formatCurrency(Math.abs(balance.balance))}
+          </Text>
+          <Text style={[styles.status, { color: getStatusColor(balance.status) }]}>
+            {balance.status === 'getBack' ? 'Gets Back' : 'Owes'}
+          </Text>
+        </View>
       )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  participantItem: {
+  container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
     backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  participantInfo: {
-    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.btncolor,
     justifyContent: 'center',
     alignItems: 'center',
@@ -64,37 +70,33 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
   },
-  participantDetails: {
+  details: {
     flex: 1,
   },
-  participantName: {
+  name: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.fontMainColor,
     marginBottom: 4,
   },
-  participantContact: {
-    fontSize: 12,
-    color: colors.fontSecondColor,
+  email: {
+    fontSize: 14,
+    color: colors.fontSecondary,
   },
-  paymentStatus: {
+  balanceContainer: {
+    alignItems: 'flex-end',
+  },
+  balance: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  status: {
     fontSize: 12,
     fontWeight: '500',
-    marginTop: 4,
-  },
-  payButton: {
-    backgroundColor: colors.btncolor,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  payButtonText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '600',
   },
 });
 
