@@ -14,6 +14,7 @@ import {
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { base_url } from '../../utils/base_url';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -42,6 +43,8 @@ const PostDetail = ({ route, navigation }) => {
   }, []);
 
   const handleDelete = async () => {
+    const token = await AsyncStorage.getItem('accessToken');
+
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this post?',
@@ -52,20 +55,21 @@ const PostDetail = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(`https://your-api-url.com/api/posts/${post._id}`, {
+              
+              const response = await fetch(`${base_url}/post/delete/${post.id}`, {
                 method: 'DELETE',
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${accessToken}`,
+                  Authorization: `Bearer ${token}`,
                 },
               });
-
+              console.log(post)
               if (response.ok) {
-                Alert.alert('Deleted', 'The post has been deleted successfully.');
+                Alert.alert('Success', 'Post deleted successfully');
                 navigation.goBack();
               } else {
                 const errorData = await response.json();
-                Alert.alert('Error', errorData.message || 'Failed to delete post.');
+                Alert.alert('Error', errorData.message || 'Failed to delete post');
               }
             } catch (error) {
               console.error('Delete error:', error);
@@ -128,13 +132,11 @@ const PostDetail = ({ route, navigation }) => {
               <MaterialIcons name="share" size={24} color="#870E6B" />
               <Text style={styles.statText}>{post.shares || '0'}</Text>
             </View>
-            {currentUser && currentUser._id === post.createdBy && (
               <View style={styles.statItem}>
                 <TouchableOpacity onPress={handleDelete}>
                   <MaterialIcons name="delete" size={24} color="#870E6B" />
                 </TouchableOpacity>
               </View>
-            )}
           </View>
 
           {post.tags && post.tags.length > 0 && (

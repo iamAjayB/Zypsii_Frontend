@@ -179,41 +179,130 @@ const Map = ({ route }) => {
           return;
         }
 
-        const response = await fetch(`${base_url}/schedule/places/getNearest`, {
+        console.log('Fetching discover data with token:', accessToken.substring(0, 10) + '...'); // Debug log
+        const url = `${base_url}/schedule/places/getNearest?bestDestination=true`;
+        console.log('API URL:', url); // Debug log
+
+        const response = await fetch(url, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${accessToken}`
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
           }
         });
 
+        console.log('API Response status:', response.status); // Debug log
+
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorText = await response.text();
+          console.error('API Error Response:', errorText);
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('Raw API Response:', JSON.stringify(data, null, 2)); // Debug log
         
-        if (data && data.data && Array.isArray(data.data)) {
-          const formattedData = data.data.slice(0, 100).map(item => ({
-            id: item._id || item.id,
-            image: item.image,
-            title: item.name,
-            subtitle: item.address || 'No address',
-            rating: parseFloat(item.rating) || 0,
-            distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null
-          }));
-          setDiscoverbyNearest(formattedData);
-        } else {
-          console.log('No discover data found');
+        if (!data) {
+          console.error('No data received from API');
           setDiscoverbyNearest([]);
+          return;
         }
+
+        if (!data.data || !Array.isArray(data.data)) {
+          console.error('Invalid data format received:', data);
+          setDiscoverbyNearest([]);
+          return;
+        }
+
+        const formattedData = data.data.map(item => {
+          if (!item) {
+            console.warn('Received null item in data array');
+            return null;
+          }
+
+          const formattedItem = {
+            id: item._id || item.id,
+            image: item.image ? (item.image.startsWith('http') ? item.image : `${base_url}/${item.image.replace(/^\/+/, '')}`) : null,
+            title: item.name || item.title || 'Unknown Place',
+            subtitle: item.address || item.subtitle || 'No address available',
+            rating: parseFloat(item.rating) || 0,
+            distance: parseFloat(item.distanceInKilometer) || 0
+          };
+
+          console.log('Formatted item:', formattedItem); // Debug log
+          return formattedItem;
+        }).filter(item => item !== null); // Remove any null items
+        
+        console.log('Final formatted data:', formattedData); // Debug log
+        
+        if (formattedData.length === 0) {
+          console.warn('No valid items found after formatting');
+        }
+
+        setDiscoverbyNearest(formattedData);
       } catch (error) {
-        console.error('Error fetching discover data:', error);
+        console.error('Error in fetchDiscoverbyNearest:', error);
         setDiscoverbyNearest([]);
       }
     };
 
     fetchDiscoverbyNearest();
   }, []);
+
+  // Add a debug effect to monitor discoverbynearest state
+  useEffect(() => {
+    console.log('Current discoverbynearest state:', discoverbynearest);
+  }, [discoverbynearest]);
+
+  // Update the FlatList to handle empty states better
+  const renderDiscoverList = () => {
+    if (!discoverbynearest || discoverbynearest.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No places to discover</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id || item._id}
+        data={discoverbynearest}
+        renderItem={({ item }) => {
+          console.log('Rendering discover item:', item); // Debug log
+          if (!item) {
+            console.warn('Received null or undefined item in FlatList');
+            return null;
+          }
+          return (
+            <View style={styles}>
+              <DiscoverByNearest
+                id={item.id || item._id}
+                image={item.image}
+                title={item.title || item.name || 'Unknown Place'}
+                subtitle={item.subtitle || item.address || 'No address available'}
+                rating={item.rating || 0}
+                distance={item.distance || item.distanceInKilometer || 0}
+              />
+            </View>
+          );
+        }}
+        style={styles.discoverList}
+        contentContainerStyle={styles.discoverListContent}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No places to discover</Text>
+          </View>
+        )}
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          console.log('Reached end of discover list');
+        }}
+      />
+    );
+  };
 
   const handleZoomIn = () => {
     if (mapRef.current) {
@@ -280,20 +369,20 @@ const Map = ({ route }) => {
       </View>
 
       <View style={[styles.mainContent, { marginTop: 20 }]}>
-        <Text style={styles.title}>Trip Locations</Text>
+        <Text style={styles}></Text>
 
         <View style={styles.placesHeader}>
           <Text style={styles.selectedCount}>
             {selectedPlaces.length} places selected
           </Text>
           <View style={styles.headerButtons}>
-            <TouchableOpacity 
+            {/* <TouchableOpacity 
               style={[styles.headerButton, styles.exportButton]}
               onPress={handleExportLocations}
             >
               <MaterialCommunityIcons name="export" size={20} color={colors.white} />
               <Text style={styles.headerButtonText}>Export</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity 
               style={styles.selectAllButton}
               onPress={handleSelectAll}
@@ -305,7 +394,7 @@ const Map = ({ route }) => {
           </View>
         </View>
 
-        <ScrollView horizontal style={styles.placesList}>
+        {/* <ScrollView horizontal style={styles.placesList}>
           {getAllLocations().map((place) => (
             <TouchableOpacity
               key={place._id}
@@ -323,7 +412,7 @@ const Map = ({ route }) => {
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </ScrollView> */}
 
         <View style={styles.fromToContainer}>
           {selectedPlaces.length > 0 && (
@@ -391,26 +480,14 @@ const Map = ({ route }) => {
           </View>
         </View>
 
-        <Text style={styles.explore}>Explore Travel</Text>
-
         <View style={styles.discoverRow}>
-          <TextDefault style={styles.discoverText}>Discover by Nearest</TextDefault>
-          <TouchableOpacity onPress={() => navigation.navigate('DiscoverPlace')}>
+            <TextDefault style={styles.discoverText}>Discover by</TextDefault>
+            <TouchableOpacity onPress={() => navigation.navigate('DiscoverPlace')}>
             <TextDefault style={styles.viewAllText}>View All</TextDefault>
           </TouchableOpacity>
         </View>
+        {renderDiscoverList()}
       </View>
-
-      <FlatList
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item, index) => item.id}
-        data={discoverbynearest}
-        renderItem={({ item, index }) => (
-          <DiscoverByNearest styles={styles.itemCardContainer} {...item} />
-        )}
-        style={styles.discoverList}
-      />
 
       <View style={styles.bottomTabContainer}>
         <BottomTab screen={"WhereToGo"} />
@@ -457,14 +534,14 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     paddingHorizontal: 15,
     backgroundColor: colors.white,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
+    // borderRadius: 10,
+    // elevation: 2,
+    //shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 2,
+    // },
+    //shadowOpacity: 0.25,
     shadowRadius: 3.84,
     marginHorizontal: 15,
   },
@@ -528,6 +605,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     alignSelf: "center",
     fontSize: 16,
+    marginTop: 20,
+    marginBottom: 10,
   },
   discoverRow: {
     flexDirection: "row",
@@ -548,8 +627,29 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   discoverList: {
-    marginBottom: 100,
+    width: '100%',
+    height: 250,
+  },
+  discoverListContent: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     paddingBottom: 20,
+  },
+  cardContainer: {
+    marginRight: 15,
+    width: 180,
+    height: 220,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+    overflow: 'hidden',
   },
   bottomTabContainer: {
     position: "absolute",
@@ -625,6 +725,28 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    marginHorizontal: 15,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  emptyText: {
+    color: colors.fontMainColor,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 
