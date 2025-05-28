@@ -11,6 +11,8 @@ import { base_url } from '../../utils/base_url';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { ProfileSkeleton, StatsSkeleton, GridSkeleton, ScheduleSkeleton } from '../../components/SkeletonLoader';
+import { TextDefault } from '../../components';
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -31,6 +33,7 @@ const DummyScreen = ({ navigation }) => {
     image: '',
     notes: ''
   });
+  const [followingData, setFollowingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [all_schedule, setAll_schedule] = useState([]);
@@ -72,15 +75,74 @@ const DummyScreen = ({ navigation }) => {
         if (result.success && result.data && result.data.length > 0) {
           const userData = result.data[0];
           setUserId(userData.id);
-          setProfileInfo({
+          const userStr = await AsyncStorage.getItem('user');
+          const user = userStr ? JSON.parse(userStr) : null;
+
+          // Fetch post count
+          const postCountResponse = await fetch(`${base_url}/post/listing/postCount`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (postCountResponse.ok) {
+            const postCountResult = await postCountResponse.json();
+            if (postCountResult.success) {
+              setProfileInfo(prev => ({
+                ...prev,
+                Posts: postCountResult.postCountData?.toString() || '0'
+              }));
+            }
+          }
+
+          // Fetch followers count
+          const followersResponse = await fetch(`${base_url}/follow/getFollowers/${user._id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (followersResponse.ok) {
+            const followersResult = await followersResponse.json();
+            if (followersResult.status) {
+              setProfileInfo(prev => ({
+                ...prev,
+                Followers: followersResult.followersCount?.toString() || '0'
+              }));
+            }
+          }
+
+          // Fetch following data
+          const followingResponse = await fetch(`${base_url}/follow/getFollowing/${user._id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (followingResponse.ok) {
+            const followingResult = await followingResponse.json();
+            if (followingResult.status) {
+              setFollowingData(followingResult.following || []);
+              setProfileInfo(prev => ({
+                ...prev,
+                Following: followingResult.followingCount?.toString() || '0'
+              }));
+            }
+          }
+
+          setProfileInfo(prev => ({
+            ...prev,
             id: userData.id || '',
             name: userData.fullName || '',
-            Posts: userData.posts || '0',
-            Followers: userData.followers || '0',
-            Following: userData.following || '0',
             image: userData.profilePicture || '',
             notes: userData.bio || ''
-          });
+          }));
         }
       } catch (error) {
         console.error('Error fetching user ID:', error);
@@ -168,9 +230,9 @@ const DummyScreen = ({ navigation }) => {
           throw new Error('No access token found');
         }
 
-        // Fetch posts
+        // Fetch posts with user ID filter
         setPostsLoading(true);
-        const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=all&limit=20`, {
+        const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -227,9 +289,9 @@ const DummyScreen = ({ navigation }) => {
         }
         setPostsLoading(false);
 
-        // Fetch schedules with limit
+        // Fetch schedules with user ID filter
         setScheduleLoading(true);
-        const scheduleResponse = await fetch(`${base_url}/schedule/listing/filter?limit=20`, {
+        const scheduleResponse = await fetch(`${base_url}/schedule/listing/filter?filter=Public&userId=${userId}&limit=20`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -248,19 +310,35 @@ const DummyScreen = ({ navigation }) => {
 
         // Fetch shorts
         setShortsLoading(true);
-        const shortsResponse = await fetch(`${base_url}/shorts/listing`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          }
-        });
-
-        if (shortsResponse.ok) {
-          const response = await shortsResponse.json();
+        try {
+          const userStr = await AsyncStorage.getItem('user');
+          const user = userStr ? JSON.parse(userStr) : null;
           
+          if (!user || !user._id) {
+            console.error('User data not found or invalid');
+            setShortsLoading(false);
+            return;
+          }
+
+          console.log('Fetching shorts for user:', user._id);
+          const shortsResponse = await fetch(`${base_url}/shorts/listing?userId=${user._id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!shortsResponse.ok) {
+            throw new Error(`Shorts fetch failed with status: ${shortsResponse.status}`);
+          }
+
+          const response = await shortsResponse.json();
+          console.log('Shorts response:', response);
+
           if (response.status && response.data) {
             const shortsData = response.data
-              .filter(item => typeof item.videoUrl === 'string' && item.videoUrl.toLowerCase().endsWith('.mp4'))
+              .filter(item => item.videoUrl.toLowerCase().endsWith('.mp4'))
               .map(item => ({
                 id: item._id || '',
                 video: item.videoUrl || '',
@@ -277,9 +355,16 @@ const DummyScreen = ({ navigation }) => {
               }));
             
             setAllShorts(shortsData);
+          } else {
+            console.error('Invalid shorts response format:', response);
+            setAllShorts([]);
           }
+        } catch (error) {
+          console.error('Error fetching shorts:', error);
+          setAllShorts([]);
+        } finally {
+          setShortsLoading(false);
         }
-        setShortsLoading(false);
 
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -317,17 +402,12 @@ const DummyScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               const accessToken = await AsyncStorage.getItem('accessToken');
-              const user = await AsyncStorage.getItem('user');
-
-              console.log(scheduleId);
-              console.log(user)
               const response = await fetch(
-                `${base_url}/schedule/delete/descriptions/${scheduleId}/${user._id}`,
+                `${base_url}/schedule/delete/${scheduleId}`,
                 {
                   method: 'DELETE',
                   headers: {
                     'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
                   },
                 }
               );
@@ -364,7 +444,7 @@ const DummyScreen = ({ navigation }) => {
               const user = await AsyncStorage.getItem('user');
 
               const response = await fetch(
-                `${base_url}/shorts/delete/${shortId}/${user._id}`,
+                `${base_url}/shorts/deleteShorts/${shortId}`,
                 {
                   method: 'DELETE',
                   headers: {
@@ -762,20 +842,29 @@ const DummyScreen = ({ navigation }) => {
         {profileLoading ? (
           <StatsSkeleton />
         ) : (
-          <View style={styles.statsContainer}>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>Posts</Text>
-              <Text style={styles.statNumber}>{profileInfo.Posts || '0'}</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>Followers</Text>
-              <Text style={styles.statNumber}>{profileInfo.Followers || '0'}</Text>
-            </View>
-            <View style={styles.statLast}>
-              <Text style={styles.statLabel}>Following</Text>
-              <Text style={styles.statNumber}>{profileInfo.Following || '0'}</Text>
-            </View>
+           <View style={styles.statsContainer}>
+          <View style={styles.stat}>
+            <TextDefault style={styles.statLabel}>Posts</TextDefault>
+            <TextDefault style={styles.statNumber}>{profileInfo.Posts}</TextDefault>
           </View>
+          <TouchableOpacity 
+            style={styles.stat}
+            onPress={() => navigation.navigate('FollowersList', { initialTab: 'Followers' })}
+          >
+            <TextDefault style={styles.statLabel}>Followers</TextDefault>
+            <TextDefault style={styles.statNumber}>{profileInfo.Followers}</TextDefault>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.statLast}
+            onPress={() => navigation.navigate('FollowersList', { 
+              initialTab: 'Following',
+              followingData: followingData 
+            })}
+          >
+            <TextDefault style={styles.statLabel}>Following</TextDefault>
+            <TextDefault style={styles.statNumber}>{profileInfo.Following}</TextDefault>
+          </TouchableOpacity>
+        </View>
         )}
 
         {/* Gray Line */}

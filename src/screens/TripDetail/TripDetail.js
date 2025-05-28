@@ -24,7 +24,7 @@ const TripDetail = ({ route, navigation }) => {
       to: allLocations[allLocations.length - 1]?.name || 'End Point'
     };
   };
-
+  console.log(tripData)
   useEffect(() => {
     getPlaceDescriptions();
   }, []);

@@ -107,15 +107,14 @@ const AllSchedule = ({item, isFromProfile}) => {
   };
 
   const handleJoin = async () => {
-    // Prevent joining if already joined or currently joining
-    if (item.joined || isJoining) {
+    // Prevent action if currently processing
+    if (isJoining) {
       return;
     }
 
     try {
       setIsJoining(true);
       const token = await AsyncStorage.getItem('accessToken');
-      console.log(token)
       
       if (!token) {
         Alert.alert('Error', 'Authentication token not found');
@@ -148,18 +147,19 @@ const AllSchedule = ({item, isFromProfile}) => {
       const data = await response.json();
 
       if (response.ok && data.status) {
-        item.joined = true;
-        Alert.alert('Success', 'Successfully joined the schedule');
+        // Toggle the joined state
+        item.joined = !item.joined;
+        Alert.alert('Success', item.joined ? 'Successfully joined the schedule' : 'Successfully unjoined the schedule');
       } else {
         // Handle specific error cases
         if (data.message === 'Internal Server Error') {
-          Alert.alert('Error', 'Unable to join schedule. Please try again later.');
+          Alert.alert('Error', 'Unable to process request. Please try again later.');
         } else {
-          Alert.alert('Error', data.message || 'Failed to join schedule');
+          Alert.alert('Error', data.message || 'Failed to process request');
         }
       }
     } catch (error) {
-      console.error('Join Error:', error);
+      console.error('Join/Unjoin Error:', error);
       Alert.alert('Error', 'Network error. Please check your connection and try again.');
     } finally {
       setIsJoining(false);
