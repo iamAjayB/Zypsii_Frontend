@@ -38,11 +38,17 @@ const SelectPayerModal = ({ visible, onClose, participants, selectedPayer, onSel
                 <View style={styles.payerInfo}>
                   <View style={styles.avatarContainer}>
                     <Text style={styles.avatarText}>
-                      {participant.user?.name ? participant.user.name.charAt(0).toUpperCase() : '?'}
+                      {participant.user?.fullName
+                        ? participant.user.fullName.charAt(0).toUpperCase()
+                        : participant.user?.name
+                        ? participant.user.name.charAt(0).toUpperCase()
+                        : participant.user?.email
+                        ? participant.user.email.charAt(0).toUpperCase()
+                        : '?'}
                     </Text>
                   </View>
                   <Text style={styles.payerName}>
-                    {participant.user?.name || 'Unknown User'}
+                    {participant.user?.fullName || participant.user?.name || (participant.user?.email ? participant.user.email.split('@')[0] : '') || 'User'}
                   </Text>
                 </View>
                 <View style={[

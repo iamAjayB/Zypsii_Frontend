@@ -377,7 +377,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
             <View style={styles.paidByLeft}>
               <Text style={styles.paidByLabel}>Paid by</Text>
               <Text style={[styles.paidByName, { color: colors.fontMainColor }]}>
-                {paidBy ? participants.find(p => p.user?._id === paidBy)?.user?.name : 'Select payer'}
+                {paidBy ? participants.find(p => p.user?._id === paidBy)?.user?.fullName || participants.find(p => p.user?._id === paidBy)?.user?.name || participants.find(p => p.user?._id === paidBy)?.user?.email?.split('@')[0] || 'User' : 'Select payer'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={colors.fontMainColor} />
@@ -418,7 +418,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
                       {participant.user?.name ? participant.user.name.charAt(0).toUpperCase() : '?'}
                     </Text>
                   </View>
-                  <Text style={styles.participantName}>{participant.user?.name || 'Unknown User'}</Text>
+                  <Text style={styles.participantName}>{participant.user?.fullName || participant.user?.name || participant.user?.email?.split('@')[0] || 'User'}</Text>
                 </View>
               </TouchableOpacity>
               <TextInput

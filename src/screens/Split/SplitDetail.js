@@ -147,12 +147,16 @@ function SplitDetail() {
                       <View style={styles.balanceCardUser}>
                         <View style={styles.balanceCardAvatar}>
                           <Text style={styles.balanceCardAvatarText}>
-                            {participant?.user?.name?.charAt(0) || '?'}
+                            {participant?.user?.fullName?.charAt(0) || '?'}
                           </Text>
                         </View>
                         <View style={styles.balanceCardInfo}>
-                          <Text style={styles.balanceCardName}>{participant?.user?.name || 'Unknown'}</Text>
-                          <Text style={styles.balanceCardEmail}>{participant?.user?.email || ''}</Text>
+                          <Text style={styles.balanceCardName}>
+                            {participant?.user?.fullName || participant?.user?.name || participant?.user?.email?.split('@')[0] || 'User'}
+                          </Text>
+                          {participant?.user?.email && (
+                            <Text style={styles.balanceCardEmail}>{participant?.user?.email}</Text>
+                          )}
                         </View>
                       </View>
                       <Text style={styles.balanceCardAmount}>₹{item.amount.toFixed(2)}</Text>
@@ -188,12 +192,16 @@ function SplitDetail() {
                       <View style={styles.balanceCardUser}>
                         <View style={styles.balanceCardAvatar}>
                           <Text style={styles.balanceCardAvatarText}>
-                            {participant?.user?.name?.charAt(0) || '?'}
+                            {participant?.user?.fullName?.charAt(0) || '?'}
                           </Text>
                         </View>
                         <View style={styles.balanceCardInfo}>
-                          <Text style={styles.balanceCardName}>{participant?.user?.name || 'Unknown'}</Text>
-                          <Text style={styles.balanceCardEmail}>{participant?.user?.email || ''}</Text>
+                          <Text style={styles.balanceCardName}>
+                            {participant?.user?.fullName || participant?.user?.name || participant?.user?.email?.split('@')[0] || 'User'}
+                          </Text>
+                          {participant?.user?.email && (
+                            <Text style={styles.balanceCardEmail}>{participant?.user?.email}</Text>
+                          )}
                         </View>
                       </View>
                       <Text style={styles.balanceCardAmount}>₹{item.amount.toFixed(2)}</Text>
