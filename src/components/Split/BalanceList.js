@@ -39,30 +39,35 @@ const BalanceList = ({ balances, onMarkAsPaid }) => {
   const renderBalanceItem = (balance) => {
     const isPaid = paidBalances[balance.id];
     const statusColor = isPaid ? colors.success : colors.error;
+    const isOwedToYou = balance.to.name === 'You'; // Assuming 'You' is the current user
 
     return (
       <View key={balance.id} style={styles.balanceItem}>
         <View style={styles.balanceHeader}>
           <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
+            <View style={[styles.avatarContainer, isOwedToYou && styles.owedToYouContainer]}>
               <Text style={styles.avatarText}>
                 {balance.from.name.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View style={styles.userDetails}>
               <Text style={styles.userName}>{balance.from.name}</Text>
-              <Text style={styles.balanceLabel}>owes</Text>
+              <Text style={styles.balanceLabel}>
+                {isOwedToYou ? 'owes you' : 'owes'}
+              </Text>
             </View>
           </View>
           <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
+            <View style={[styles.avatarContainer, isOwedToYou && styles.owedToYouContainer]}>
               <Text style={styles.avatarText}>
                 {balance.to.name.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View style={styles.userDetails}>
               <Text style={styles.userName}>{balance.to.name}</Text>
-              <Text style={styles.balanceLabel}>gets back</Text>
+              <Text style={styles.balanceLabel}>
+                {isOwedToYou ? 'you will receive' : 'gets back'}
+              </Text>
             </View>
           </View>
         </View>
@@ -201,6 +206,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.fontSecondColor,
     marginTop: 16,
+  },
+  owedToYouContainer: {
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.Zypsii_color,
   },
 });
 
