@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   },
   interactionButton: {
     alignItems: 'center',
-    marginBottom: verticalScale(20),
+    marginBottom: verticalScale(1),
   },
   interactionCount: {
     marginTop: verticalScale(4),
