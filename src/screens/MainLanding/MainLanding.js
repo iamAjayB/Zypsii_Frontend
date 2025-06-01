@@ -101,6 +101,54 @@ function MainLanding(props) {
   // Add state for tracking new loading items for best destination
   const [loadingNewBestItems, setLoadingNewBestItems] = useState(false);
 
+  // Add state for user location
+  const [userLocation, setUserLocation] = useState({
+    latitude: 13.0843,
+    longitude: 80.2705
+  });
+
+  // Add function to update live location
+  const updateLiveLocation = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken) return;
+
+      // Use the location from user data if available, otherwise use default
+      const latitude = user?.location?.latitude || userLocation.latitude;
+      const longitude = user?.location?.longitude || userLocation.longitude;
+
+      const response = await fetch(`${base_url}/user/update-live-location`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          latitude: latitude,
+          longitude: longitude
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update live location');
+      }
+
+      const data = await response.json();
+      console.log('Live location updated successfully:', data);
+    } catch (error) {
+      console.error('Error updating live location:', error);
+    }
+  };
+
+  // Add useEffect to call updateLiveLocation when component mounts
+  useEffect(() => {
+    updateLiveLocation();
+  }, []);
+
   // Add useEffect for initial data fetch
   useEffect(() => {
     fetchAllData();
@@ -1238,8 +1286,8 @@ function MainLanding(props) {
   };
 
   const renderPosts = () => (
-    <View style={styles.titleSpacer}>
-      <TextDefault textColor={colors.fontMainColor} H4>
+    <View>
+      <TextDefault textColor={colors.fontMainColor} style={styles.titleSpacer}H4>
         {'Posts'}
       </TextDefault>
       {isPostsLoading ? (

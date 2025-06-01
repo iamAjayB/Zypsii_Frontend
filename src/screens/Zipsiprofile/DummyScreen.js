@@ -1094,11 +1094,15 @@ const fullScreenStyles = {
 // Add new styles for grid layout
 const gridStyles = {
   gridContainer: {
-    padding: 5,
+    marginTop: 0,
+    borderWidth: 0,         // Added white border
+    borderColor: '#fff',  
+    zIndex: 2, // Set the border color to white
+    paddingHorizontal: 0, // Removed padding
   },
   gridItem: {
     flex: 1/3,
-    margin: 5,
+    margin: 2.5, // Reduced margin
     backgroundColor: 'white',
     borderRadius: 8,
     overflow: 'hidden',

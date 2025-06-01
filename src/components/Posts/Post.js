@@ -14,8 +14,24 @@ const Post = ({ item, isFromProfile }) => {
   const [like, setLike] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [isSaved, setIsSaved] = useState(false);
 
-  
+  useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const userId = await AsyncStorage.getItem('user');
+        if (userId) {
+          const userData = JSON.parse(userId);
+          setCurrentUserId(userData._id);
+        }
+      } catch (error) {
+        console.error('Error getting user ID:', error);
+      }
+    };
+    getCurrentUserId();
+  }, []);
+
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
@@ -47,6 +63,38 @@ const Post = ({ item, isFromProfile }) => {
       Alert.alert('Error', 'Network error. Please check your connection and try again.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSavePost = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) {
+        Alert.alert('Error', 'Authentication token not found');
+        return;
+      }
+
+      const response = await fetch(`${base_url}/post/save/${item._id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      console.log(data)
+
+      if (response.ok && data.status) {
+        setIsSaved(!isSaved);
+        Alert.alert('Success', isSaved ? 'Post unsaved successfully' : 'Post saved successfully');
+      } else {
+        Alert.alert('Error', data.message || 'Failed to save post');
+      }
+    } catch (error) {
+      console.error('Save Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection and try again.');
     }
   };
 
@@ -97,6 +145,7 @@ const Post = ({ item, isFromProfile }) => {
   // Render image directly if only one image, else use FlatList
   const hasImages = item.mediaType === 'image' && item.imageUrl && item.imageUrl.length > 0;
   const isSingleImage = hasImages && item.imageUrl.length === 1;
+  console.log(currentUserId)
 
   // Defensive check for first image URL (now using imageUrl)
   const firstImageUrl =
@@ -113,7 +162,7 @@ const Post = ({ item, isFromProfile }) => {
           <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
         </View>
         <View style={styles.headerActions}>
-          {!isFromProfile && (
+          {currentUserId !== item.createdBy && (
             <View style={styles.followButtonContainer}>
               <FollowButton userId={item.createdBy} />
             </View>
@@ -152,7 +201,12 @@ const Post = ({ item, isFromProfile }) => {
             <Feather name="navigation" style={styles.icon} />
           </TouchableOpacity>
         </View>
-        <Feather name="bookmark" style={styles.bookmarkIcon} />
+        <TouchableOpacity onPress={handleSavePost}>
+          <Feather 
+            name="bookmark"
+            style={[styles.bookmarkIcon, { color: isSaved ? '#A60F93' : '#000' }]} 
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.likesContainer}>
@@ -212,25 +266,25 @@ const Post = ({ item, isFromProfile }) => {
 
 const styles = StyleSheet.create({
   postContainer: {
-    width: '100%',
-    maxWidth: 500,
+    width: width,
     alignSelf: 'center',
     paddingBottom: 10,
     borderBottomColor: 'gray',
     borderBottomWidth: 0.1,
     backgroundColor: '#fff',
     marginBottom: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
   },
   userInfo: {
     flex: 1,
-    marginRight: 15,
+    marginRight: 8,
   },
   userName: {
     fontSize: 16,
@@ -244,31 +298,29 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 5,
   },
   followButtonContainer: {
-    marginRight: 10,
+    marginRight: 5,
   },
   moreIcon: {
     fontSize: 20,
-    paddingHorizontal: 5,
+    paddingHorizontal: 3,
   },
   postImageContainer: {
-    width: '100%',
-    maxWidth: 500,
+    width: width,
     alignSelf: 'center',
     aspectRatio: 1,
     backgroundColor: '#f5f5f5',
-    borderRadius: 10,
+    //borderRadius: 10,
     overflow: 'hidden',
-    paddingHorizontal: 16,
-    marginLeft: 0,
-    marginRight: 15,
+    marginHorizontal: 0,
   },
   postImage: {
     width: '100%',
     height: '100%',
     alignSelf: 'center',
-    borderRadius: 10,
+    //borderRadius: 10,
   },
   imageList: {
     width: '100%',
@@ -279,23 +331,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   likeIcon: {
-    paddingRight: 10,
+    paddingRight: 8,
     fontSize: 20,
   },
   icon: {
     fontSize: 20,
-    paddingRight: 10,
+    paddingRight: 8,
   },
   bookmarkIcon: {
     fontSize: 20,
+    marginLeft: 5,
   },
   likesContainer: {
     paddingHorizontal: 15,
@@ -314,11 +367,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 15,
-    paddingTop: 10,
+    paddingTop: 8,
   },
   commentInputContainer: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   commentInput: {
     borderWidth: 1,
@@ -373,7 +426,6 @@ const styles = StyleSheet.create({
   deleteMenuText: {
     color: '#FF3B30',
   },
-
 });
 
 export default Post;
