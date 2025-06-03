@@ -37,17 +37,19 @@ const FollowersList = ({ navigation, route }) => {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
+       console.log(followersResponse.error);
       
       // Fetch following
       const followingResponse = await fetch(`${base_url}/follow/getFollowing/${storedUser._id}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
-      });
+      } );
+      console.log(followingResponse.error);
 
-      if (!followersResponse.ok || !followingResponse.ok) {
-        throw new Error('Failed to fetch follow data');
-      }
+      // if (!followersResponse.ok || !followingResponse.ok) {
+      //   throw new Error('Failed to fetch follow data');
+      // }
 
       const followersData = await followersResponse.json();
       const followingData = await followingResponse.json();
