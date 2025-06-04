@@ -25,10 +25,10 @@ const SignInScreen = () => {
 
   // Google login state and function
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: '967541328677-nf8h4ou7rhmq9fahs87p057rggo95eah.apps.googleusercontent.com',
-    iosClientId: '967541328677-nf8h4ou7rhmq9fahs87p057rggo95eah.apps.googleusercontent.com',
-    expoClientId: '967541328677-nf8h4ou7rhmq9fahs87p057rggo95eah.apps.googleusercontent.com',
-    webClientId: '967541328677-nf8h4ou7rhmq9fahs87p057rggo95eah.apps.googleusercontent.com',
+    androidClientId: '515987030322-bru7j7ju5a8kono09pgg27454c8aij3h.apps.googleusercontent.com',
+    iosClientId: '515987030322-bru7j7ju5a8kono09pgg27454c8aij3h.apps.googleusercontent.com',
+    expoClientId: '515987030322-bru7j7ju5a8kono09pgg27454c8aij3h.apps.googleusercontent.com1041802076420-pi7qln0r9tqb2nj8gju3286qti3alkj4.apps.googleusercontent.com',
+    webClientId: '515987030322-bru7j7ju5a8kono09pgg27454c8aij3h.apps.googleusercontent.com',
     responseType: 'id_token',
     scopes: ['profile', 'email'],
     redirectUri: 'https://auth.expo.io/@abithjvinith/zypsii'
