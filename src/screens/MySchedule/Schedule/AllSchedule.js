@@ -45,28 +45,17 @@ const AllSchedule = ({item, isFromProfile}) => {
       const token = await AsyncStorage.getItem('accessToken');
       
       if (!token) {
-        console.log('Delete Error: Authentication token not found');
         Alert.alert('Error', 'Authentication token not found');
         return;
       }
 
       // Log the entire item to see all available properties
-      console.log('Full item data:', item);
-
       // Check if we have the required IDs
       if (!item.createdBy || !item.id) {
-        console.log('Missing required IDs:', {
-          createdBy: item.createdBy,
-          id: item.id
-        });
         Alert.alert('Error', 'Missing required schedule information');
         return;
       }
 
-      console.log('Attempting to delete schedule with IDs:', {
-        scheduleId: item.id,
-        createdBy: item.createdBy
-      });
 
       const response = await fetch(`${base_url}/schedule/delete/descriptions/${item.id}/${item.createdBy}`, {
         method: 'DELETE',

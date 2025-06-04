@@ -59,7 +59,7 @@ const Map = ({ route }) => {
       }
 
       const response = await axios.get(
-        `${base_url}/schedule/listing/scheduleDescription/${tripId}/${currentUserId}?offset=0&limit=1`,
+        `${base_url}/schedule/listing/scheduleDescription/${tripId}/${currentUserId}?offset=0&limit=20`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -373,8 +373,7 @@ const Map = ({ route }) => {
 
         <View style={styles.placesHeader}>
           <Text style={styles.selectedCount}>
-            {selectedPlaces.length} places selected
-          </Text>
+            {Math.floor(selectedPlaces.length / 2)} places selected          </Text>
           <View style={styles.headerButtons}>
             {/* <TouchableOpacity 
               style={[styles.headerButton, styles.exportButton]}

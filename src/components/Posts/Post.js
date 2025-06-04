@@ -10,7 +10,7 @@ import FollowButton from '../Follow/FollowButton';
 
 const { width } = Dimensions.get('window');
 
-const Post = ({ item, isFromProfile }) => {
+const Post = ({ item, isFromProfile, onDelete }) => {
   const [like, setLike] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,6 +55,11 @@ const Post = ({ item, isFromProfile }) => {
 
       if (response.ok && data.status) {
         Alert.alert('Success', 'Post deleted successfully');
+        if (isFromProfile) {
+          if (typeof onDelete === 'function') {
+            onDelete(item.id);
+          }
+        }
       } else {
         Alert.alert('Error', data.message || 'Failed to delete post');
       }

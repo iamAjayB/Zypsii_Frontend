@@ -225,6 +225,7 @@ const DummyScreen = ({ navigation }) => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
+
         const accessToken = await AsyncStorage.getItem('accessToken');
         if (!accessToken) {
           throw new Error('No access token found');
@@ -232,7 +233,7 @@ const DummyScreen = ({ navigation }) => {
 
         // Fetch posts with user ID filter
         setPostsLoading(true);
-        const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
+        const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=my`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -291,7 +292,10 @@ const DummyScreen = ({ navigation }) => {
 
         // Fetch schedules with user ID filter
         setScheduleLoading(true);
-        const scheduleResponse = await fetch(`${base_url}/schedule/listing/filter?filter=Public&userId=${userId}&limit=20`, {
+        const user = await AsyncStorage.getItem('user');
+        const user_id = user ? JSON.parse(user) : null;
+
+        const scheduleResponse = await fetch(`${base_url}/schedule/listing/filter?filter=my&userId=${user_id._id}&limit=20`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -414,7 +418,8 @@ const DummyScreen = ({ navigation }) => {
 
               if (response.ok) {
                 Alert.alert('Deleted', 'The schedule has been deleted.');
-                // Optional: Refresh data or update state
+                // Update the schedule list by filtering out the deleted item
+                setAll_schedule(prevSchedules => prevSchedules.filter(schedule => schedule.id !== scheduleId));
               } else {
                 const errorData = await response.json();
                 Alert.alert('Error', errorData.message || 'Failed to delete schedule.');
@@ -441,8 +446,6 @@ const DummyScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               const accessToken = await AsyncStorage.getItem('accessToken');
-              const user = await AsyncStorage.getItem('user');
-
               const response = await fetch(
                 `${base_url}/shorts/deleteShorts/${shortId}`,
                 {
@@ -629,6 +632,15 @@ const DummyScreen = ({ navigation }) => {
                         <MaterialIcons name="comment" size={14} color="#870E6B" />
                         <Text style={gridStyles.statText}>{item.comments || '0'}</Text>
                       </View>
+                      <TouchableOpacity 
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeletePost(item.id);
+                        }}
+                        style={gridStyles.deleteButton}
+                      >
+                        <MaterialIcons name="delete" size={14} color="#870E6B" />
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -695,13 +707,20 @@ const DummyScreen = ({ navigation }) => {
                         <MaterialIcons name="group" size={16} color="#666" />
                         <Text style={scheduleStyles.ridersText}>{item.riders} Riders</Text>
                       </View>
-                      <View style={scheduleStyles.ridersContainer}>
-                    <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                      <MaterialIcons name="delete" size={16} color={colors.Zypsii_color} />
-                    </TouchableOpacity>
-                    <Text style={scheduleStyles.ridersText}></Text>
-                  </View>
-
+                      <View style={scheduleStyles.actionButtons}>
+                        <TouchableOpacity 
+                          onPress={() => handleEdit(item.id)}
+                          style={scheduleStyles.actionButton}
+                        >
+                          <MaterialIcons name="edit" size={16} color={colors.Zypsii_color} />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => handleDelete(item.id)}
+                          style={scheduleStyles.actionButton}
+                        >
+                          <MaterialIcons name="delete" size={16} color={colors.Zypsii_color} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -789,6 +808,54 @@ const DummyScreen = ({ navigation }) => {
   const handleBackPress = () => {
     console.log('Back button pressed');
     navigation.goBack();
+  };
+
+  const handleEdit = (scheduleId) => {
+    navigation.navigate('EditSchedule', { 
+      scheduleId: scheduleId,
+      scheduleData: all_schedule.find(item => item.id === scheduleId)
+    });
+  };
+
+  const handleDeletePost = (postId) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const accessToken = await AsyncStorage.getItem('accessToken');
+              const response = await fetch(
+                `${base_url}/post/delete/${postId}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              if (response.ok) {
+                Alert.alert('Deleted', 'The post has been deleted.');
+                // Update the posts list by filtering out the deleted item
+                setAllPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+              } else {
+                const errorData = await response.json();
+                Alert.alert('Error', errorData.message || 'Failed to delete post.');
+              }
+            } catch (error) {
+              console.error('Delete error:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -1236,6 +1303,14 @@ const scheduleStyles = {
     marginTop: 10,
     color: '#666',
     fontSize: 16,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  actionButton: {
+    padding: 5,
   },
 };
 

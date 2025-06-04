@@ -7,6 +7,7 @@ import * as Screen from '../screens';
 import TripMap from '../screens/TripMap/TripMap';
 import PlaceDetailsScreen from '../screens/Searchbar/PlaceDetailsScreen';
 import PostDetail from '../screens/Zipsiprofile/PostDetail';
+import EditSchedule from '../screens/MySchedule/EditSchedule';
 import { useAuth } from '../components/Auth/AuthContext';
 
 const NavigationStack = createStackNavigator();
@@ -26,6 +27,7 @@ function Drawer() {
       <NavigationStack.Screen name="PostDetail" component={PostDetail} />
       <NavigationStack.Screen name="WhereToGo" component={Screen.DiscoverPlace} />
       <NavigationStack.Screen name="MySchedule" component={Screen.MySchedule}/>
+      <NavigationStack.Screen name="EditSchedule" component={EditSchedule}/>
       <NavigationStack.Screen name="Destination" component={Screen.Destination}/>
       <NavigationStack.Screen name="MakeSchedule" component={Screen.MakeSchedule}/>
       <NavigationStack.Screen name="TripDetail" component={Screen.TripDetail}/>

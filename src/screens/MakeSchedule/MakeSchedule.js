@@ -60,17 +60,7 @@ function MakeSchedule() {
   useEffect(() => {
     // Reset the schedule state when component mounts
     dispatch(resetSchedule());
-    
-    // Add navigation listener to reset when leaving the screen
-    const unsubscribe = navigation.addListener('beforeRemove', () => {
-      dispatch(resetSchedule());
-    });
-
-    // Cleanup listener on unmount
-    return () => {
-      unsubscribe();
-    };
-  }, [dispatch, navigation]);
+  }, [dispatch]);
 
   // Function to update schedule state
   const updateScheduleState = (updates) => {
@@ -85,6 +75,28 @@ function MakeSchedule() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Adding 1 for inclusive date range
   };
 
+  // Handle location update from map screen
+  useEffect(() => {
+    if (route.params?.latitude && route.params?.longitude && !isSubmitted) {
+      const { latitude, longitude, dayId } = route.params;
+      // Update only the specific day's location
+      const updatedDays = days.map(day => {
+        if (day.id === dayId) {
+          return {
+            ...day,
+            latitude: latitude.toString(),
+            longitude: longitude.toString()
+          };
+        }
+        return day;
+      });
+      updateScheduleState({ days: updatedDays });
+      
+      // Clear the route params to prevent duplicate updates
+      navigation.setParams({ latitude: undefined, longitude: undefined, dayId: undefined });
+    }
+  }, [route.params]);
+
   // Function to handle the form submission
   const handleSubmit = async () => {
     try {
@@ -93,6 +105,13 @@ function MakeSchedule() {
       // Validate required fields
       if (!bannerImage) {
         Alert.alert('Error', 'Banner image is required');
+        return;
+      }
+
+      // Validate that all days have locations
+      const missingLocations = days.some(day => !day.latitude || !day.longitude);
+      if (missingLocations) {
+        Alert.alert('Error', 'Please select locations for all days');
         return;
       }
 
@@ -184,7 +203,6 @@ function MakeSchedule() {
         };
       });
 
-
       // Calculate number of days between dates
       const diffTime = Math.abs(endDate - startDate);
       const numberOfDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
@@ -214,66 +232,14 @@ function MakeSchedule() {
       formData.append('dates[end]', endDate.toISOString().split('T')[0]);
       formData.append('numberOfDays', numberOfDays.toString());
 
-      // Optimize plan description data
-      const optimizedPlanDescription = formattedPlanDescription.map(plan => ({
-        Description: plan.Description.trim(),
-        date: plan.date,
-        startTime: plan.startTime || "09:00",
-        endTime: plan.endTime || "17:00",
-        location: {
-          latitude: parseFloat(plan.location.latitude),
-          longitude: parseFloat(plan.location.longitude)
-        }
-      }));
-
-      // Add each plan item individually in array format
-      optimizedPlanDescription.forEach((plan, index) => {
-        formData.append(`planDescription[${index}][Description]`, plan.Description);
-        formData.append(`planDescription[${index}][date]`, plan.date);
-        formData.append(`planDescription[${index}][startTime]`, plan.startTime);
-        formData.append(`planDescription[${index}][endTime]`, plan.endTime);
-        formData.append(`planDescription[${index}][location][latitude]`, plan.location.latitude.toString());
-        formData.append(`planDescription[${index}][location][longitude]`, plan.location.longitude.toString());
-      });
-
       const accessToken = await AsyncStorage.getItem('accessToken');
+      console.log(accessToken)
       if (!accessToken) {
         Alert.alert('Error', 'Authentication required');
         return;
       }
 
-      // Log the form data being sent
-      console.log('=== Form Data Being Sent ===');
-      console.log('Trip Name:', tripName);
-      console.log('Travel Mode:', "Bike");
-      console.log('Visibility:', "Public");
-      console.log('\nLocation Data:');
-      console.log('From:', {
-        latitude: locationData.from.latitude,
-        longitude: locationData.from.longitude
-      });
-      console.log('To:', {
-        latitude: locationData.to.latitude,
-        longitude: locationData.to.longitude
-      });
-      console.log('\nDates:');
-      console.log('From:', startDate.toISOString().split('T')[0]);
-      console.log('To:', endDate.toISOString().split('T')[0]);
-      console.log('\nDay Plans:');
-      optimizedPlanDescription.forEach((plan, index) => {
-        console.log(`\nDay ${index + 1}:`, {
-          Description: plan.Description,
-          date: plan.date,
-          startTime: plan.startTime,
-          endTime: plan.endTime,
-          location: {
-            latitude: plan.location.latitude,
-            longitude: plan.location.longitude
-          }
-        });
-      });
-      console.log('==========================\n');
-
+      // First API call to create schedule
       const response = await fetch(`${base_url}/schedule/create`, {
         method: 'POST',
         headers: {
@@ -283,16 +249,12 @@ function MakeSchedule() {
         body: formData,
       });
 
-      // Log the raw response for debugging
       const responseText = await response.text();
-
       let data;
       try {
-        // Check if response is HTML
         if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
           throw new Error('Server returned HTML instead of JSON. Please check the endpoint URL.');
         }
-        
         data = JSON.parse(responseText);
       } catch (parseError) {
         if (response.status === 413) {
@@ -308,18 +270,100 @@ function MakeSchedule() {
         }
       }
 
-      if (response.ok) {
-        dispatch(setSubmitted(true));
-        Alert.alert('Success', data.message || 'Schedule created successfully!');
-        navigation.navigate('MySchedule');
-      } else {
+      if (!response.ok) {
         if (data.errors) {
           const errorMessages = Object.values(data.errors).flat();
           Alert.alert('Validation Error', errorMessages.join('\n'));
+          return;
         } else {
           throw new Error(data.message || `Server error: ${response.status}`);
         }
       }
+      console.log(data)
+      // Get the schedule ID from the response
+      const scheduleId = data.schedule._id || data.id;
+      if (!scheduleId) {
+        throw new Error('Schedule ID not received from server');
+      }
+
+      // Second API call to add descriptions
+      for (let i = 0; i < days.length; i++) {
+        const day = days[i];
+        // Format date as DD-MM-YYYY
+        const currentDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+        const formattedDate = `${currentDate.getDate()}-${currentDate.getMonth() + 1}-${currentDate.getFullYear()}`;
+
+        // Set the from location as current day's location
+        if (!day.latitude || !day.longitude) {
+          throw new Error(`Missing location for Day ${i + 1}`);
+        }
+        const fromLocation = {
+          latitude: parseFloat(day.latitude),
+          longitude: parseFloat(day.longitude)
+        };
+
+        // Set the to location as next day's location (if it exists)
+        let toLocation;
+        if (i < days.length - 1) {
+          const nextDay = days[i + 1];
+          if (!nextDay.latitude || !nextDay.longitude) {
+            throw new Error(`Missing location for Day ${i + 2}`);
+          }
+          toLocation = {
+            latitude: parseFloat(nextDay.latitude),
+            longitude: parseFloat(nextDay.longitude)
+          };
+        } else {
+          // For the last day, use the same location as from
+          toLocation = fromLocation;
+        }
+
+        const descriptionData = {
+          Description: day.description.trim(),
+          date: formattedDate,
+          location: {
+            from: fromLocation,
+            to: toLocation
+          }
+        };
+
+        console.log(`Day ${i + 1} Description Data:`, JSON.stringify(descriptionData, null, 2));
+
+        try {
+          const descriptionResponse = await fetch(`${base_url}/schedule/add/descriptions/${scheduleId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(descriptionData),
+          });
+
+          const responseData = await descriptionResponse.json();
+          
+          if (!descriptionResponse.ok) {
+            console.error(`Error adding description for Day ${i + 1}:`, {
+              status: descriptionResponse.status,
+              statusText: descriptionResponse.statusText,
+              responseData: responseData
+            });
+            throw new Error(`Failed to add description for day ${i + 1}: ${responseData.message || 'Unknown error'}`);
+          }
+
+          console.log(`Successfully added description for Day ${i + 1}:`, responseData);
+        } catch (error) {
+          console.error(`Error in description API call for Day ${i + 1}:`, {
+            error: error.message,
+            descriptionData: descriptionData
+          });
+          throw error;
+        }
+      }
+
+      dispatch(setSubmitted(true));
+      Alert.alert('Success', 'Schedule created successfully!');
+      dispatch(resetSchedule()); // Reset schedule after successful submission
+      navigation.navigate('MySchedule');
     } catch (error) {
       Alert.alert(
         'Error',
@@ -374,25 +418,6 @@ function MakeSchedule() {
       Alert.alert('Cannot Modify', 'Schedule has already been submitted and cannot be modified.');
     }
   };
-
-  // Handle location update from map screen
-  useEffect(() => {
-    if (route.params?.latitude && route.params?.longitude && !isSubmitted) {
-      const { latitude, longitude, dayId } = route.params;
-      // Update only the specific day's location
-      const updatedDays = days.map(day => {
-        if (day.id === dayId) {
-          return {
-            ...day,
-            latitude: latitude.toString(),
-            longitude: longitude.toString()
-          };
-        }
-        return day;
-      });
-      updateScheduleState({ days: updatedDays });
-    }
-  }, [route.params]);
 
   const pickImage = async () => {
     try {
@@ -508,7 +533,6 @@ function MakeSchedule() {
         {
           text: 'OK',
           onPress: () => {
-            dispatch(resetSchedule()); // Reset schedule before navigating back
             navigation.goBack();
           },
         },
