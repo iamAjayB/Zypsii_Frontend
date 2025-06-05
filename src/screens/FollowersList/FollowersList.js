@@ -12,8 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import { base_url } from '../../utils/base_url';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FollowButton from '../../components/Follow/FollowButton';
+import { useFollow } from '../../components/Follow/FollowContext';
 
 const FollowersList = ({ navigation, route }) => {
+  const { isFollowing } = useFollow();
   const [activeTab, setActiveTab] = useState(route.params?.initialTab || 'Followers');
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
@@ -21,7 +24,7 @@ const FollowersList = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchFollowData();
-  }, []);
+  }, [isFollowing]); // Refresh when follow status changes
 
   const fetchFollowData = async () => {
     try {
@@ -83,11 +86,7 @@ const FollowersList = ({ navigation, route }) => {
         <Text style={styles.userName}>{item.fullName || 'User'}</Text>
         <Text style={styles.userHandle}>{item.userName || '@user'}</Text>
       </View>
-      <TouchableOpacity style={styles.followButton}>
-        <Text style={styles.followButtonText}>
-          {activeTab === 'Followers' ? 'Follow' : 'Following'}
-        </Text>
-      </TouchableOpacity>
+      <FollowButton userId={item._id} />
     </TouchableOpacity>
   );
 
@@ -249,4 +248,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FollowersList; 
+export default FollowersList;
