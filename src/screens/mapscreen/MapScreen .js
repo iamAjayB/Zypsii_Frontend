@@ -79,11 +79,14 @@ function MapScreen() {
 
   const handleDone = () => {
     if (region.latitude && region.longitude) {      
-      navigation.navigate("MakeSchedule", {
-        dayId,
-        latitude: region.latitude,
-        longitude: region.longitude,
-      });
+      navigation.goBack();
+      if (route.params?.onLocationSelect) {
+        route.params.onLocationSelect({
+          latitude: region.latitude,
+          longitude: region.longitude,
+          address: searchText || 'Selected Location'
+        });
+      }
     } else {
       Alert.alert('Error', 'Please select a valid location.');
     }

@@ -1,81 +1,95 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 import { colors } from '../../utils';
 
 const { width } = Dimensions.get('window');
 
-export default StyleSheet.create({
+export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.Zypsii_color,
-    padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.primary,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
   },
   backButton: {
-    marginRight: 15,
+    marginRight: 16,
   },
   headerTitle: {
-    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
+    color: colors.white,
   },
   content: {
     flex: 1,
-    padding: 20,
   },
   bannerContainer: {
-    width: '100%',
     height: 200,
-    marginBottom: 20,
-    borderRadius: 12,
-    overflow: 'hidden',
+    width: '100%',
+    position: 'relative',
   },
   bannerImage: {
     width: '100%',
     height: '100%',
   },
   bannerGradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 20,
-  },
-  bannerTitle: {
-    color: colors.white,
-    fontSize: 24,
-    fontWeight: 'bold',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   bannerPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.Zypsii_color,
-    justifyContent: 'flex-end',
-    padding: 20,
+    backgroundColor: colors.gray,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerPlaceholderText: {
+    color: colors.text,
+    fontSize: 16,
+  },
+  changeImageButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: colors.primary,
+    padding: 8,
+    borderRadius: 20,
+  },
+  bannerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.white,
   },
   sectionContainer: {
-    marginBottom: 20,
+    padding: 16,
+    backgroundColor: colors.white,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 15,
+    marginBottom: 16,
   },
   formGroup: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.text,
     marginBottom: 8,
-    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
@@ -83,18 +97,91 @@ export default StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    color: colors.text,
     backgroundColor: colors.white,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pickerContainer: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     backgroundColor: colors.white,
   },
-  inputIcon: {
+  picker: {
+    height: 50,
+  },
+  dateInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
     padding: 12,
+    backgroundColor: colors.white,
+  },
+  updateButton: {
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    margin: 16,
+  },
+  updateButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  locationInputContainer: {
+    marginBottom: 10,
+  },
+  locationInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  locationAddress: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
+    marginLeft: 40,
+    fontStyle: 'italic',
+  },
+  privacyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  privacyButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    backgroundColor: colors.white,
+  },
+  privacyButtonActive: {
+    backgroundColor: colors.Zypsii_color,
+    borderColor: colors.Zypsii_color,
+  },
+  privacyButtonText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  privacyButtonTextActive: {
+    color: colors.white,
+    fontWeight: '500',
   },
   dayCard: {
     backgroundColor: colors.white,
@@ -111,14 +198,20 @@ export default StyleSheet.create({
   },
   dayHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 10,
   },
   dayTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.Zypsii_color,
+    color: '#333',
+  },
+  dayDate: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 10,
   },
   removeDayButton: {
     padding: 5,
@@ -169,25 +262,50 @@ export default StyleSheet.create({
     marginTop: 10,
   },
   locationItem: {
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: colors.background,
-    borderRadius: 6,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
   },
   locationName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  locationAddress: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 2,
+    fontWeight: 'bold',
+    color: '#333',
   },
   locationDistance: {
     fontSize: 12,
-    color: colors.textTertiary,
+    color: '#A60F93',
+    fontWeight: '500',
+  },
+  miniMapContainer: {
+    height: 100,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 5,
+  },
+  miniMap: {
+    flex: 1,
+  },
+  addLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  addLocationButtonText: {
+    color: '#A60F93',
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: '500',
   },
   addDayButton: {
     flexDirection: 'row',
@@ -204,17 +322,33 @@ export default StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-  updateButton: {
-    backgroundColor: colors.Zypsii_color,
-    padding: 15,
-    borderRadius: 8,
+  datePickerButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  updateButtonText: {
-    color: colors.white,
+  dateText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: colors.text,
+  },
+  datePlaceholder: {
+    color: '#95A5A6',
+  },
+  locationText: {
+    fontSize: 16,
+    color: colors.text,
+    paddingVertical: 12,
   },
 }); 

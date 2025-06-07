@@ -716,21 +716,24 @@ function MakeSchedule() {
                 </View>
                 
                 <TextInput
-                  style={styles.dayInput}
+                  style={[styles.dayInput, !day.latitude && styles.disabledInput]}
                   placeholder={`Enter details for Day ${day.id}`}
                   value={day.description}
                   onChangeText={(text) => updateDayDetails(day.id, "description", text)}
                   multiline
                   placeholderTextColor="#999"
+                  editable={!!day.latitude}
                 />
 
-                  <TouchableOpacity
-                    onPress={() => openMapForDay(day.id)}
+                <TouchableOpacity
+                  onPress={() => openMapForDay(day.id)}
                   style={styles.mapButton}
                 >
-                    <Icon name="location-sharp" size={24} color="white" />
-                    <Text style={styles.mapButtonText}>Select Location</Text>
-                  </TouchableOpacity>
+                  <Icon name="location-sharp" size={24} color="white" />
+                  <Text style={styles.mapButtonText}>
+                    {day.latitude ? 'Change Location' : 'Select Location'}
+                  </Text>
+                </TouchableOpacity>
 
                 {day.latitude && day.longitude && (
                 <MapView
