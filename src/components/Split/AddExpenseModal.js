@@ -25,9 +25,9 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
   const [errors, setErrors] = useState({});
   const [isPayerModalVisible, setIsPayerModalVisible] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState(
-    participants.reduce((acc, p) => ({ ...acc, [p.user?._id]: true }), {})
+    participants?.reduce((acc, p) => ({ ...acc, [p?._id]: true }), {}) || {}
   );
-
+console.log(selectedParticipants);
   const categories = [
     'Food & Dining',
     'Transportation',
@@ -38,7 +38,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
   ];
 
   useEffect(() => {
-    if (participants && totalAmount) {
+    if (participants?.length && totalAmount) {
       const selectedIds = Object.entries(selectedParticipants)
         .filter(([_, isSelected]) => isSelected)
         .map(([id]) => id);
@@ -398,7 +398,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
             </TouchableOpacity>
           </View>
 
-          {participants.map((participant) => (
+          {participants?.map((participant) => (
             <View key={participant.user?._id || Math.random()} style={styles.splitListItem}>
               <TouchableOpacity 
                 style={styles.participantCheckbox}

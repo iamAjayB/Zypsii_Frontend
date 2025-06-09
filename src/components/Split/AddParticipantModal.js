@@ -16,7 +16,7 @@ import { colors } from '../../utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url';
 
-const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParticipants }) => {
+const AddParticipantModal = ({ visible, onClose, onInviteFriend, existingParticipants }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParti
         }));
 
         const filteredResults = formattedResults.filter(user => 
-          !existingParticipants.some(p => p.user._id === user._id)
+          !existingParticipants?.some(p => p.user._id === user._id)
         );
         
         setSearchResults(filteredResults);
@@ -77,7 +77,7 @@ const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParti
   const renderUserItem = ({ item }) => (
     <TouchableOpacity
       style={styles.userItemContainer}
-      onPress={() => onAddParticipant(item)}
+      onPress={() => onInviteFriend(item.email)}
     >
       <View style={styles.userInfoWrapper}>
         <View style={styles.userAvatarContainer}>

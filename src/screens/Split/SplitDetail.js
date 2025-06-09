@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,99 +8,78 @@ import {
   Alert,
   Modal,
   TextInput,
-  ScrollView,
   ActivityIndicator,
+  ScrollView,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
+import { base_url } from '../../utils/base_url';
 import {
-  fetchSplitDetails,
   addExpense,
   updateExpense,
-  markAsPaid,
-  inviteFriend,
-  setActiveTab,
-  setAddParticipantModalVisible,
-  setAddExpenseModalVisible,
-  setInviteModalVisible,
-  setEditingExpenseId,
-  setEditedAmount,
+  fetchSplitMembers,
+  fetchSplitBalance,
+  addParticipant
 } from '../../redux/slices/splitSlice';
-import { calculateSplitBalances, formatCurrency } from '../../utils/splitCalculations';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import components
 import AddParticipantModal from '../../components/Split/AddParticipantModal';
-import SelectPayerModal from '../../components/Split/SelectPayerModal';
 import AddExpenseModal from '../../components/Split/AddExpenseModal';
-import ExpenseItem from '../../components/Split/ExpenseItem';
-import ParticipantItem from '../../components/Split/ParticipantItem';
-import SplitBalanceCard from '../../components/Split/SplitBalanceCard';
+
+
+const { width, height } = Dimensions.get('window');
+
+const TABS = [
+  { id: 'balance', label: 'Balance', icon: 'wallet-outline' },
+  { id: 'expenses', label: 'Expenses', icon: 'receipt-outline' },
+  { id: 'members', label: 'Members', icon: 'people-outline' },
+];
 
 function SplitDetail() {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch();
-  const { splitId } = route.params;
+  const { split } = route.params;
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('balance');
 
   const {
-    currentSplit: split,
-    loading,
-    error,
-    activeTab,
-    isAddParticipantModalVisible,
-    isAddExpenseModalVisible,
-    isInviteModalVisible,
-    editingExpenseId,
-    editedAmount,
+    members = [],
+    membersLoading,
+    membersError,
+    balance,
+    balanceLoading,
+    balanceError
   } = useSelector((state) => state.split);
 
   useEffect(() => {
-    dispatch(fetchSplitDetails(splitId));
-  }, [splitId, dispatch]);
-
-  const handleUpdateExpense = async (expenseId, newAmount) => {
-    try {
-      if (!newAmount || isNaN(parseFloat(newAmount)) || parseFloat(newAmount) <= 0) {
-        Alert.alert('Error', 'Please enter a valid amount');
-        return;
+    const loadData = async () => {
+      try {
+        await Promise.all([
+          dispatch(fetchSplitMembers(split._id)),
+          dispatch(fetchSplitBalance(split._id))
+        ]);
+      } catch (error) {
+        console.error('Error loading split data:', error);
+        Alert.alert('Error', 'Failed to load split details');
       }
+    };
 
-      await dispatch(updateExpense({ splitId, expenseId, newAmount })).unwrap();
-      Alert.alert('Success', 'Expense amount updated successfully');
-    } catch (error) {
-      console.error('Error updating expense:', error);
-      Alert.alert('Error', error.message || 'Failed to update expense');
-    }
-  };
-
-  const handleMarkAsPaid = async (userId) => {
-    try {
-      await dispatch(markAsPaid({ splitId, userId })).unwrap();
-      Alert.alert('Success', 'Payment marked as completed');
-    } catch (error) {
-      console.error('Error marking payment:', error);
-      Alert.alert('Error', error.message || 'Failed to mark payment as completed');
-    }
-  };
+    loadData();
+  }, [dispatch, split._id]);
 
   const handleAddExpense = async (expenseData) => {
     try {
-      if (!expenseData.description || !expenseData.description.trim()) {
-        throw new Error('Description is required');
-      }
-
-      if (!expenseData.amount || isNaN(expenseData.amount) || expenseData.amount <= 0) {
-        throw new Error('Please enter a valid amount');
-      }
-
-      if (!expenseData.category || !expenseData.category.trim()) {
-        throw new Error('Category is required');
-      }
-
-      await dispatch(addExpense({ splitId, expenseData })).unwrap();
+      await dispatch(addExpense({ splitId: split._id, expenseData })).unwrap();
+      setShowAddExpenseModal(false);
       Alert.alert('Success', 'Expense added successfully');
     } catch (error) {
       console.error('Error adding expense:', error);
@@ -108,158 +87,291 @@ function SplitDetail() {
     }
   };
 
-  const handleInviteFriend = async (email, name) => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter email');
-      return;
-    }
-
+  const handleUpdateExpense = async (expenseId, expenseData) => {
     try {
-      await dispatch(inviteFriend({ splitId, email, name })).unwrap();
-      Alert.alert('Success', 'Invitation sent successfully');
-      dispatch(setInviteModalVisible(false));
+      await dispatch(updateExpense({ splitId: split._id, expenseId, newAmount: expenseData.amount })).unwrap();
+      Alert.alert('Success', 'Expense updated successfully');
     } catch (error) {
-      console.error('Error inviting friend:', error);
-      Alert.alert('Error', error.message || 'Failed to send invitation');
+      console.error('Error updating expense:', error);
+      Alert.alert('Error', error.message || 'Failed to update expense');
     }
   };
 
-  const renderBalanceSection = () => {
-    if (!split) return null;
-    
-    const { balances } = calculateSplitBalances(split.participants, split.expenses);
-    const oweBalances = balances.filter(b => b.userId && b.status === 'owe');
-    const getBackBalances = balances.filter(b => b.userId && b.status === 'getBack');
-    
-    return (
-      <View style={styles.balanceSection}>
-        {oweBalances.length > 0 && (
-          <View style={styles.balanceSubsection}>
-            <Text style={styles.balanceSubtitle}>People who need to pay</Text>
-            <FlatList
-              data={oweBalances}
-              renderItem={({ item }) => {
-                if (!item || !item.userId) return null;
-                const participant = split.participants.find(p => p.user && p.user._id && p.user._id.toString() === item.userId.toString());
-                return (
-                  <View style={styles.balanceCard}>
-                    <View style={styles.balanceCardHeader}>
-                      <View style={styles.balanceCardUser}>
-                        <View style={styles.balanceCardAvatar}>
-                          <Text style={styles.balanceCardAvatarText}>
-                            {participant?.user?.fullName?.charAt(0) || '?'}
-                          </Text>
-                        </View>
-                        <View style={styles.balanceCardInfo}>
-                          <Text style={styles.balanceCardName}>
-                            {participant?.user?.fullName || participant?.user?.name || participant?.user?.email?.split('@')[0] || 'User'}
-                          </Text>
-                          {participant?.user?.email && (
-                            <Text style={styles.balanceCardEmail}>{participant?.user?.email}</Text>
-                          )}
-                        </View>
-                      </View>
-                      <Text style={styles.balanceCardAmount}>₹{item.amount.toFixed(2)}</Text>
-                    </View>
-                    {!participant?.paid && (
-                      <TouchableOpacity
-                        style={styles.payButton}
-                        onPress={() => handleMarkAsPaid(item.userId)}
-                      >
-                        <Text style={styles.payButtonText}>Mark as Paid</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              }}
-              keyExtractor={(item) => item.userId?.toString() || Math.random().toString()}
-              contentContainerStyle={styles.balanceList}
-            />
-          </View>
-        )}
+  const handleInviteFriend = async (email) => {
+    try {
+      // First search for the user by email
+      const token = await AsyncStorage.getItem('accessToken');
+      const searchResponse = await axios.get(
+        `${base_url}/user/getProfile?search=${encodeURIComponent(email)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-        {getBackBalances.length > 0 && (
-          <View style={styles.balanceSubsection}>
-            <Text style={styles.balanceSubtitle}>People who owe you</Text>
-            <FlatList
-              data={getBackBalances}
-              renderItem={({ item }) => {
-                if (!item || !item.userId) return null;
-                const participant = split.participants.find(p => p.user && p.user._id && p.user._id.toString() === item.userId.toString());
-                return (
-                  <View style={styles.balanceCard}>
-                    <View style={styles.balanceCardHeader}>
-                      <View style={styles.balanceCardUser}>
-                        <View style={styles.balanceCardAvatar}>
-                          <Text style={styles.balanceCardAvatarText}>
-                            {participant?.user?.fullName?.charAt(0) || '?'}
-                          </Text>
-                        </View>
-                        <View style={styles.balanceCardInfo}>
-                          <Text style={styles.balanceCardName}>
-                            {participant?.user?.fullName || participant?.user?.name || participant?.user?.email?.split('@')[0] || 'User'}
-                          </Text>
-                          {participant?.user?.email && (
-                            <Text style={styles.balanceCardEmail}>{participant?.user?.email}</Text>
-                          )}
-                        </View>
-                      </View>
-                      <Text style={styles.balanceCardAmount}>₹{item.amount.toFixed(2)}</Text>
-                    </View>
-                    {!participant?.paid && (
-                      <TouchableOpacity
-                        style={styles.payButton}
-                        onPress={() => handleMarkAsPaid(item.userId)}
-                      >
-                        <Text style={styles.payButtonText}>Mark as Paid</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              }}
-              keyExtractor={(item) => item.userId?.toString() || Math.random().toString()}
-              contentContainerStyle={styles.balanceList}
-            />
-          </View>
-        )}
+      if (!searchResponse.data.success || !searchResponse.data.data || searchResponse.data.data.length === 0) {
+        throw new Error('User not found with this email');
+      }
 
-        {getBackBalances.length === 0 && oweBalances.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No payments due</Text>
+      const user = searchResponse.data.data[0];
+      console.log(user);
+      console.log(split._id);
+      await dispatch(addParticipant({ splitId: split._id, memberIds: [user._id] })).unwrap();
+      setShowInviteModal(false);
+      Alert.alert('Success', 'Member added successfully');
+    } catch (error) {
+      console.error('Error adding member:', error);
+      Alert.alert('Error', error.message || 'Failed to add member');
+    }
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'balance':
+        return renderBalanceTab();
+      case 'expenses':
+        return renderExpensesTab();
+      case 'members':
+        return renderMembersTab();
+      default:
+        return renderBalanceTab();
+    }
+  };
+
+  const renderBalanceTab = () => (
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      {/* Total Balance Card */}
+      <View style={styles.balanceCard}>
+        <View style={styles.balanceHeader}>
+          <Ionicons name="wallet" size={24} color={colors.btncolor} />
+          <Text style={styles.balanceLabel}>Total Split Amount</Text>
+        </View>
+        <Text style={styles.balanceAmount}>
+          ₹{split.totalSplitAmount?.toFixed(2) || '0.00'}
+        </Text>
+        <View style={styles.balanceFooter}>
+          <Text style={styles.balanceSubtext}>
+            Split between {members.length || 0} members
+          </Text>
+        </View>
+      </View>
+
+      {/* Individual Balances */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Individual Balances</Text>
+        {members && members.length > 0 ? (
+          members.map((member, index) => {
+            const memberBalance = member.balance || 0;
+            const isPositive = memberBalance > 0;
+            const isZero = memberBalance === 0;
+            
+            return (
+              <View key={member._id} style={styles.balanceItem}>
+                <View style={styles.balanceItemLeft}>
+                  <View style={[
+                    styles.balanceAvatar,
+                    { backgroundColor: isPositive ? '#e8f5e8' : isZero ? '#f5f5f5' : '#ffe8e8' }
+                  ]}>
+                    <Text style={[
+                      styles.balanceAvatarText,
+                      { color: isPositive ? '#2e7d32' : isZero ? '#757575' : '#d32f2f' }
+                    ]}>
+                      {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.balanceName}>{member.name}</Text>
+                    <Text style={[
+                      styles.balanceStatus,
+                      { color: isPositive ? '#2e7d32' : isZero ? '#757575' : '#d32f2f' }
+                    ]}>
+                      {isPositive ? 'Gets back' : isZero ? 'Settled' : 'Owes'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[
+                  styles.balanceAmountText,
+                  { color: isPositive ? '#2e7d32' : isZero ? '#757575' : '#d32f2f' }
+                ]}>
+                  ₹{Math.abs(memberBalance).toFixed(2)}
+                </Text>
+              </View>
+            );
+          })
+        ) : (
+          <View style={styles.emptyStateCard}>
+            <Ionicons name="people-outline" size={48} color={colors.grayLinesColor} />
+            <Text style={styles.emptyStateTitle}>No members found</Text>
+            <Text style={styles.emptyStateText}>Add members to see balance details</Text>
           </View>
         )}
       </View>
-    );
-  };
+    </ScrollView>
+  );
 
-  const renderParticipantsSection = () => {
-    if (!split) return null;
-    
-    const { balances } = calculateSplitBalances(split.participants, split.expenses);
-    
-    return (
-      <FlatList
-        data={split.participants}
-        renderItem={({ item }) => {
-          const participantBalance = balances.find(b => b.userId === item.user._id);
-          return (
-            <ParticipantItem
-              item={item}
-              balance={participantBalance}
-            />
-          );
-        }}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContainer}
-      />
-    );
-  };
+  const renderExpensesTab = () => (
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>All Expenses</Text>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddExpenseModal(true)}
+          >
+            <Ionicons name="add" size={20} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+        
+        {split.expense && split.expense.length > 0 ? (
+          split.expense.map((expense, index) => (
+            <View key={expense._id} style={styles.expenseCard}>
+              <View style={styles.expenseHeader}>
+                <View style={styles.expenseIconContainer}>
+                  <Ionicons name="receipt" size={20} color={colors.btncolor} />
+                </View>
+                <View style={styles.expenseInfo}>
+                  <Text style={styles.expenseTitle}>{expense.title}</Text>
+                  <Text style={styles.expenseDate}>
+                    {new Date(expense.createdAt).toLocaleDateString('en-US', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.expenseAmountContainer}>
+                  <Text style={styles.expenseAmount}>
+                    ₹{expense.amount?.toFixed(2) || '0.00'}
+                  </Text>
+                  <Text style={styles.expensePerPerson}>
+                    ₹{((expense.amount || 0) / (members.length || 1)).toFixed(2)} per person
+                  </Text>
+                </View>
+              </View>
+              
+              {expense.paidBy && (
+                <View style={styles.expenseFooter}>
+                  <Text style={styles.paidByText}>
+                    Paid by <Text style={styles.paidByName}>{expense.paidBy.name || 'Unknown'}</Text>
+                  </Text>
+                </View>
+              )}
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyStateCard}>
+            <Ionicons name="receipt-outline" size={48} color={colors.grayLinesColor} />
+            <Text style={styles.emptyStateTitle}>No expenses yet</Text>
+            <Text style={styles.emptyStateText}>Add your first expense to get started</Text>
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={() => setShowAddExpenseModal(true)}
+            >
+              <Ionicons name="add" size={20} color={colors.white} />
+              <Text style={styles.emptyStateButtonText}>Add Expense</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
 
-  if (loading || !split) {
+  const renderMembersTab = () => (
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Group Members</Text>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowInviteModal(true)}
+          >
+            <Ionicons name="person-add" size={20} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+        
+        {members?.data && members.data.length > 0 ? (
+          members.data.map((member, index) => (
+            <View key={member._id} style={styles.memberCard}>
+              <View style={styles.memberHeader}>
+                <View style={styles.memberAvatar}>
+                  <Text style={styles.memberAvatarText}>
+                    {member.memberId?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                  </Text>
+                </View>
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName}>{member.memberId?.fullName || 'Unknown User'}</Text>
+                  <Text style={styles.memberEmail}>{member.memberId?.email || 'No email'}</Text>
+                </View>
+                <View style={styles.memberStatus}>
+                  
+                  <Text style={styles.statusText}>
+                    Joined {new Date(member.createdAt).toLocaleDateString('en-US', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                </View>
+              </View>
+              
+              
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyStateCard}>
+            <Ionicons name="people-outline" size={48} color={colors.grayLinesColor} />
+            <Text style={styles.emptyStateTitle}>No members yet</Text>
+            <Text style={styles.emptyStateText}>Invite friends to join this split</Text>
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={() => setShowInviteModal(true)}
+            >
+              <Ionicons name="person-add" size={20} color={colors.white} />
+              <Text style={styles.emptyStateButtonText}>Add Member</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  if (membersLoading || balanceLoading) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor={colors.btncolor} barStyle="light-content" />
         <View style={styles.loadingContainer}>
-          <Text>Loading...</Text>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={colors.btncolor} />
+            <Text style={styles.loadingText}>Loading split details...</Text>
+            <Text style={styles.loadingSubText}>Please wait a moment</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (membersError || balanceError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor={colors.btncolor} barStyle="light-content" />
+        <View style={styles.errorContainer}>
+          <View style={styles.errorCard}>
+            <Ionicons name="cloud-offline-outline" size={64} color={colors.error} />
+            <Text style={styles.errorTitle}>Something went wrong</Text>
+            <Text style={styles.errorText}>{membersError || balanceError}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                dispatch(fetchSplitMembers(split._id));
+                dispatch(fetchSplitBalance(split._id));
+              }}
+            >
+              <Ionicons name="refresh" size={20} color={colors.white} />
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -267,161 +379,77 @@ function SplitDetail() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor={colors.btncolor} barStyle="light-content" />
+      
+      {/* Enhanced Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.fontMainColor} />
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{split.title}</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => dispatch(setAddParticipantModalVisible(true))}
-          >
-            <Ionicons name="person-add" size={24} color={colors.white} />
-          </TouchableOpacity>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle} numberOfLines={1}>{split.title}</Text>
+          <Text style={styles.headerSubtitle}>
+            {members.length} members • {split.expense?.length || 0} expenses
+          </Text>
         </View>
       </View>
 
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>Total to Get Back</Text>
-        <Text style={styles.totalAmount}>₹{split.totalGetBack?.toFixed(2) || '0.00'}</Text>
-      </View>
-
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'participants' && styles.activeTab]}
-          onPress={() => dispatch(setActiveTab('participants'))}
-        >
-          <Ionicons 
-            name="people-outline" 
-            size={20} 
-            color={activeTab === 'participants' ? colors.btncolor : colors.fontSecondColor} 
-          />
-          <Text style={[styles.tabText, activeTab === 'participants' && styles.activeTabText]}>
-            Participants
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'expenses' && styles.activeTab]}
-          onPress={() => dispatch(setActiveTab('expenses'))}
-        >
-          <Ionicons 
-            name="receipt-outline" 
-            size={20} 
-            color={activeTab === 'expenses' ? colors.btncolor : colors.fontSecondColor} 
-          />
-          <Text style={[styles.tabText, activeTab === 'expenses' && styles.activeTabText]}>
-            Expenses
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'balance' && styles.activeTab]}
-          onPress={() => dispatch(setActiveTab('balance'))}
-        >
-          <Ionicons 
-            name="wallet-outline" 
-            size={20} 
-            color={activeTab === 'balance' ? colors.btncolor : colors.fontSecondColor} 
-          />
-          <Text style={[styles.tabText, activeTab === 'balance' && styles.activeTabText]}>
-            Balance
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {activeTab === 'expenses' ? (
-        <>
-          <FlatList
-            data={split.expenses}
-            renderItem={({ item }) => (
-              <ExpenseItem
-                item={item}
-                editingExpenseId={editingExpenseId}
-                editedAmount={editedAmount}
-                isUpdatingExpense={false}
-                onEditPress={() => {
-                  dispatch(setEditingExpenseId(item._id));
-                  dispatch(setEditedAmount(item.amount ? item.amount.toString() : ''));
-                }}
-                onUpdateExpense={handleUpdateExpense}
-                onCancelEdit={() => {
-                  dispatch(setEditingExpenseId(null));
-                  dispatch(setEditedAmount(''));
-                }}
-              />
-            )}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.listContainer}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No expenses added yet</Text>
-              </View>
-            }
-          />
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        {TABS.map((tab) => (
           <TouchableOpacity
-            style={styles.floatingButton}
-            onPress={() => dispatch(setAddExpenseModalVisible(true))}
+            key={tab.id}
+            style={[
+              styles.tabButton,
+              activeTab === tab.id && styles.activeTabButton
+            ]}
+            onPress={() => setActiveTab(tab.id)}
           >
-            <Ionicons name="add" size={24} color={colors.white} />
+            <Ionicons
+              name={tab.icon}
+              size={20}
+              color={activeTab === tab.id ? colors.btncolor : colors.fontSecondColor}
+            />
+            <Text style={[
+              styles.tabText,
+              activeTab === tab.id && styles.activeTabText
+            ]}>
+              {tab.label}
+            </Text>
           </TouchableOpacity>
-        </>
-      ) : activeTab === 'participants' ? (
-        renderParticipantsSection()
-      ) : (
-        renderBalanceSection()
-      )}
+        ))}
+      </View>
 
-      <AddParticipantModal
-        visible={isAddParticipantModalVisible}
-        onClose={() => dispatch(setAddParticipantModalVisible(false))}
-        onAddParticipant={() => {}}
-        existingParticipants={split?.participants || []}
+      {/* Tab Content */}
+      <View style={styles.contentContainer}>
+        {renderTabContent()}
+      </View>
+
+      {/* Floating Action Buttons */}
+      <View style={styles.floatingActions}>
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => setShowAddExpenseModal(true)}
+        >
+          <Ionicons name="add" size={24} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Modals */}
+      <AddExpenseModal
+        visible={showAddExpenseModal}
+        onClose={() => setShowAddExpenseModal(false)}
+        onSubmit={handleAddExpense}
+        participants={members?.data}
       />
 
-      <Modal
-        visible={isInviteModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => dispatch(setInviteModalVisible(false))}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Invite Friend</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Friend's Email"
-              value={''}
-              onChangeText={(text) => {}}
-              keyboardType="email-address"
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => dispatch(setInviteModalVisible(false))}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.inviteButton]}
-                onPress={() => {}}
-              >
-                <Text style={styles.inviteButtonText}>Invite</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <AddExpenseModal
-        visible={isAddExpenseModalVisible}
-        onClose={() => dispatch(setAddExpenseModalVisible(false))}
-        onAddExpense={handleAddExpense}
-        participants={split?.participants || []}
+      <AddParticipantModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onInviteFriend={handleInviteFriend}
       />
     </SafeAreaView>
   );
@@ -430,914 +458,453 @@ function SplitDetail() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#f8f9fa',
   },
+  
+  // Header Styles
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayBackground,
-    backgroundColor: colors.white,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    paddingVertical: 16,
+    backgroundColor: colors.btncolor,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 8,
+    shadowColor: colors.btncolor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   backButton: {
     padding: 8,
-    backgroundColor: colors.grayBackground,
-    borderRadius: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  headerInfo: {
+    flex: 1,
+    marginHorizontal: 16,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.fontMainColor,
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 16,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  addButton: {
-    backgroundColor: colors.btncolor,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  addButtonPressed: {
-    transform: [{ scale: 0.95 }],
-    opacity: 0.9,
-  },
-  summaryContainer: {
-    padding: 16,
-    backgroundColor: colors.grayBackground,
-    alignItems: 'center',
-  },
-  summaryTitle: {
-    fontSize: 16,
-    color: colors.fontSecondColor,
-    marginBottom: 8,
-  },
-  totalAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.fontMainColor,
+    fontWeight: '700',
+    color: colors.white,
     marginBottom: 4,
   },
-  participantsText: {
+  headerSubtitle: {
     fontSize: 14,
-    color: colors.fontSecondColor,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  tabsContainer: {
+
+  // Tab Styles
+  tabContainer: {
     flexDirection: 'row',
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayBackground,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 16,
+    paddingBottom: 8,
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  tab: {
+  tabButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    marginHorizontal: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginHorizontal: 4,
   },
-  activeTab: {
-    borderBottomColor: colors.btncolor,
-    backgroundColor: colors.grayBackground,
-    borderRadius: 8,
+  activeTabButton: {
+    backgroundColor: `${colors.btncolor}15`,
+    borderWidth: 1,
+    borderColor: `${colors.btncolor}30`,
   },
   tabText: {
-    marginLeft: 8,
     fontSize: 14,
+    fontWeight: '500',
     color: colors.fontSecondColor,
+    marginLeft: 6,
   },
   activeTabText: {
     color: colors.btncolor,
     fontWeight: '600',
   },
+
+  // Content Styles
+  contentContainer: {
+    flex: 1,
+  },
   tabContent: {
     flex: 1,
-  },
-  listContainer: {
     padding: 16,
   },
-  participantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+
+  // Balance Tab Styles
+  balanceCard: {
     backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  participantInfo: {
-    flex: 1,
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.btncolor,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  participantDetails: {
-    flex: 1,
-  },
-  participantName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    marginBottom: 4,
-  },
-  participantContact: {
-    fontSize: 12,
-    color: colors.fontSecondColor,
-  },
-  removeButton: {
-    padding: 8,
-  },
-  expenseItem: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    marginBottom: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-  },
-  expenseHeader: {
-    marginBottom: 12,
-  },
-  expenseMainInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  expenseDescription: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    flex: 1,
-    marginRight: 12,
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.Zypsii_color,
-  },
-  expenseDetails: {
-    borderTopWidth: 1,
-    borderTopColor: colors.grayBackground,
-    paddingTop: 12,
-    gap: 12,
-  },
-  expenseDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    gap: 16,
-  },
-  expenseDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  expenseDetailText: {
-    fontSize: 13,
-    color: colors.fontSecondColor,
-  },
-  paidByContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  paidByInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  paidByAvatar: {
-    width: 32,
-    height: 32,
     borderRadius: 16,
-    backgroundColor: colors.Zypsii_color,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  paidByAvatarText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  paidByTextContainer: {
-    justifyContent: 'center',
-  },
-  paidByLabel: {
-    fontSize: 12,
-    color: colors.fontSecondColor,
-    marginBottom: 2,
-  },
-  paidByEmail: {
-    fontSize: 13,
-    color: colors.Zypsii_color,
-    fontWeight: '500',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '90%',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingBottom: 12,
-  },
-  closeButton: {
-    padding: 8,
-    backgroundColor: colors.grayBackground,
-    borderRadius: 8,
-  },
-  submitButton: {
-    padding: 8,
-  },
-  submitButtonText: {
-    color: colors.Zypsii_color,
-    fontWeight: '600',
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.fontMainColor,
-    textAlign: 'center',
-    flex: 1,
-  },
-  modalBody: {
-    flex: 1,
-  },
-  amountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  amountLabel: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    marginRight: 8,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-  },
-  descriptionInput: {
-    padding: 16,
-    fontSize: 16,
-    color: colors.fontMainColor,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  paidByContainer: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  sectionLabel: {
-    fontSize: 14,
-    color: colors.fontSecondColor,
-    marginBottom: 8,
-  },
-  paidBySelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  paidByText: {
-    fontSize: 16,
-    color: colors.fontMainColor,
-  },
-  splitOptionsContainer: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  splitTypeButtons: {
-    flexDirection: 'row',
-    backgroundColor: colors.grayBackground,
-    borderRadius: 8,
-    padding: 4,
-  },
-  splitTypeButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  splitTypeButtonActive: {
-    backgroundColor: colors.white,
-    shadowColor: '#000',
+    padding: 24,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 8,
   },
-  splitTypeText: {
+  balanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  balanceLabel: {
+    fontSize: 16,
+    color: colors.fontSecondColor,
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  balanceAmount: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.fontMainColor,
+    marginBottom: 12,
+  },
+  balanceFooter: {
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  balanceSubtext: {
     fontSize: 14,
     color: colors.fontSecondColor,
   },
-  splitTypeTextActive: {
-    color: colors.fontMainColor,
-    fontWeight: '600',
+
+  // Section Styles
+  section: {
+    marginBottom: 24,
   },
-  splitListContainer: {
-    padding: 16,
-  },
-  splitListHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  splitListTitle: {
-    fontSize: 14,
-    color: colors.fontSecondColor,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.fontMainColor,
   },
-  splitEquallyButton: {
-    flexDirection: 'row',
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.btncolor,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  splitEquallyText: {
-    marginLeft: 4,
-    color: colors.Zypsii_color,
-    fontWeight: '600',
-  },
-  splitListItem: {
+
+  // Balance Item Styles
+  balanceItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
     marginBottom: 12,
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  participantInfo: {
+  balanceItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  avatarContainer: {
+  balanceAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  balanceAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  balanceName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 4,
+  },
+  balanceStatus: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  balanceAmountText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  // Expense Card Styles
+  expenseCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  expenseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expenseIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.Zypsii_color,
+    backgroundColor: `${colors.btncolor}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  avatarText: {
-    color: colors.white,
+  expenseInfo: {
+    flex: 1,
+  },
+  expenseTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 4,
   },
-  participantName: {
-    fontSize: 16,
+  expenseDate: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+  },
+  expenseAmountContainer: {
+    alignItems: 'flex-end',
+  },
+  expenseAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.fontMainColor,
+    marginBottom: 4,
+  },
+  expensePerPerson: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
+  },
+  expenseFooter: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  paidByText: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+  },
+  paidByName: {
+    fontWeight: '600',
     color: colors.fontMainColor,
   },
-  splitAmountInput: {
-    width: 80,
-    textAlign: 'right',
+
+  // Member Card Styles
+  memberCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  memberHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.btncolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  memberAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
     fontSize: 16,
+    fontWeight: '600',
     color: colors.fontMainColor,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-    borderRadius: 8,
+    marginBottom: 4,
   },
-  loadingContainer: {
-    padding: 24,
+  memberEmail: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+  },
+  memberStatus: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  emptyContainer: {
-    padding: 24,
+  statusText: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
+    fontWeight: '500',
+  },
+  memberStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  statItem: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  emptyText: {
+  statLabel: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
+    marginBottom: 4,
+  },
+  statValue: {
     fontSize: 16,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+  },
+
+  // Empty State Styles
+  emptyStateCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
     color: colors.fontSecondColor,
     textAlign: 'center',
-    lineHeight: 24,
+    marginBottom: 24,
   },
-  modalButtons: {
+  emptyStateButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 8,
-  },
-  cancelButton: {
-    backgroundColor: colors.grayBackground,
-  },
-  inviteButton: {
+    alignItems: 'center',
     backgroundColor: colors.btncolor,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
-  cancelButtonText: {
-    color: colors.fontMainColor,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  inviteButtonText: {
+  emptyStateButtonText: {
     color: colors.white,
-    textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  // Floating Action Button
+  floatingActions: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
   },
   floatingButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.btncolor,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    elevation: 8,
+    shadowColor: colors.btncolor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  paymentStatus: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  payButton: {
-    backgroundColor: colors.btncolor,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  payButtonText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  searchWrapper: {
-    paddingHorizontal: 20,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.grayBackground,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 48,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-  },
-  searchIcon: {
-    marginRight: 12,
-    color: colors.fontSecondColor,
-  },
-  searchInputField: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.fontMainColor,
-    height: '100%',
-    paddingVertical: 8,
-  },
-  clearSearchButton: {
-    padding: 8,
-    backgroundColor: colors.grayBackground,
-    borderRadius: 12,
-  },
-  userItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayBackground,
-    backgroundColor: colors.white,
-  },
-  userInfoWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  userAvatarContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.Zypsii_color,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  userAvatarText: {
-    color: colors.white,
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  userDetailsContainer: {
+
+  // Loading & Error Styles
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-  },
-  userNameText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    marginBottom: 4,
-  },
-  userEmailText: {
-    fontSize: 14,
-    color: colors.fontSecondColor,
-  },
-  addIconContainer: {
-    padding: 10,
-    backgroundColor: colors.grayBackground,
-    borderRadius: 12,
-  },
-  searchResultsContainer: {
-    flexGrow: 1,
-    paddingTop: 12,
-  },
-  emptyResultsContainer: {
-    flex: 1,
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyResultsText: {
-    fontSize: 16,
-    color: colors.fontSecondColor,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  modalHeaderWithSearch: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayBackground,
-    paddingBottom: 16,
-  },
-  modalHeaderTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    paddingBottom: 12,
   },
-  modalSafeArea: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  inputError: {
-    borderColor: colors.error,
-    borderWidth: 1,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  categoryError: {
-    marginTop: 8,
-    marginBottom: 4,
-    color: colors.error,
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  paidByError: {
-    color: colors.error,
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  amountEditContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  loadingCard: {
     backgroundColor: colors.white,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-  },
-  amountEditButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  amountEditButton: {
-    width: 32,
-    height: 32,
+    padding: 32,
     borderRadius: 16,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  saveButton: {
-    backgroundColor: colors.Zypsii_color,
-  },
-  cancelButton: {
-    backgroundColor: colors.error,
-  },
-  categoryContainer: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.grayBackground,
-    minWidth: '30%',
-    alignItems: 'center',
-  },
-  categoryButtonActive: {
-    backgroundColor: colors.Zypsii_color,
-  },
-  categoryButtonText: {
-    color: colors.fontMainColor,
-    fontSize: 14,
-  },
-  categoryButtonTextActive: {
-    color: colors.white,
-    fontWeight: '600',
-  },
-  step1Container: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  bottomButtonContainer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.grayLinesColor,
-    backgroundColor: colors.white,
-  },
-  nextButton: {
-    backgroundColor: colors.Zypsii_color,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  nextButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerPlaceholder: {
-    width: 70, // Match the width of the submit button
-  },
-  paidByButton: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  paidByContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  paidByLeft: {
-    flex: 1,
-  },
-  paidByLabel: {
-    fontSize: 14,
-    color: colors.fontSecondColor,
-    marginBottom: 4,
-  },
-  paidByName: {
-    fontSize: 16,
-    color: colors.fontMainColor,
-    fontWeight: '500',
-  },
-  payerSelectItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grayLinesColor,
-  },
-  payerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  payerName: {
-    fontSize: 16,
-    color: colors.fontMainColor,
-    marginLeft: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.grayLinesColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: colors.Zypsii_color,
-    borderColor: colors.Zypsii_color,
-  },
-  step2Container: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  submitButton: {
-    backgroundColor: colors.Zypsii_color,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  participantCheckbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  splitAmountInputDisabled: {
-    backgroundColor: colors.grayBackground,
-    color: colors.fontSecondColor,
-  },
-  balanceSection: {
-    flex: 1,
-    padding: 16,
-  },
-  balanceHeader: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    elevation: 4,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    width: width * 0.8,
   },
-  balanceTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    marginBottom: 12,
-  },
-  balanceTotals: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  balanceTotalLabel: {
-    fontSize: 14,
-    color: colors.fontSecondary,
-  },
-  balanceTotalValue: {
-    fontSize: 14,
-    fontWeight: '500',
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
     color: colors.fontMainColor,
   },
-  balanceList: {
-    paddingBottom: 16,
-  },
-  balanceSubsection: {
-    marginBottom: 24,
-  },
-  balanceSubtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-  },
-  balanceCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.grayLinesColor,
-  },
-  balanceCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  balanceCardUser: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  errorContainer: {
     flex: 1,
-  },
-  balanceCardAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.btncolor,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    padding: 20,
   },
-  balanceCardAvatarText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  balanceCardInfo: {
-    flex: 1,
-  },
-  balanceCardName: {
+  errorText: {
+    marginTop: 10,
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.fontMainColor,
-    marginBottom: 4,
+    color: colors.error,
+    textAlign: 'center',
   },
-  balanceCardEmail: {
-    fontSize: 14,
+  retryButton: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: colors.btncolor,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+  },
+  emptyText: {
+    fontSize: 16,
     color: colors.fontSecondColor,
-  },
-  balanceCardAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.Zypsii_color,
+    textAlign: 'center',
+    padding: 16,
   },
 });
 

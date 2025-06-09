@@ -29,7 +29,7 @@ const SelectPayerModal = ({ visible, onClose, participants, selectedPayer, onSel
           </View>
 
           <ScrollView style={styles.modalBody}>
-            {participants.map((participant) => (
+            {participants?.map((participant) => (
               <TouchableOpacity
                 key={participant.user?._id}
                 style={styles.payerSelectItem}

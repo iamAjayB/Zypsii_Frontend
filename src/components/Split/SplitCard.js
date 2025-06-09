@@ -4,6 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 
 const SplitCard = ({ item, onPress }) => {
+  // Calculate total participants count
+  const participantsCount = item.participants ? item.participants.length : 0;
+  
+  // Get total amount, defaulting to 0 if not present
+  const totalAmount = item.totalAmount || item.totalSplitAmount || 0;
+
   return (
     <TouchableOpacity
       style={styles.splitCard}
@@ -24,11 +30,11 @@ const SplitCard = ({ item, onPress }) => {
       <View style={styles.splitDetails}>
         <View style={styles.detailItem}>
           <Ionicons name="people-outline" size={16} color={colors.fontThirdColor} />
-          <Text style={styles.detailText}>{item.participants.length} people</Text>
+          <Text style={styles.detailText}>{participantsCount} people</Text>
         </View>
         <View style={styles.detailItem}>
           <Ionicons name="cash-outline" size={16} color={colors.fontThirdColor} />
-          <Text style={styles.detailText}>₹{item.totalAmount}</Text>
+          <Text style={styles.detailText}>₹{totalAmount}</Text>
         </View>
         <View style={styles.detailItem}>
           <Ionicons name="calendar-outline" size={16} color={colors.fontThirdColor} />
