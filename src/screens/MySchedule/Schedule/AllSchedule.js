@@ -16,6 +16,7 @@ const AllSchedule = ({item, isFromProfile}) => {
   const [showMenu, setShowMenu] = useState(false);
   const [fromPlace, setFromPlace] = useState('');
   const [toPlace, setToPlace] = useState('');
+  const [isJoined, setIsJoined] = useState(item.joined || false);
 
   useEffect(() => {
     const loadUserId = async () => {
@@ -96,7 +97,6 @@ const AllSchedule = ({item, isFromProfile}) => {
   };
 
   const handleJoin = async () => {
-    // Prevent action if currently processing
     if (isJoining) {
       return;
     }
@@ -110,7 +110,6 @@ const AllSchedule = ({item, isFromProfile}) => {
         return;
       }
 
-      // Get the current user's ID from AsyncStorage
       const user = await AsyncStorage.getItem('user');
       const parsedUser = user ? JSON.parse(user) : null;
       
@@ -136,11 +135,9 @@ const AllSchedule = ({item, isFromProfile}) => {
       const data = await response.json();
 
       if (response.ok && data.status) {
-        // Toggle the joined state
-        item.joined = !item.joined;
-        Alert.alert('Success', item.joined ? 'Successfully joined the schedule' : 'Successfully unjoined the schedule');
+        setIsJoined(!isJoined);
+        Alert.alert('Success', isJoined ? 'Successfully unjoined the schedule' : 'Successfully joined the schedule');
       } else {
-        // Handle specific error cases
         if (data.message === 'Internal Server Error') {
           Alert.alert('Error', 'Unable to process request. Please try again later.');
         } else {
@@ -202,12 +199,16 @@ const AllSchedule = ({item, isFromProfile}) => {
         </View>
         {!isScheduleCreator && (
           <TouchableOpacity 
-            style={[styles.joinedButton, isJoining && styles.disabledButton]} 
+            style={[
+              styles.joinedButton, 
+              isJoining && styles.disabledButton,
+              isJoined && styles.joinedButtonActive
+            ]} 
             onPress={handleJoin}
             disabled={isJoining}
           >
             <Text style={styles.joinedText}>
-              {isJoining ? 'Joining...' : (item.joined ? 'Joined' : 'Join')}
+              {isJoining ? 'Processing...' : (isJoined ? 'Joined' : 'Join')}
             </Text>
           </TouchableOpacity>
         )}
