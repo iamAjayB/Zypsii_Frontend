@@ -2,42 +2,70 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity } from "react-native";
 import { colors } from "../../utils";
 import { base_url } from '../../utils/base_url';
-//const baseUrl = 'https://admin.zypsii.com'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const Notification = () => {
   const [activeTab, setActiveTab] = useState("All");
-
   const [notifications, setNotifications] = useState([]);
+  const [offset, setOffset] = useState(0);
+  const limit = 10;
 
-   useEffect(() => {
-      const fetchCardData = async () => {
-        try {
-          const response = await fetch(`${base_url}/get_all_Notification`);
-          const data = await response.json();
-          const formattedData = data.slice(0, 100).map(item => ({
-            id: item.id,
-            description: item.description, 
-            title: item.title,
-            time: item.time,
-            date: item.date,
-            read: item.read,
-          }));
-          console.log(formattedData);
-          setNotifications(formattedData);
-        } catch (error) {
-          console.error('Error fetching data:', error);
+  useEffect(() => {
+    const fetchCardData = async () => {
+      try {
+        const accessToken = await AsyncStorage.getItem('accessToken');
+        const response = await fetch(`${base_url}/user/getNotifications?read=false&offset=0&limit=10`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications');
         }
-      };
-      fetchCardData();
-    }, []);
+        
+        const data = await response.json();
+        const formattedData = data.map(item => ({
+          id: item.id,
+          description: item.description,
+          title: item.title,
+          time: item.time,
+          date: item.date,
+          read: item.read,
+        }));
+        setNotifications(formattedData);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+    fetchCardData();
+  }, []);
 
-  const handleToggleReadStatus = (id) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) =>
-        notification.id === id
-          ? { ...notification, read: !notification.read }
-          : notification
-      )
-    );
+  const handleToggleReadStatus = async (id) => {
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      const notification = notifications.find(n => n.id === id);
+      
+      await fetch(`${base_url}/user/updateNotification/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ read: !notification.read })
+      });
+
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification =>
+          notification.id === id
+            ? { ...notification, read: !notification.read }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error('Error updating notification status:', error);
+    }
   };
 
   const filteredNotifications = notifications.filter((notification) => {
@@ -79,24 +107,25 @@ const Notification = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Text style={styles.header}>Notifications</Text>
 
-      {/* Tab Bar */}
       <View style={styles.tabBar}>
         {["All", "Read", "Unread"].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[
               styles.tab,
-              activeTab === tab && styles.activeTab, // Highlight active tab
+              activeTab === tab && styles.activeTab,
             ]}
-            onPress={() => setActiveTab(tab)} // Update active tab
+            onPress={() => {
+              setActiveTab(tab);
+              setOffset(0); // Reset offset when changing tabs
+            }}
           >
             <Text
               style={[
                 styles.tabText,
-                activeTab === tab && styles.activeTabText, // Highlight active tab text
+                activeTab === tab && styles.activeTabText,
               ]}
             >
               {tab}
@@ -105,7 +134,6 @@ const Notification = () => {
         ))}
       </View>
 
-      {/* Notifications List */}
       <SectionList
         sections={groupedNotifications}
         keyExtractor={(item) => item.id.toString()}
@@ -113,6 +141,8 @@ const Notification = () => {
         renderSectionHeader={renderSectionHeader}
         contentContainerStyle={styles.list}
         stickySectionHeadersEnabled={false}
+        onEndReached={() => setOffset(prev => prev + limit)}
+        onEndReachedThreshold={0.5}
       />
     </View>
   );
