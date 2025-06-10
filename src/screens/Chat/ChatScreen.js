@@ -155,17 +155,18 @@ const ChatScreen = ({ route, navigation }) => {
           });
           
           // Add a timeout for chat history request
-          const timeoutId = setTimeout(() => {
-            console.log('Chat history request timed out');
-            setLoading(false);
-            Alert.alert('Error', 'Chat history request timed out. Please try again.');
-          }, 10000);
+          // const timeoutId = setTimeout(() => {
+          //   console.log('Chat history request timed out');
+          //   setLoading(false);
+          //   Alert.alert('Error', 'Chat history request timed out. Please try again.');
+          // }, 10000);
 
           socketInstance.emit('chat-history', {
             senderId: userIdFromStorage,
             receiverId: userId
           }, (response) => {
-            clearTimeout(timeoutId);
+            console.log('Chat history response:', response);
+            // clearTimeout(timeoutId);
             if (response && response.error) {
               console.error('Chat history error response:', response.error);
               setLoading(false);

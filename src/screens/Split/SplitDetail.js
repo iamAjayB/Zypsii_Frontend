@@ -442,14 +442,16 @@ function SplitDetail() {
       <AddExpenseModal
         visible={showAddExpenseModal}
         onClose={() => setShowAddExpenseModal(false)}
-        onSubmit={handleAddExpense}
+        onAddExpense={handleAddExpense}
         participants={members?.data}
+        splitId={split._id}
       />
 
       <AddParticipantModal
         visible={showInviteModal}
+        splitId={split._id}
         onClose={() => setShowInviteModal(false)}
-        onInviteFriend={handleInviteFriend}
+        existingParticipants={members?.data}
       />
     </SafeAreaView>
   );
