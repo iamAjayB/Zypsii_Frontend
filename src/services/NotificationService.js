@@ -14,18 +14,16 @@ class NotificationService {
     }
   };
 
-  static async sendNotification(title, body, data) {
+  static async sendNotification(expoPushToken) {
     try {
       const message = {
-        to: data.expoPushToken,
+        to: expoPushToken,
         sound: 'default',
-        title,
-        body,
-        data,
+        ...this.NOTIFICATION_CONTENT,
         priority: 'high',
       };
 
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -34,10 +32,6 @@ class NotificationService {
         },
         body: JSON.stringify(message),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send notification');
-      }
     } catch (error) {
       console.error('Error sending notification:', error);
     }
@@ -126,4 +120,4 @@ class NotificationService {
   }
 }
 
-export default NotificationService;
+export default NotificationService; 
