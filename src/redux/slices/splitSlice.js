@@ -116,16 +116,10 @@ export const addExpense = createAsyncThunk(
   async ({ splitId, expenseData }) => {
     const token = await AsyncStorage.getItem('accessToken');
     
-
+  console.log(expenseData ,'expenseData');
     const response = await axios.post(
       `${base_url}/split/add-expense`,
-      {
-        splitId,
-        category: expenseData.category.trim(),
-        description: expenseData.description.trim(),
-        expenseTotalAmount: parseFloat(expenseData.expenseTotalAmount),
-        membersInExpense: expenseData.membersInExpense
-      },
+      expenseData,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -133,6 +127,7 @@ export const addExpense = createAsyncThunk(
         }
       }
     );
+    console.log(response ,'response.data');
     return response.data;
   }
 );
