@@ -29,33 +29,36 @@ const SelectPayerModal = ({ visible, onClose, participants, selectedPayer, onSel
           </View>
 
           <ScrollView style={styles.modalBody}>
-            {participants.map((participant) => (
+            {participants?.map((participant) => (
               <TouchableOpacity
-                key={participant.user?._id}
+                key={participant.memberId?._id}
                 style={styles.payerSelectItem}
-                onPress={() => onSelectPayer(participant.user?._id)}
+                onPress={() => onSelectPayer(participant.memberId?._id)}
               >
                 <View style={styles.payerInfo}>
                   <View style={styles.avatarContainer}>
                     <Text style={styles.avatarText}>
-                      {participant.user?.fullName
-                        ? participant.user.fullName.charAt(0).toUpperCase()
-                        : participant.user?.name
-                        ? participant.user.name.charAt(0).toUpperCase()
-                        : participant.user?.email
-                        ? participant.user.email.charAt(0).toUpperCase()
+                      {participant.memberId?.fullName
+                        ? participant.memberId.fullName.charAt(0).toUpperCase()
+                        : participant.memberId?.email
+                        ? participant.memberId.email.charAt(0).toUpperCase()
                         : '?'}
                     </Text>
                   </View>
-                  <Text style={styles.payerName}>
-                    {participant.user?.fullName || participant.user?.name || (participant.user?.email ? participant.user.email.split('@')[0] : '') || 'User'}
-                  </Text>
+                  <View style={styles.payerDetails}>
+                    <Text style={styles.payerName}>
+                      {participant.memberId?.fullName || 'User'}
+                    </Text>
+                    <Text style={styles.payerEmail}>
+                      {participant.memberId?.email || 'No email'}
+                    </Text>
+                  </View>
                 </View>
                 <View style={[
                   styles.checkbox,
-                  selectedPayer === participant.user?._id && styles.checkboxSelected
+                  selectedPayer === participant.memberId?._id && styles.checkboxSelected
                 ]}>
-                  {selectedPayer === participant.user?._id && (
+                  {selectedPayer === participant.memberId?._id && (
                     <Ionicons name="checkmark" size={18} color={colors.white} />
                   )}
                 </View>
@@ -132,9 +135,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  payerDetails: {
+    flex: 1,
+  },
   payerName: {
     fontSize: 16,
+    fontWeight: '600',
     color: colors.fontMainColor,
+    marginBottom: 4,
+  },
+  payerEmail: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
   },
   checkbox: {
     width: 24,

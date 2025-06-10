@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,107 +13,56 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { base_url } from '../../utils/base_url';
+import { 
+  createSplit,
+  searchUsers,
+  setSearchQuery,
+  setUserInfo,
+  toggleTempSelectedUser,
+  clearTempSelectedUsers,
+  loadMoreSearchResults,
+  removeSelectedUser,
+  addSelectedUser
+} from '../../redux/slices/splitSlice';
 import UserSearchResult from '../../components/Split/UserSearchResult';
 import SelectedUserItem from '../../components/Split/SelectedUserItem';
 import SearchResultsContainer from '../../components/Split/SearchResultsContainer';
 
 function CreateSplit() {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const [title, setTitle] = useState('');
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
-  const [tempSelectedUsers, setTempSelectedUsers] = useState([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [allSearchResults, setAllSearchResults] = useState([]);
-  const RESULTS_PER_PAGE = 6;
+  
+  const {
+    createSplitLoading,
+    searchResults,
+    searching,
+    hasMoreResults,
+    userInfo,
+    selectedUsers,
+    tempSelectedUsers
+  } = useSelector((state) => state.split);
 
   useEffect(() => {
     (async () => {
       const user = JSON.parse(await AsyncStorage.getItem('user'));
-      setUserInfo(user);
-      if (user) {
-        setSelectedUsers([{ _id: user._id, email: user.email, fullName: user.fullName }]);
-      }
+      dispatch(setUserInfo(user));
     })();
   }, []);
 
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setAllSearchResults([]);
-      setPage(1);
-      setHasMore(true);
-      return;
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    dispatch(setSearchQuery(query));
+    if (query.trim()) {
+      dispatch(searchUsers({ searchQuery: query, selectedUsers }));
     }
-    setSearching(true);
-    (async () => {
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const response = await fetch(`${base_url}/user/getProfile?search=${encodeURIComponent(searchQuery)}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const data = await response.json();
-        if (data.success && data.data) {
-          const filtered = data.data.filter(u => 
-            !selectedUsers.some(su => su._id === u._id)
-          );
-          setAllSearchResults(filtered);
-          setSearchResults(filtered.slice(0, RESULTS_PER_PAGE));
-          setHasMore(filtered.length > RESULTS_PER_PAGE);
-          setPage(1);
-        } else {
-          setSearchResults([]);
-          setAllSearchResults([]);
-          setHasMore(false);
-        }
-      } catch (e) {
-        setSearchResults([]);
-        setAllSearchResults([]);
-        setHasMore(false);
-      } finally {
-        setSearching(false);
-      }
-    })();
-  }, [searchQuery, selectedUsers]);
-
-  const loadMoreResults = () => {
-    if (!hasMore) return;
-    
-    const nextPage = page + 1;
-    const startIndex = (nextPage - 1) * RESULTS_PER_PAGE;
-    const endIndex = startIndex + RESULTS_PER_PAGE;
-    const newResults = allSearchResults.slice(startIndex, endIndex);
-    
-    setSearchResults(prev => [...prev, ...newResults]);
-    setPage(nextPage);
-    setHasMore(endIndex < allSearchResults.length);
   };
 
   const handleToggleUser = (user) => {
-    if (selectedUsers.some(su => su._id === user._id)) {
-      return;
-    }
-    
-    setTempSelectedUsers(prev => {
-      const isSelected = prev.some(u => u._id === user._id);
-      if (isSelected) {
-        return prev.filter(u => u._id !== user._id);
-      } else {
-        return [...prev, user];
-      }
-    });
+    dispatch(toggleTempSelectedUser(user));
   };
 
   const handleAddSelectedUsers = () => {
@@ -123,18 +72,17 @@ function CreateSplit() {
       );
       
       if (newUsers.length > 0) {
-        setSelectedUsers(prev => [...prev, ...newUsers]);
+        newUsers.forEach(user => dispatch(addSelectedUser(user)));
       }
       
-      setTempSelectedUsers([]);
+      dispatch(clearTempSelectedUsers());
+      dispatch(setSearchQuery(''));
       setSearchQuery('');
-      setSearchResults([]);
     }
   };
 
   const handleRemoveUser = (userId) => {
-    if (userInfo && userId === userInfo._id) return;
-    setSelectedUsers(prev => prev.filter(u => u._id !== userId));
+    dispatch(removeSelectedUser(userId));
   };
 
   const handleCreateSplit = async () => {
@@ -146,24 +94,9 @@ function CreateSplit() {
       Alert.alert('Error', 'Please add at least one member');
       return;
     }
-    const accessToken = await AsyncStorage.getItem('accessToken');
-    setLoading(true);
+
     try {
-      const participants = selectedUsers.map(u => ({
-        user: { _id: u._id, email: u.email },
-        amount: 0,
-        paid: false
-      }));
-      const splitData = {
-        title,
-        totalAmount: 0,
-        participants
-      };
-      const response = await axios.post(`${base_url}/api/splits`, splitData, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      const result = await dispatch(createSplit({ title, participants: selectedUsers })).unwrap();
       Alert.alert('Success', 'Split created successfully', [
         {
           text: 'OK',
@@ -172,9 +105,7 @@ function CreateSplit() {
       ]);
     } catch (error) {
       console.error('Error creating split:', error);
-      Alert.alert('Error', error.message || error.response?.data?.message || 'Failed to create split');
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', error.message || 'Failed to create split');
     }
   };
 
@@ -204,21 +135,24 @@ function CreateSplit() {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Add Members</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Search users by name or email"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+          <View style={styles.searchContainer}>
+            <Ionicons name="person-add" size={24} color={colors.grayLinesColor} style={styles.searchIcon} />
+            <TextInput
+              style={[styles.input, styles.searchInput]}
+              placeholder="Search users by name or email"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+          </View>
           {searching && <ActivityIndicator size="small" color={colors.Zypsii_color} style={{ marginTop: 8 }} />}
           {searchResults.length > 0 && (
             <SearchResultsContainer
               searchResults={searchResults}
               tempSelectedUsers={tempSelectedUsers}
               selectedUsers={selectedUsers}
-              hasMore={hasMore}
+              hasMore={hasMoreResults}
               onToggleUser={handleToggleUser}
-              onLoadMore={loadMoreResults}
+              onLoadMore={() => dispatch(loadMoreSearchResults())}
               onAddSelected={handleAddSelectedUsers}
             />
           )}
@@ -237,11 +171,11 @@ function CreateSplit() {
         </View>
 
         <TouchableOpacity
-          style={[styles.createButton, loading && styles.disabledButton]}
+          style={[styles.createButton, createSplitLoading && styles.disabledButton]}
           onPress={handleCreateSplit}
-          disabled={loading}
+          disabled={createSplitLoading}
         >
-          {loading ? (
+          {createSplitLoading ? (
             <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.createButtonText}>Create Split</Text>
@@ -308,6 +242,21 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.7,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.grayLinesColor,
+  },
+  searchIcon: {
+    padding: 12,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 0,
   },
 });
 

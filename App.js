@@ -75,9 +75,7 @@ export default function App() {
     }
   }
 
-  if (!fontLoaded) {
-    return <Spinner spinnerColor={colors.spinnerColor} />;
-  }
+ 
 
   return (
     <Provider store={store}>

@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import SelectPayerModal from './SelectPayerModal';
 
-const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
+const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId }) => {
   const [step, setStep] = useState(1);
   const [totalAmount, setTotalAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -25,11 +25,13 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
   const [errors, setErrors] = useState({});
   const [isPayerModalVisible, setIsPayerModalVisible] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState(
-    participants.reduce((acc, p) => ({ ...acc, [p.user?._id]: true }), {})
+    participants?.reduce((acc, p) => ({ ...acc, [p?.memberId?._id]: true }), {}) || {}
   );
+  console.log('Participants data:', participants);
+  console.log('Selected participants:', selectedParticipants);
 
   const categories = [
-    'Food & Dining',
+    'Food',
     'Transportation',
     'Accommodation',
     'Entertainment',
@@ -38,7 +40,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
   ];
 
   useEffect(() => {
-    if (participants && totalAmount) {
+    if (participants?.length && totalAmount) {
       const selectedIds = Object.entries(selectedParticipants)
         .filter(([_, isSelected]) => isSelected)
         .map(([id]) => id);
@@ -50,18 +52,18 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
 
         const newSplitAmounts = {};
         participants.forEach((participant, idx) => {
-          if (selectedParticipants[participant.user?._id]) {
+          if (selectedParticipants[participant.memberId?._id]) {
             let share = baseShare;
             if (remainder > 0) {
               share += 1;
               remainder -= 1;
             }
-            newSplitAmounts[participant.user?._id] = {
+            newSplitAmounts[participant.memberId?._id] = {
               value: share.toString(),
               isManuallyEdited: false
             };
           } else {
-            newSplitAmounts[participant.user?._id] = {
+            newSplitAmounts[participant.memberId?._id] = {
               value: '0',
               isManuallyEdited: false
             };
@@ -172,16 +174,21 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
 
       setIsSubmitting(true);
       
-      const expenseData = {
-        description: description.trim(),
-        amount: parseFloat(totalAmount),
-        category,
-        paidBy: paidBy,
-        splitAmounts: splitAmounts,
-        date: new Date().toISOString()
-      };
+      // Get selected participant IDs
+      const selectedParticipantIds = Object.entries(selectedParticipants)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([id]) => id);
 
+      const expenseData = {
+        splitId,
+        category: category.trim(),
+        description: description.trim(),
+        expenseTotalAmount: parseFloat(totalAmount),
+        membersInExpense: selectedParticipantIds
+      };
+      console.log(splitId,expenseData);
       await onAddExpense(expenseData);
+      
       handleClose();
     } catch (error) {
       console.error('Error submitting expense:', error);
@@ -275,13 +282,13 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
           const equalShare = (parseFloat(totalAmount) / selectedCount).toFixed(2);
           const newSplitAmounts = {};
           participants.forEach(participant => {
-            if (newSelected[participant.user?._id]) {
-              newSplitAmounts[participant.user?._id] = {
+            if (newSelected[participant.memberId?._id]) {
+              newSplitAmounts[participant.memberId?._id] = {
                 value: equalShare,
                 isManuallyEdited: false
               };
             } else {
-              newSplitAmounts[participant.user?._id] = {
+              newSplitAmounts[participant.memberId?._id] = {
                 value: '0',
                 isManuallyEdited: false
               };
@@ -377,7 +384,15 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
             <View style={styles.paidByLeft}>
               <Text style={styles.paidByLabel}>Paid by</Text>
               <Text style={[styles.paidByName, { color: colors.fontMainColor }]}>
-                {paidBy ? participants.find(p => p.user?._id === paidBy)?.user?.fullName || participants.find(p => p.user?._id === paidBy)?.user?.name || participants.find(p => p.user?._id === paidBy)?.user?.email?.split('@')[0] || 'User' : 'Select payer'}
+                {paidBy ? (
+                  <>
+                    {participants.find(p => p.memberId?._id === paidBy)?.memberId?.fullName || 'User'}
+                    {'\n'}
+                    <Text style={styles.paidByEmail}>
+                      {participants.find(p => p.memberId?._id === paidBy)?.memberId?.email || 'No email'}
+                    </Text>
+                  </>
+                ) : 'Select payer'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={colors.fontMainColor} />
@@ -398,43 +413,50 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants }) => {
             </TouchableOpacity>
           </View>
 
-          {participants.map((participant) => (
-            <View key={participant.user?._id || Math.random()} style={styles.splitListItem}>
+          {participants?.map((participant) => {
+            console.log('Individual participant:', participant);
+            return (
+            <View key={participant.memberId?._id || Math.random()} style={styles.splitListItem}>
               <TouchableOpacity 
                 style={styles.participantCheckbox}
-                onPress={() => handleParticipantToggle(participant.user?._id)}
+                onPress={() => handleParticipantToggle(participant.memberId?._id)}
               >
                 <View style={[
                   styles.checkbox,
-                  selectedParticipants[participant.user?._id] && styles.checkboxSelected
+                  selectedParticipants[participant.memberId?._id] && styles.checkboxSelected
                 ]}>
-                  {selectedParticipants[participant.user?._id] && (
+                  {selectedParticipants[participant.memberId?._id] && (
                     <Ionicons name="checkmark" size={16} color={colors.white} />
                   )}
                 </View>
                 <View style={styles.participantInfo}>
                   <View style={styles.avatarContainer}>
                     <Text style={styles.avatarText}>
-                      {participant.user?.name ? participant.user.name.charAt(0).toUpperCase() : '?'}
+                      {participant.memberId?.fullName ? participant.memberId.fullName.charAt(0).toUpperCase() : '?'}
                     </Text>
                   </View>
-                  <Text style={styles.participantName}>{participant.user?.fullName || participant.user?.name || participant.user?.email?.split('@')[0] || 'User'}</Text>
+                  <Text style={styles.participantName}>
+                    {participant.memberId?.fullName || participant.memberId?.email?.split('@')[0] || 'User'} 
+                    {'\n'}
+                    <Text style={styles.userIdText}>{participant.memberId?.email || 'No ID'}</Text>
+                  </Text>
                 </View>
               </TouchableOpacity>
               <TextInput
                 style={[
                   styles.splitAmountInput,
-                  !selectedParticipants[participant.user?._id] && styles.splitAmountInputDisabled
+                  !selectedParticipants[participant.memberId?._id] && styles.splitAmountInputDisabled
                 ]}
-                value={splitAmounts[participant.user?._id]?.value?.toString() || ''}
-                onChangeText={(value) => handleSplitAmountChange(participant.user?._id, value)}
+                value={splitAmounts[participant.memberId?._id]?.value?.toString() || ''}
+                onChangeText={(value) => handleSplitAmountChange(participant.memberId?._id, value)}
                 keyboardType="numeric"
                 placeholder="0"
                 placeholderTextColor={colors.fontSecondColor}
-                editable={selectedParticipants[participant.user?._id]}
+                editable={selectedParticipants[participant.memberId?._id]}
               />
             </View>
-          ))}
+          );
+        })}
         </View>
 
         <SelectPayerModal
@@ -642,6 +664,10 @@ const styles = StyleSheet.create({
     color: colors.fontMainColor,
     fontWeight: '500',
   },
+  paidByEmail: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
+  },
   splitListContainer: {
     padding: 16,
   },
@@ -710,6 +736,10 @@ const styles = StyleSheet.create({
   participantName: {
     fontSize: 16,
     color: colors.fontMainColor,
+  },
+  userIdText: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
   },
   splitAmountInput: {
     width: 80,

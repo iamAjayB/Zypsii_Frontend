@@ -19,23 +19,22 @@ const ExpenseItem = ({
   onUpdateExpense,
   onCancelEdit 
 }) => {
-  // If paidBy is an object, use it. If it's an ID, find the user in participants.
-  let paidByUser = item.paidBy;
-  if (typeof paidByUser === 'string' && item.participants) {
-    const found = item.participants.find(p => p.user?._id === paidByUser);
-    paidByUser = found ? found.user : null;
-  }
-  
   // Format date properly
-  const expenseDate = item.date ? new Date(item.date).toLocaleDateString('en-GB', {
+  const expenseDate = item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric'
   }) : 'No date';
 
   // Defensive checks for amount and description
-  const safeAmount = (item.amount !== undefined && item.amount !== null && !isNaN(Number(item.amount))) ? parseFloat(item.amount).toFixed(2) : '0.00';
+  const safeAmount = (item.expenseTotalAmount !== undefined && item.expenseTotalAmount !== null && !isNaN(Number(item.expenseTotalAmount))) 
+    ? parseFloat(item.expenseTotalAmount).toFixed(2) 
+    : '0.00';
   const safeDescription = item.description && item.description.trim() ? item.description : 'No description';
+
+  // Calculate paid and unpaid members
+  const paidMembers = item.membersInExpense?.filter(member => member.paid) || [];
+  const unpaidMembers = item.membersInExpense?.filter(member => !member.paid) || [];
 
   return (
     <View style={styles.expenseItem}>
@@ -78,7 +77,7 @@ const ExpenseItem = ({
             </View>
           ) : (
             <TouchableOpacity 
-              onPress={() => onEditPress(item._id, item.amount ? item.amount.toString() : '')}
+              onPress={() => onEditPress(item._id, item.expenseTotalAmount ? item.expenseTotalAmount.toString() : '')}
             >
               <Text style={styles.expenseAmount}>₹{safeAmount}</Text>
             </TouchableOpacity>
@@ -102,16 +101,50 @@ const ExpenseItem = ({
           <View style={styles.paidByInfo}>
             <View style={styles.paidByAvatar}>
               <Text style={styles.paidByAvatarText}>
-                {paidByUser?.name ? paidByUser.name.charAt(0).toUpperCase() : 
-                 paidByUser?.email ? paidByUser.email.charAt(0).toUpperCase() : '?'}
+                {item.createdBy?.fullName ? item.createdBy.fullName.charAt(0).toUpperCase() : 
+                 item.createdBy?.email ? item.createdBy.email.charAt(0).toUpperCase() : '?'}
               </Text>
             </View>
             <View style={styles.paidByTextContainer}>
-              <Text style={styles.paidByLabel}>Paid by</Text>
+              <Text style={styles.paidByLabel}>Created by</Text>
               <Text style={[styles.paidByEmail, { color: colors.Zypsii_color }]} numberOfLines={1}>
-                {paidByUser?.name || paidByUser?.email || 'Unknown user'}
+                {item.createdBy?.fullName || item.createdBy?.email || 'Unknown user'}
               </Text>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.membersContainer}>
+          <Text style={styles.membersLabel}>Members ({item.membersInExpense?.length || 0})</Text>
+          <View style={styles.membersList}>
+            {item.membersInExpense?.map((member, index) => (
+              <View key={member._id || index} style={styles.memberItem}>
+                <View style={styles.memberInfo}>
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberAvatarText}>
+                      {member.memberId?.fullName ? member.memberId.fullName.charAt(0).toUpperCase() : 
+                       member.memberId?.email ? member.memberId.email.charAt(0).toUpperCase() : '?'}
+                    </Text>
+                  </View>
+                  <View style={styles.memberDetails}>
+                    <Text style={styles.memberName}>
+                      {member.memberId?.fullName || member.memberId?.email?.split('@')[0] || 'User'}
+                    </Text>
+                    <Text style={styles.memberAmount}>
+                      ₹{member.amountNeedToPay?.toFixed(2) || '0.00'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={[
+                  styles.paymentStatus,
+                  { backgroundColor: member.paid ? colors.success : colors.error }
+                ]}>
+                  <Text style={styles.paymentStatusText}>
+                    {member.paid ? 'Paid' : 'Unpaid'}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -202,6 +235,66 @@ const styles = StyleSheet.create({
   paidByEmail: {
     fontSize: 13,
     color: colors.Zypsii_color,
+    fontWeight: '500',
+  },
+  membersContainer: {
+    marginTop: 8,
+  },
+  membersLabel: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+    marginBottom: 8,
+  },
+  membersList: {
+    gap: 8,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.grayBackground,
+    padding: 8,
+    borderRadius: 8,
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.Zypsii_color,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  memberAvatarText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  memberDetails: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 14,
+    color: colors.fontMainColor,
+    marginBottom: 2,
+  },
+  memberAmount: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
+  },
+  paymentStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  paymentStatusText: {
+    color: colors.white,
+    fontSize: 12,
     fontWeight: '500',
   },
   amountEditContainer: {

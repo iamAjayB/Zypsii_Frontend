@@ -93,8 +93,8 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       }
     });
 
-    // Listen for like-count updates
-    socketRef.current.on('like-count', (data) => {
+    // Listen for like-count-status
+    socketRef.current.on('like-count-status', (data) => {
       if (data.moduleId === item._id) {
         console.log(`Post ${item._id} - Like count updated:`, data.likeCount);
         setLikeCount(data.likeCount);
@@ -105,11 +105,15 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     socketRef.current.on('like-status', (data) => {
       if (data.moduleId === item._id) {
         console.log(`Post ${item._id} - Like status response:`, data);
-        // Update like state based on the message
-        if (data.message.includes('liked')) {
-          setLike(true);
-        } else if (data.message.includes('unliked')) {
-          setLike(false);
+        if (data.liked !== undefined) {
+          setLike(data.liked);
+        } else if (data.message) {
+          // Handle like/unlike action response
+          if (data.message.includes('liked')) {
+            setLike(true);
+          } else if (data.message.includes('unliked')) {
+            setLike(false);
+          }
         }
         setIsLiking(false);
         // Request updated like count
@@ -124,14 +128,20 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       setIsLiking(false);
     });
 
-    // Listen for unlike-status
-    socketRef.current.on('unlike-status', (data) => {
-      if (data.moduleId === item._id) {
-        console.log(`Post ${item._id} - Unlike status response:`, data);
-        setLike(false);
-        setIsLiking(false);
-        requestLikeCount();
-      }
+    // Listen for like-status-error
+    socketRef.current.on('like-status-error', (error) => {
+      console.error(`Post ${item._id} - Like status error:`, error);
+      Alert.alert('Error', 'Failed to check like status');
+      setIsLiking(false);
+    });
+
+    // Listen for like-error
+    socketRef.current.on('like-error', (error) => {
+      console.error(`Post ${item._id} - Like error:`, error);
+      Alert.alert('Error', 'Failed to like post');
+      setIsLiking(false);
+      // Revert like state on error
+      setLike(!like);
     });
 
     // Listen for unlike-error
@@ -186,14 +196,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     try {
       setIsLiking(true);
-      const token = await AsyncStorage.getItem('accessToken');
       
-      if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
-        setIsLiking(false);
-        return;
-      }
-
       if (like) {
         // Unlike
         console.log(`Post ${item._id} - Emitting unlike event`);
@@ -213,10 +216,6 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
           moduleCreatedBy: item.createdBy
         });
       }
-
-      // Optimistically update UI
-      setLike(!like);
-      setLikeCount(prevCount => like ? prevCount - 1 : prevCount + 1);
     } catch (error) {
       console.error('Like/Unlike Error:', error);
       Alert.alert('Error', 'Network error. Please check your connection and try again.');

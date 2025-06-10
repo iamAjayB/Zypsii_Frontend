@@ -15,10 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url';
+import { addParticipant, fetchSplitMembers } from '../../redux/slices/splitSlice';
+import { useDispatch } from 'react-redux';
 
-const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParticipants }) => {
+const AddParticipantModal = ({ visible, onClose, splitId, existingParticipants }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
 
   const searchUsers = async (query) => {
@@ -40,17 +43,19 @@ const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParti
 
       const data = await response.json();
 
-      if (data.success && data.data) {
-        const formattedResults = data.data.map(user => ({
-          _id: user._id,
-          name: user.fullName,
-          email: user.email,
-          profileImage: user.profileImage || 'https://via.placeholder.com/50',
-          userName: user.userName
-        }));
+      if (data.success && Array.isArray(data.data)) {
+        const formattedResults = data.data
+          .filter(user => user && user._id) // Filter out any invalid user objects
+          .map(user => ({
+            _id: user._id,
+            name: user.fullName || 'Unknown User',
+            email: user.email || '',
+            profileImage: user.profileImage || 'https://via.placeholder.com/50',
+            userName: user.userName || ''
+          }));
 
         const filteredResults = formattedResults.filter(user => 
-          !existingParticipants.some(p => p.user._id === user._id)
+          !existingParticipants?.some(p => p.user?._id === user._id)
         );
         
         setSearchResults(filteredResults);
@@ -77,7 +82,21 @@ const AddParticipantModal = ({ visible, onClose, onAddParticipant, existingParti
   const renderUserItem = ({ item }) => (
     <TouchableOpacity
       style={styles.userItemContainer}
-      onPress={() => onAddParticipant(item)}
+      onPress={async () => {
+        try {
+          await dispatch(addParticipant({ splitId, memberIds: [item._id] })).unwrap();
+          await dispatch(fetchSplitMembers(splitId));
+          onClose();
+          Alert.alert(
+            'Success',
+            `${item.name} has been added as a participant`,
+            [{ text: 'OK', onPress: onClose }]
+          );
+        } catch (error) {
+          console.error('Error adding participant:', error);
+          Alert.alert('Error', error.message || 'Failed to add participant');
+        }
+      }}
     >
       <View style={styles.userInfoWrapper}>
         <View style={styles.userAvatarContainer}>
