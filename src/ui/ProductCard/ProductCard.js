@@ -170,7 +170,7 @@ function ProductCard(props) {
         />
 
         {/* Like Button */}
-        <View style={styles.likeContainer}>
+        {/* <View style={styles.likeContainer}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleLikeToggle} // Trigger like/unlike functionality
@@ -182,7 +182,7 @@ function ProductCard(props) {
               color={colors.greenColor}
             />
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
 
       {/* Product Information */}
