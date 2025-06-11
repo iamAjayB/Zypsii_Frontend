@@ -23,6 +23,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState([]);
   const [isCommenting, setIsCommenting] = useState(false);
+  const [showFullImage, setShowFullImage] = useState(false);
   const socketRef = useRef(null);
   const isRoomJoined = useRef(false);
   const isCommentRoomJoined = useRef(false);
@@ -565,13 +566,16 @@ const handleListComments = () => {
 
       {/* Only render the image if the URL is a non-empty string */}
       {hasImages && firstImageUrl && firstImageUrl !== '' && (
-        <View style={styles.postImageContainer}>
+        <TouchableOpacity 
+          style={styles.postImageContainer}
+          onPress={() => setShowFullImage(true)}
+        >
           <Image
             source={{ uri: firstImageUrl }}
             style={styles.postImage}
             resizeMode="cover"
           />
-        </View>
+        </TouchableOpacity>
       )}
 
       <View style={styles.actionsContainer}>
@@ -693,6 +697,28 @@ const handleListComments = () => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={showFullImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFullImage(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={() => setShowFullImage(false)}
+          >
+            <Ionic name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+          <Image
+            source={{ uri: firstImageUrl }}
+            style={styles.fullScreenImage}
+            resizeMode="contain"
+          />
+        </View>
       </Modal>
     </View>
   );
@@ -922,6 +948,23 @@ const styles = StyleSheet.create({
   commentDate: {
     fontSize: 12,
     color: '#666',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 1,
+    padding: 10,
   },
 });
 
