@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   },
   interactionButton: {
     alignItems: 'center',
-    marginBottom: verticalScale(1),
+    marginBottom: verticalScale(20),
   },
   interactionCount: {
     marginTop: verticalScale(4),
@@ -525,6 +525,7 @@ const styles = StyleSheet.create({
     padding: scale(10),
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 8,
+    zIndex: 2,
   },
   userInfoContainer: {
     flexDirection: 'row',
@@ -538,6 +539,7 @@ const styles = StyleSheet.create({
   },
   followButtonContainer: {
     marginTop: 5,
+    minWidth: 80,
   },
   videoTitle: {
     color: colors.white,

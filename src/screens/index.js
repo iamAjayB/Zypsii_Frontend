@@ -3,6 +3,7 @@ import ExpenseCalculator from './ExpenseCalculator/ExpenseCalculator'
 import ProfileDashboard from './ProfileDashboard/ProfileDashboard'
 import Review from './Review/Review'
 import FAQ from './FAQ/FAQ'
+import ShortsScreen from './Shorts/ShortsScreen'
 
 import DeleteButton from './DeleteScreen/DeleteScreen'
 import DummyScreen from './Zipsiprofile/DummyScreen'
@@ -72,5 +73,6 @@ export {
   CreateSplit,
   SplitDetail,
   ShortsUpload,
-  PostUpload
+  PostUpload,
+  ShortsScreen
 }

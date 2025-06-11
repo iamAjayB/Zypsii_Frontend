@@ -55,7 +55,7 @@ function Drawer() {
       <NavigationStack.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
       <NavigationStack.Screen name='ShortsUpload' component={Screen.ShortsUpload}/>
       <NavigationStack.Screen name='PostUpload' component={Screen.PostUpload}/>
-      
+      <NavigationStack.Screen name='Shorts' component={Screen.ShortsScreen}/>
       
     </NavigationStack.Navigator>
   );

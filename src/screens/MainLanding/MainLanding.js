@@ -852,14 +852,14 @@ function MainLanding(props) {
     }
 
     return (
-      <View style={[styles.shortsListContainer, { height: 500 }]}>
+      <View style={[styles.shortsListContainer, { height: height - 100 }]}>
         <SwiperFlatList
           data={all_shorts}
           keyExtractor={(item) => item.id}
           vertical
           pagingEnabled
           showsVerticalScrollIndicator={false}
-          snapToInterval={500}
+          snapToInterval={height - 100}
           decelerationRate="fast"
           onChangeIndex={({ index }) => {
             // Stop all videos when swiping
@@ -879,13 +879,13 @@ function MainLanding(props) {
             const isValidVideo = isValidVideoUrl(item.videoUrl);
             
             return (
-              <View style={[styles.shortItemContainer, { height: 500 }]}>
+              <View style={[styles.shortItemContainer, { height: height - 100 }]}>
                 <View style={styles.videoContainer}>
                   {isValidVideo && videoSource ? (
                     <View style={styles.videoWrapper}>
                       <WebView
                         source={videoSource}
-                        style={[styles.videoPlayer, { height: 500 }]}
+                        style={[styles.videoPlayer, { height: height - 100 }]}
                         allowsFullscreenVideo={true}
                         javaScriptEnabled={true}
                         domStorageEnabled={true}
@@ -893,17 +893,142 @@ function MainLanding(props) {
                         mediaPlaybackRequiresUserAction={false}
                         allowsInlineMediaPlayback={true}
                         onLoad={() => {
-                          // Auto-play the video when loaded
                           const autoPlayScript = `
-                            var video = document.getElementsByTagName('video')[0];
-                            if (video) {
-                              video.play();
-                              video.controls = false;
-                              video.style.width = '100%';
-                              video.style.height = '100%';
-                              video.style.objectFit = 'cover';
-                              video.loop = true;
+                            // Remove any existing video elements
+                            var existingVideos = document.getElementsByTagName('video');
+                            for(var i = 0; i < existingVideos.length; i++) {
+                              existingVideos[i].remove();
                             }
+
+                            // Create new video element
+                            var video = document.createElement('video');
+                            video.src = '${videoSource.uri}';
+                            video.style.width = '100%';
+                            video.style.height = '100%';
+                            video.style.objectFit = 'cover';
+                            video.style.position = 'fixed';
+                            video.style.top = '0';
+                            video.style.left = '0';
+                            video.style.right = '0';
+                            video.style.bottom = '0';
+                            video.style.backgroundColor = 'black';
+                            video.loop = true;
+                            video.muted = false;
+                            video.playsInline = true;
+                            video.autoplay = true;
+                            video.setAttribute('loop', true);
+                            video.setAttribute('playsinline', true);
+                            video.setAttribute('webkit-playsinline', true);
+                            video.setAttribute('x5-playsinline', true);
+                            video.setAttribute('x5-video-player-type', 'h5');
+                            video.setAttribute('x5-video-player-fullscreen', true);
+                            video.setAttribute('x5-video-orientation', 'portraint');
+                            video.removeAttribute('controls');
+                            video.style.pointerEvents = 'none';
+
+                            // Function to handle video looping
+                            function handleVideoLoop() {
+                              if (video.currentTime >= video.duration - 0.1) {
+                                video.currentTime = 0;
+                                video.play().catch(function(error) {
+                                  console.log("Loop playback failed:", error);
+                                });
+                              }
+                            }
+
+                            // Add event listeners for better playback control
+                            video.addEventListener('timeupdate', handleVideoLoop);
+                            
+                            video.addEventListener('ended', function() {
+                              video.currentTime = 0;
+                              video.play().catch(function(error) {
+                                console.log("Playback failed:", error);
+                              });
+                            });
+
+                            video.addEventListener('pause', function() {
+                              video.play().catch(function(error) {
+                                console.log("Playback failed:", error);
+                              });
+                            });
+
+                            video.addEventListener('error', function(e) {
+                              console.log("Video error:", e);
+                              video.load();
+                              video.play().catch(function(error) {
+                                console.log("Playback failed:", error);
+                              });
+                            });
+
+                            // Clear body and append video
+                            document.body.innerHTML = '';
+                            document.body.style.margin = '0';
+                            document.body.style.padding = '0';
+                            document.body.style.overflow = 'hidden';
+                            document.body.style.backgroundColor = 'black';
+                            document.body.appendChild(video);
+
+                            // Add styles to hide all controls and play button
+                            var style = document.createElement('style');
+                            style.type = 'text/css';
+                            style.innerHTML = \`
+                              video::-webkit-media-controls { display: none !important; }
+                              video::-webkit-media-controls-enclosure { display: none !important; }
+                              video::-webkit-media-controls-panel { display: none !important; }
+                              video::-webkit-media-controls-play-button { display: none !important; }
+                              video::-webkit-media-controls-start-playback-button { display: none !important; }
+                              video::-webkit-media-controls-overlay-play-button { display: none !important; }
+                              video::-webkit-media-controls-timeline { display: none !important; }
+                              video::-webkit-media-controls-current-time-display { display: none !important; }
+                              video::-webkit-media-controls-time-remaining-display { display: none !important; }
+                              video::-webkit-media-controls-time-control { display: none !important; }
+                              video::-webkit-media-controls-mute-button { display: none !important; }
+                              video::-webkit-media-controls-toggle-closed-captions-button { display: none !important; }
+                              video::-webkit-media-controls-volume-slider { display: none !important; }
+                              video::-webkit-media-controls-fullscreen-button { display: none !important; }
+                              video::-webkit-media-controls-rewind-button { display: none !important; }
+                              video::-webkit-media-controls-return-to-realtime-button { display: none !important; }
+                              video::-webkit-media-controls-toggle-closed-captions-button { display: none !important; }
+                              .play-button, .play-icon, .video-controls { display: none !important; }
+                              video::--webkit-media-controls-panel { display: none !important; }
+                              video::--webkit-media-controls-play-button { display: none !important; }
+                              video::--webkit-media-controls-start-playback-button { display: none !important; }
+                              video::--webkit-media-controls-overlay-play-button { display: none !important; }
+                            \`;
+                            document.head.appendChild(style);
+
+                            // Function to ensure video plays
+                            function ensurePlay() {
+                              if (video.paused) {
+                                video.play().catch(function(error) {
+                                  console.log("Playback failed:", error);
+                                  setTimeout(ensurePlay, 1000);
+                                });
+                              }
+                            }
+
+                            // Start playing immediately
+                            video.play().catch(function(error) {
+                              console.log("Initial playback failed:", error);
+                              setTimeout(ensurePlay, 1000);
+                            });
+
+                            // Set up periodic check to ensure video is playing
+                            setInterval(ensurePlay, 2000);
+
+                            // Force play on user interaction
+                            document.addEventListener('click', function() {
+                              video.play().catch(function(error) {
+                                console.log("Click playback failed:", error);
+                              });
+                            });
+
+                            // Force play on touch
+                            document.addEventListener('touchstart', function() {
+                              video.play().catch(function(error) {
+                                console.log("Touch playback failed:", error);
+                              });
+                            });
                           `;
                           this.webview.injectJavaScript(autoPlayScript);
                         }}
@@ -964,17 +1089,17 @@ function MainLanding(props) {
                 </View>
 
                 {/* Video info overlay */}
-                <View style={styles.videoInfoOverlay}>
-                  <View style={styles.userInfoContainer}>
-                    <View style={styles.userInfo}>
-                      <TextDefault textColor={colors.white} H5 bold numberOfLines={2} style={styles.videoTitle}>
+                <View style={[styles.videoInfoOverlay, { bottom: 20, left: 15, right: 15 }]}>
+                  <View style={[styles.userInfoContainer, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }]}>
+                    <View style={[styles.userInfo, { flex: 1, marginRight: 10 }]}>
+                      <TextDefault textColor={colors.white} H5 bold numberOfLines={2} style={[styles.videoTitle, { marginBottom: 8 }]}>
                         {item.title}
                       </TextDefault>
-                      <TextDefault textColor={colors.white} H6 numberOfLines={2} style={styles.videoDescription}>
+                      <TextDefault textColor={colors.white} H6 numberOfLines={2} style={[styles.videoDescription, { marginBottom: 12 }]}>
                         {item.description}
                       </TextDefault>
                     </View>
-                    <View style={styles.followButtonContainer}>
+                    <View style={[styles.followButtonContainer, { marginLeft: 10 }]}>
                       <FollowButton userId={item.createdBy} />
                     </View>
                   </View>
@@ -1391,7 +1516,13 @@ function MainLanding(props) {
               styles.button,
               selectedButton === button && styles.selectedButton
             ]}
-            onPress={() => setSelectedButton(button)}
+            onPress={() => {
+              if (button === 'Shorts') {
+                navigation.navigate('Shorts');
+              } else {
+                setSelectedButton(button);
+              }
+            }}
           >
             <TextDefault
               style={[
