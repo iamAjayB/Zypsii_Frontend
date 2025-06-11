@@ -24,7 +24,8 @@ import {
   updateExpense,
   fetchSplitMembers,
   fetchSplitBalance,
-  addParticipant
+  addParticipant,
+  fetchExpenses
 } from '../../redux/slices/splitSlice';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -57,7 +58,10 @@ function SplitDetail() {
     membersError,
     balance,
     balanceLoading,
-    balanceError
+    balanceError,
+    expenses,
+    expensesLoading,
+    expensesError
   } = useSelector((state) => state.split);
 
   useEffect(() => {
@@ -65,7 +69,8 @@ function SplitDetail() {
       try {
         await Promise.all([
           dispatch(fetchSplitMembers(split._id)),
-          dispatch(fetchSplitBalance(split._id))
+          dispatch(fetchSplitBalance(split._id)),
+          dispatch(fetchExpenses(split._id))
         ]);
       } catch (error) {
         console.error('Error loading split data:', error);
@@ -80,6 +85,7 @@ function SplitDetail() {
     try {
       await dispatch(addExpense({ splitId: split._id, expenseData })).unwrap();
       setShowAddExpenseModal(false);
+      await dispatch(fetchExpenses(split._id));
       Alert.alert('Success', 'Expense added successfully');
     } catch (error) {
       console.error('Error adding expense:', error);
@@ -224,8 +230,23 @@ function SplitDetail() {
           </TouchableOpacity>
         </View>
         
-        {split.expense && split.expense.length > 0 ? (
-          split.expense.map((expense, index) => (
+        {expensesLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.btncolor} />
+            <Text style={styles.loadingText}>Loading expenses...</Text>
+          </View>
+        ) : expensesError ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{expensesError}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => dispatch(fetchExpenses(split._id))}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : expenses && expenses.length > 0 ? (
+          expenses.map((expense, index) => (
             <View key={expense._id} style={styles.expenseCard}>
               <View style={styles.expenseHeader}>
                 <View style={styles.expenseIconContainer}>
