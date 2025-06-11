@@ -64,11 +64,7 @@ const FollowButton = ({ userId }) => {
         <ActivityIndicator size="small" color={following ? '#fff' : colors.primary} />
       ) : (
         <>
-          <Ionicons 
-            name={following ? 'remove' : 'add'} 
-            size={16} 
-            color={following ? '#fff' : colors.primary} 
-          />
+          
           <Text style={[
             styles.buttonText,
             following && styles.followingText,
