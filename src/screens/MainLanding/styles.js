@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     fontSize: scale(16)
   },
   itemCardContainer: {
-    width: scale(180),
+    width: scale(160),
     height: scale(220),
     borderRadius: scale(6),
     borderColor: colors.whiteColor,
