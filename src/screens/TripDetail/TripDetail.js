@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 import { BackHeader, BottomTab } from '../../components';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // For location icons
-import { alignment, colors } from '../../utils'; // Ensure you define appropriate colors in your utils.
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { alignment, colors } from '../../utils';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,7 +16,24 @@ const TripDetail = ({ route, navigation }) => {
   const [placeDescriptions, setPlaceDescriptions] = useState([]);
   const [isBackButtonLoading, setIsBackButtonLoading] = useState(false);
   
-  // Add new function to get fixed from/to locations
+  // Enhanced color scheme
+  const enhancedColors = {
+    primary: colors.btncolor || '#4A90E2',
+    primaryDark: '#357ABD',
+    primaryLight: '#E3F2FD',
+    secondary: '#FF6B6B',
+    accent: '#4ECDC4',
+    background: '#F8FAFC',
+    surface: '#FFFFFF',
+    text: '#2C3E50',
+    textSecondary: '#7F8C8D',
+    border: '#E1E8ED',
+    shadow: 'rgba(0, 0, 0, 0.1)',
+    success: '#27AE60',
+    warning: '#F39C12',
+    error: '#E74C3C',
+  };
+  
   const getFixedLocations = () => {
     const allLocations = tripData.locationDetails;
     return {
@@ -24,41 +41,12 @@ const TripDetail = ({ route, navigation }) => {
       to: allLocations[allLocations.length - 1]?.name || 'End Point'
     };
   };
-  console.log(tripData)
+
+  console.log(tripData);
+
   useEffect(() => {
     getPlaceDescriptions();
   }, []);
-
-  // const fetchScheduleData = async () => {
-  //   try {
-  //     const token = await AsyncStorage.getItem('accessToken');
-  //     const response = await axios.get(
-  //       `${base_url}/schedule/listing/scheduleDescription/${tripData.id}?offset=0&limit=10`,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`
-  //         }
-  //       }
-  //     );
-      
-  //     if (response.data && response.data.data) {
-  //       // Transform the data to organize by days
-  //       const transformedData = response.data.data.map((item, index) => ({
-  //         day: index + 1,
-  //         description: item.Description,
-  //         date: item.date,
-  //         locations: item.planDescription || []
-  //       }));
-  //       setScheduleData(transformedData);
-  //     }
-  //     setLoading(false);
-  //   } catch (error) {
-  //     console.error('Error fetching schedule data:', error);
-  //     setLoading(false);
-  //     // Set empty array as fallback
-  //     setScheduleData([]);
-  //   }
-  // };
 
   const getPlaceDescriptions = async () => {
     try {
@@ -83,7 +71,6 @@ const TripDetail = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error fetching place descriptions:', error);
-      // Set empty array as fallback
       setPlaceDescriptions([]);
     }
   };
@@ -103,13 +90,10 @@ const TripDetail = ({ route, navigation }) => {
     }
   };
 
-  // Function to get locations for current day
   const getLocationsForDay = (day) => {
-    // First check if we have schedule data for this day
     if (scheduleData && scheduleData.length > 0) {
       const dayData = scheduleData.find(item => item.day === day);
       if (dayData && dayData.locations && dayData.locations.length > 0) {
-        // Enhance locations with place descriptions
         return dayData.locations.map(location => {
           const placeInfo = placeDescriptions.find(place => place.id === location.id);
           return {
@@ -120,13 +104,11 @@ const TripDetail = ({ route, navigation }) => {
       }
     }
     
-    // Fallback to original logic if no schedule data for this day
     const locationsPerDay = Math.ceil(tripData.locationDetails.length / parseInt(tripData.numberOfDays));
     const startIndex = (day - 1) * locationsPerDay;
     const endIndex = Math.min(startIndex + locationsPerDay, tripData.locationDetails.length);
     const locations = tripData.locationDetails.slice(startIndex, endIndex);
     
-    // Enhance locations with place descriptions
     return locations.map(location => {
       const placeInfo = placeDescriptions.find(place => place.id === location.id);
       return {
@@ -136,9 +118,7 @@ const TripDetail = ({ route, navigation }) => {
     });
   };
 
-  // Function to get day title
   const getDayTitle = (day) => {
-    // First check if we have schedule data for this day
     if (scheduleData && scheduleData.length > 0) {
       const dayData = scheduleData.find(item => item.day === day);
       if (dayData && dayData.description) {
@@ -146,7 +126,6 @@ const TripDetail = ({ route, navigation }) => {
       }
     }
     
-    // Fallback to original logic
     const dayLocations = getLocationsForDay(day);
     if (dayLocations.length > 0) {
       return dayLocations[0].name || `Day ${day}`;
@@ -154,25 +133,338 @@ const TripDetail = ({ route, navigation }) => {
     return `Day ${day}`;
   };
 
-  // Get all days that have locations
   const daysWithLocations = Array.from(
     { length: parseInt(tripData.numberOfDays) }, 
     (_, i) => i + 1
   ).filter(day => getLocationsForDay(day).length > 0);
 
   const renderDayPlan = ({ item, index, arrayLength }) => (
-    <View style={styles.dayPlanItem}>
+    <View style={[styles.dayPlanItem, { borderColor: enhancedColors.border }]}>
       <View style={styles.iconAndLineContainer}>
-        <Icon name="map-marker" size={20} color={colors.black} />
-        {index < arrayLength - 1 && <View style={styles.dottedLine} />}
+        <View style={[styles.locationIconContainer, { backgroundColor: enhancedColors.primary }]}>
+          <Icon name="map-marker" size={16} color={enhancedColors.surface} />
+        </View>
+        {index < arrayLength - 1 && (
+          <View style={[styles.dottedLine, { backgroundColor: enhancedColors.border }]} />
+        )}
       </View>
       <View style={styles.locationDetails}>
-        <Text style={styles.location}>{item.name}</Text>
-        <Text style={styles.locationAddress}>{item.address}</Text>
-        <Text style={styles.locationDistance}>{item.distanceInKilometer}</Text>
+        <Text style={[styles.location, { color: enhancedColors.text }]}>{item.name}</Text>
+        <Text style={[styles.locationAddress, { color: enhancedColors.textSecondary }]}>
+          {item.address}
+        </Text>
+        {item.distanceInKilometer && (
+          <View style={styles.distanceContainer}>
+            <Icon name="road-variant" size={12} color={enhancedColors.accent} />
+            <Text style={[styles.locationDistance, { color: enhancedColors.accent }]}>
+              {item.distanceInKilometer}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
+
+  const styles = StyleSheet.create({
+    container: { 
+      flex: 1, 
+      backgroundColor: enhancedColors.background 
+    },
+    topSection: { 
+      flexDirection: 'row', 
+      paddingHorizontal: 20,
+      paddingVertical: 15,
+      alignItems: 'center',
+      marginTop: 60,
+      zIndex: 3
+    },
+    maincontainer: {
+      flex: 1,
+      zIndex: 2
+    },
+    fromToSection: { 
+      flex: 1, 
+      flexDirection: 'column', 
+      alignItems: 'flex-start',
+      backgroundColor: enhancedColors.surface,
+      padding: 20,
+      borderRadius: 15,
+      marginRight: 15,
+      shadowColor: enhancedColors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    fromToHeading: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: enhancedColors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    locationInfo: { 
+      flexDirection: 'row', 
+      alignItems: 'center',
+      marginVertical: 8,
+      width: '100%'
+    },
+    locationText: { 
+      fontSize: 16, 
+      fontWeight: '700', 
+      marginLeft: 8, 
+      color: enhancedColors.text,
+      flex: 1
+    },
+    verticalLine: {
+      width: 2,
+      height: 25,
+      backgroundColor: enhancedColors.primary,
+      marginLeft: 8,
+      marginVertical: 8,
+      borderRadius: 1,
+    },
+    image: { 
+      width: 120, 
+      height: 120, 
+      borderRadius: 20,
+      borderWidth: 3,
+      borderColor: enhancedColors.surface,
+      shadowColor: enhancedColors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    backgroundCurvedContainer: {
+      backgroundColor: enhancedColors.primary,
+      height: 250,
+      width: '100%',
+      position: 'absolute',
+      top: 0,
+      zIndex: 0,
+    },
+    protractorShape: {
+      backgroundColor: enhancedColors.background,
+      height: 600,
+      width: 1200,
+      borderTopLeftRadius: 600,
+      borderTopRightRadius: 600,
+      position: 'absolute',
+      top: 120,
+      alignSelf: 'center',
+      zIndex: 1,
+      overflow: 'hidden',
+    },
+    ridersDateContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginHorizontal: 20,
+      marginVertical: 20,
+      backgroundColor: enhancedColors.surface,
+      padding: 15,
+      borderRadius: 12,
+      shadowColor: enhancedColors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      zIndex: 2,
+    },
+    riders: { 
+      fontSize: 15, 
+      color: enhancedColors.text, 
+      fontWeight: '600',
+      backgroundColor: enhancedColors.primaryLight,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    date: { 
+      fontSize: 15, 
+      color: enhancedColors.text, 
+      fontWeight: '600',
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    tripPlanSection: { 
+      paddingHorizontal: 20,
+      marginTop: 10,
+      zIndex: 2,
+    },
+    sectionTitle: { 
+      fontSize: 22, 
+      fontWeight: '700', 
+      marginBottom: 15, 
+      textAlign: 'center',
+      color: enhancedColors.text,
+    },
+    sectionTitleplan: {
+      fontSize: 16,
+      fontWeight: '600',
+      textAlign: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      backgroundColor: enhancedColors.primary,
+      borderRadius: 25,
+      color: enhancedColors.surface,
+      alignSelf: 'center',
+      marginBottom: 20,
+      shadowColor: enhancedColors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    daysTabs: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-evenly',
+      marginBottom: 20,
+      backgroundColor: enhancedColors.surface,
+      borderRadius: 15,
+      padding: 5,
+      shadowColor: enhancedColors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    dayTab: {
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+      minWidth: 80,
+      alignItems: 'center',
+    },
+    activeTab: { 
+      backgroundColor: enhancedColors.primary,
+      shadowColor: enhancedColors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    dayTabText: { 
+      fontSize: 14, 
+      color: enhancedColors.textSecondary, 
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    activeTabText: { 
+      color: enhancedColors.surface,
+      fontWeight: '700',
+    },
+    dayPlanList: { 
+      backgroundColor: enhancedColors.surface,
+      borderRadius: 15,
+      padding: 15,
+      marginBottom: 100,
+      shadowColor: enhancedColors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    dayPlanItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: enhancedColors.border,
+      marginHorizontal: 5,
+    },
+    iconAndLineContainer: {
+      alignItems: 'center',
+      marginRight: 15,
+      paddingTop: 2,
+    },
+    locationIconContainer: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: enhancedColors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    dottedLine: {
+      width: 2,
+      height: 30,
+      marginVertical: 8,
+      borderRadius: 1,
+    },
+    locationDetails: {
+      flex: 1,
+      paddingTop: 2,
+    },
+    location: {
+      fontSize: 16,
+      fontWeight: '700',
+      marginBottom: 4,
+      lineHeight: 22,
+    },
+    locationAddress: {
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 6,
+    },
+    distanceContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+    },
+    locationDistance: {
+      fontSize: 12,
+      fontWeight: '600',
+      marginLeft: 4,
+    },
+    buttonContainer: { 
+      flexDirection: 'row', 
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 15,
+      backgroundColor: enhancedColors.surface,
+      borderTopWidth: 1,
+      borderTopColor: enhancedColors.border,
+      position: 'absolute',
+      bottom: 60,
+      left: 0,
+      right: 0,
+      zIndex: 10,
+    },
+    button: { 
+      flex: 1, 
+      marginHorizontal: 5, 
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      backgroundColor: enhancedColors.primary, 
+      borderRadius: 12,
+      shadowColor: enhancedColors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    buttonText: { 
+      textAlign: 'center', 
+      color: enhancedColors.surface, 
+      fontWeight: '700',
+      fontSize: 14,
+    },
+    disabledButton: {
+      opacity: 0.5,
+      shadowOpacity: 0.1,
+      elevation: 2,
+    },
+    BottomTab: {
+      zIndex: 5,
+    }
+  });
 
   return (
     <View style={styles.container}>
@@ -184,30 +476,26 @@ const TripDetail = ({ route, navigation }) => {
           backPressed={backPressed}
           navigation={navigation}
           title="Trip Details"
-          style={{ marginTop: 20 }}
+          style={{ marginTop: 20, zIndex: 4 }}
         />
-        <Text style={{ marginTop: 10, textAlign: 'center', fontSize: 30, fontWeight: 'bold' }}></Text>
 
-
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 140 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.topSection}>
             <View style={styles.fromToSection}>
               <Text style={styles.fromToHeading}>From</Text>
-              <TouchableOpacity 
-                style={styles.locationInfo}
-              >
-                <Icon name="map-marker-outline" size={20} color={colors.darkGray} />
+              <TouchableOpacity style={styles.locationInfo}>
+                <Icon name="map-marker-outline" size={20} color={enhancedColors.primary} />
                 <Text style={styles.locationText}>
                   {getFixedLocations().from}
                 </Text>
               </TouchableOpacity>
               <View style={styles.verticalLine} />
               <Text style={styles.fromToHeading}>To</Text>
-              <TouchableOpacity 
-                style={styles.locationInfo}
-              >
-                <Icon name="map-marker-outline" size={20} color={colors.darkGray} />
+              <TouchableOpacity style={styles.locationInfo}>
+                <Icon name="map-marker-outline" size={20} color={enhancedColors.primary} />
                 <Text style={styles.locationText}>
                   {getFixedLocations().to}
                 </Text>
@@ -219,7 +507,8 @@ const TripDetail = ({ route, navigation }) => {
 
           <View style={styles.ridersDateContainer}>
             <Text style={styles.date}>
-              <Icon name="calendar-outline" size={20} color={colors.darkGray} /> 
+              <Icon name="calendar-outline" size={18} color={enhancedColors.primary} /> 
+              {' '}
               {scheduleData[activeDay - 1]?.date 
                 ? new Date(scheduleData[activeDay - 1].date).toLocaleDateString() 
                 : tripData.date}
@@ -230,7 +519,7 @@ const TripDetail = ({ route, navigation }) => {
           </View>
 
           <View style={styles.tripPlanSection}>
-            <Text style={styles.sectionTitle}>Trip Detail Plan</Text>
+            {/* <Text style={styles.sectionTitle}>Trip Detail Plan</Text>
             <TouchableOpacity 
               onPress={() =>
                 navigation.navigate('Map', { 
@@ -238,8 +527,8 @@ const TripDetail = ({ route, navigation }) => {
                 })
               }
             >
-              <Text style={styles.sectionTitleplan}>Locations</Text>
-            </TouchableOpacity>
+              <Text style={styles.sectionTitleplan}>📍 View All Locations</Text>
+            </TouchableOpacity> */}
 
             <View style={styles.daysTabs}>
               {daysWithLocations.map((day) => (
@@ -249,7 +538,7 @@ const TripDetail = ({ route, navigation }) => {
                   onPress={() => setActiveDay(day)}
                 >
                   <Text style={[styles.dayTabText, activeDay === day && styles.activeTabText]}>
-                    {getDayTitle(day)}
+                    Day {day}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -266,6 +555,7 @@ const TripDetail = ({ route, navigation }) => {
                   })
                 }
                 keyExtractor={(item) => item._id}
+                showsVerticalScrollIndicator={false}
               />
             </View>
           </View>
@@ -273,24 +563,24 @@ const TripDetail = ({ route, navigation }) => {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           style={styles.button}
           onPress={() => navigation.navigate('MakeSchedule')}
         >
-          <Text style={styles.buttonText}>Change Plan</Text>
-        </TouchableOpacity>
+          <Text style={styles.buttonText}>✏️ Change Plan</Text>
+        </TouchableOpacity> */}
         
         <TouchableOpacity 
-          style={[styles.button, !daysWithLocations.includes(activeDay + 1) && styles.disabledButton]}
+          style={[styles.button, !daysWithLocations.find(day => day > activeDay) && styles.disabledButton]}
           onPress={() => {
             const nextDay = daysWithLocations.find(day => day > activeDay);
             if (nextDay) {
               setActiveDay(nextDay);
             }
           }}
-          disabled={!daysWithLocations.includes(activeDay + 1)}
+          disabled={!daysWithLocations.find(day => day > activeDay)}
         >
-          <Text style={styles.buttonText}>Next Location</Text>
+          <Text style={styles.buttonText}>➡️ Next Day</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -306,163 +596,12 @@ const TripDetail = ({ route, navigation }) => {
             })
           }
         >
-          <Text style={styles.buttonText}>Map</Text>
+          <Text style={styles.buttonText}>🗺️ Map</Text>
         </TouchableOpacity>
       </View>
       <BottomTab screen="WhereToGo" style={styles.BottomTab} />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.white, zIndex:2 },
-  topSection: { flexDirection: 'row', ...alignment.Pmedium, alignItems: 'center', top: 100, zIndex: 2 },
-  maincontainer:{
-    flex: 1,
-    zIndex: 2
-  },
-  fromToSection: { 
-    flex: 1, 
-    flexDirection: 'column', 
-    alignItems: 'flex-start', 
-    marginTop: -50,
-    marginLeft: 20
-  },
-  fromToHeading: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.darkGray,
-  },
-  locationInfo: { 
-    flexDirection: 'row', 
-    alignItems: 'center',
-    marginVertical: 10,
-    width: '100%'
-  },
-  locationText: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    marginLeft: 10, 
-    color: colors.darkGray,
-    flex: 1
-  },
-  verticalLine: {
-    width: 2,
-    height: 30,
-    backgroundColor: colors.darkGray,
-    marginLeft: 10,
-    marginVertical: 5
-  },
-  image: { width: 110, height: 110, borderRadius: 30, marginTop: -60 },
-  title: { fontSize: 30, fontWeight: 'bold', ...alignment.MBsmall, ...alignment.MLmedium },
-
-  tripPlanSection: { paddingHorizontal: 20, top: 140 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  sectionTitleplan: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    ...alignment.MBmedium,
-    textAlign: 'center',
-    ...alignment.Psmall,
-    backgroundColor: colors.btncolor,
-    borderRadius: 10,
-    color: colors.white,
-    width: 130,
-    alignSelf: 'center',
-  },
-  backgroundCurvedContainer: {
-    backgroundColor: colors.btncolor,
-    height: 200,
-    width: '100%',
-    position: 'absolute',
-    top: 0,
-    zIndex: 0,
-  },
-  protractorShape: {
-    backgroundColor: colors.white,
-    height: 500,
-    width: 1000,
-    borderTopLeftRadius: 500,
-    borderTopRightRadius: 500,
-    position: 'absolute',
-    top: 80,
-    alignSelf: 'center',
-    zIndex: 1,
-    overflow: 'hidden',
-  },
-  ridersDateContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: -5,
-    marginHorizontal: 15,
-    ...alignment.MBlarge,
-    top: 150
-  },
-  riders: { fontSize: 16, color: colors.darkGray, fontWeight: 'bold' },
-  date: { fontSize: 16, color: colors.darkGray, fontWeight: 'bold' },
-
-  daysTabs: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-    ...alignment.MBsmall,
-    borderBottomWidth: 2,
-    borderColor: colors.graycolor,
-    backgroundColor: colors.grayLinesColor,
-  },
-  dayTab: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderBottomWidth: 2,
-    borderColor: 'transparent',
-  },
-  activeTab: { borderColor: colors.black },
-  dayTabText: { fontSize: 16, color: colors.fontMainColor, fontWeight: 'bold' },
-  activeTabText: { color: colors.black },
-
-  dayPlanList: { paddingVertical: 2 , zIndex: 2},
-  dayPlanItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 3,
-    ...alignment.MLmedium,
-  },
-  iconAndLineContainer: {
-    alignItems: 'center',
-    ...alignment.MRsmall,
-  },
-  dottedLine: {
-    width: 1,
-    height: 20,
-    backgroundColor: colors.black,
-    marginVertical: 4,
-  },
-  locationDetails: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  location: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.darkGray,
-  },
-  locationAddress: {
-    fontSize: 14,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  locationDistance: {
-    fontSize: 12,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', ...alignment.Psmall },
-  button: { flex: 1, marginHorizontal: 5, ...alignment.Psmall, backgroundColor: colors.btncolor, borderRadius: 5 },
-  buttonText: { textAlign: 'center', color: colors.white, fontWeight: 'bold' },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
 
 export default TripDetail;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, Image, Share } from "react-native";
+import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, Image, Share, Modal } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { BackHeader, BottomTab } from "../../components";
 import { alignment, colors } from "../../utils";
@@ -11,7 +11,9 @@ import DiscoverByNearest from '../../components/DiscoverByNearest/DiscoverByNear
 import { base_url } from '../../utils/base_url';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-//const baseUrl = 'https://admin.zypsii.com';
+
+const { width, height } = Dimensions.get('window');
+
 const Map = ({ route }) => {
   const navigation = useNavigation();
   
@@ -39,7 +41,9 @@ const Map = ({ route }) => {
   const [scheduleData, setScheduleData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlaces, setSelectedPlaces] = useState([]);
+  const [isFullMapVisible, setIsFullMapVisible] = useState(false);
   const mapRef = useRef(null);
+  const fullMapRef = useRef(null);
   const { tripId } = route.params || {};
 
   useEffect(() => {
@@ -123,14 +127,6 @@ const Map = ({ route }) => {
       // Add new place to selection
       return [...prev, place];
     });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedPlaces.length === getAllLocations().length) {
-      setSelectedPlaces([]); // Deselect all
-    } else {
-      setSelectedPlaces(getAllLocations()); // Select all
-    }
   };
 
   // Calculate initial region based on selected locations
@@ -259,7 +255,9 @@ const Map = ({ route }) => {
     if (!discoverbynearest || discoverbynearest.length === 0) {
       return (
         <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="map-search-outline" size={48} color={colors.btncolor} />
           <Text style={styles.emptyText}>No places to discover</Text>
+          <Text style={styles.emptySubText}>Check back later for recommendations</Text>
         </View>
       );
     }
@@ -277,7 +275,7 @@ const Map = ({ route }) => {
             return null;
           }
           return (
-            <View style={styles}>
+            <View style={styles.discoverItemWrapper}>
               <DiscoverByNearest
                 id={item.id || item._id}
                 image={item.image}
@@ -293,7 +291,9 @@ const Map = ({ route }) => {
         contentContainerStyle={styles.discoverListContent}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="map-search-outline" size={48} color={colors.btncolor} />
             <Text style={styles.emptyText}>No places to discover</Text>
+            <Text style={styles.emptySubText}>Check back later for recommendations</Text>
           </View>
         )}
         onEndReachedThreshold={0.5}
@@ -326,6 +326,34 @@ const Map = ({ route }) => {
     }
   };
 
+  const handleFullMapBack = () => {
+    setIsFullMapVisible(false);
+  };
+
+  const handleFullMapZoomIn = () => {
+    if (fullMapRef.current) {
+      fullMapRef.current.getCamera().then((camera) => {
+        const newZoom = camera.zoom + 1;
+        fullMapRef.current.animateCamera({
+          ...camera,
+          zoom: newZoom
+        }, { duration: 300 });
+      });
+    }
+  };
+
+  const handleFullMapZoomOut = () => {
+    if (fullMapRef.current) {
+      fullMapRef.current.getCamera().then((camera) => {
+        const newZoom = Math.max(1, camera.zoom - 1);
+        fullMapRef.current.animateCamera({
+          ...camera,
+          zoom: newZoom
+        }, { duration: 300 });
+      });
+    }
+  };
+
   const handleExportLocations = async () => {
     if (selectedPlaces.length === 0) {
       alert('Please select at least one location to export');
@@ -345,6 +373,43 @@ const Map = ({ route }) => {
       console.error('Error sharing locations:', error);
       alert('Failed to export locations');
     }
+  };
+
+  const renderMapMarkers = () => {
+    return selectedPlaces.map((location, index) => (
+      <Marker
+        key={location._id}
+        coordinate={{
+          latitude: location.location.lat,
+          longitude: location.location.lng
+        }}
+        title={location.name}
+        description={location.address}
+      >
+        <View style={styles.customMarker}>
+          <View style={styles.markerInner}>
+            <Text style={styles.markerText}>{index + 1}</Text>
+          </View>
+        </View>
+      </Marker>
+    ));
+  };
+
+  const renderPolyline = () => {
+    if (selectedPlaces.length > 1) {
+      return (
+        <Polyline
+          coordinates={selectedPlaces.map(loc => ({
+            latitude: loc.location.lat,
+            longitude: loc.location.lng
+          }))}
+          strokeColor={colors.btncolor}
+          strokeWidth={3}
+          lineDashPattern={[5, 5]}
+        />
+      );
+    }
+    return null;
   };
 
   return (
@@ -369,124 +434,148 @@ const Map = ({ route }) => {
       </View>
 
       <View style={[styles.mainContent, { marginTop: 20 }]}>
-        <Text style={styles}></Text>
-
-        <View style={styles.placesHeader}>
-          <Text style={styles.selectedCount}>
-            {Math.floor(selectedPlaces.length / 2)} places selected          </Text>
-          <View style={styles.headerButtons}>
-            {/* <TouchableOpacity 
-              style={[styles.headerButton, styles.exportButton]}
-              onPress={handleExportLocations}
-            >
-              <MaterialCommunityIcons name="export" size={20} color={colors.white} />
-              <Text style={styles.headerButtonText}>Export</Text>
-            </TouchableOpacity> */}
-            <TouchableOpacity 
-              style={styles.selectAllButton}
-              onPress={handleSelectAll}
-            >
-              <Text style={styles.selectAllText}>
-                {selectedPlaces.length === getAllLocations().length ? 'Deselect All' : 'Select All'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* <ScrollView horizontal style={styles.placesList}>
-          {getAllLocations().map((place) => (
-            <TouchableOpacity
-              key={place._id}
-              style={[
-                styles.placeItem,
-                selectedPlaces.some(p => p._id === place._id) && styles.selectedPlace
-              ]}
-              onPress={() => handlePlaceSelect(place)}
-            >
-              <Text style={[
-                styles.placeText,
-                selectedPlaces.some(p => p._id === place._id) && styles.selectedPlaceText
-              ]}>
-                {place.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView> */}
-
-        <View style={styles.fromToContainer}>
-          {selectedPlaces.length > 0 && (
-            <>
+        {/* Enhanced Route Display */}
+        {selectedPlaces.length > 0 && (
+          <View style={styles.routeCard}>
+            <View style={styles.routeHeader}>
+              <MaterialCommunityIcons name="navigation" size={20} color={colors.btncolor} />
+              <Text style={styles.routeTitle}>Your Route</Text>
+            </View>
+            <View style={styles.fromToContainer}>
               <View style={styles.locationInfo}>
-                <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.darkGray} />
-                <Text style={styles.locationText}>
+                <View style={styles.startMarker}>
+                  <MaterialCommunityIcons name="map-marker" size={16} color={colors.white} />
+                </View>
+                <Text style={styles.locationText} numberOfLines={1}>
                   {selectedPlaces[0].name}
                 </Text>
               </View>
-              <MaterialCommunityIcons name="arrow-right" size={20} color={colors.darkGray} style={styles.arrowIcon} />
+              <View style={styles.routeLine}>
+                <View style={styles.dashedLine} />
+                <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
+              </View>
               <View style={styles.locationInfo}>
-                <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.darkGray} />
-                <Text style={styles.locationText}>
+                <View style={styles.endMarker}>
+                  <MaterialCommunityIcons name="flag" size={16} color={colors.white} />
+                </View>
+                <Text style={styles.locationText} numberOfLines={1}>
                   {selectedPlaces[selectedPlaces.length - 1].name}
                 </Text>
               </View>
-            </>
-          )}
+            </View>
+          </View>
+        )}
+
+        {/* Enhanced Map Container */}
+        <View style={styles.mapCard}>
+          <View style={styles.mapHeader}>
+            <Text style={styles.mapTitle}>Interactive Map</Text>
+            <TouchableOpacity 
+              style={styles.fullMapButton}
+              onPress={() => setIsFullMapVisible(true)}
+            >
+              <MaterialCommunityIcons name="fullscreen" size={18} color={colors.btncolor} />
+              <Text style={styles.fullMapText}>Full View</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              initialRegion={getInitialRegion()}
+              showsUserLocation={true}
+              showsMyLocationButton={false}
+              showsCompass={false}
+              toolbarEnabled={false}
+            >
+              {renderMapMarkers()}
+              {renderPolyline()}
+            </MapView>
+
+            <View style={styles.zoomControls}>
+              <TouchableOpacity 
+                style={styles.zoomButton}
+                onPress={handleZoomIn}
+              >
+                <MaterialCommunityIcons name="plus" size={20} color={colors.white} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.zoomButton, { marginTop: 8 }]}
+                onPress={handleZoomOut}
+              >
+                <MaterialCommunityIcons name="minus" size={20} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={getInitialRegion()}
-          >
-            {selectedPlaces.map((location) => (
-              <Marker
-                key={location._id}
-                coordinate={{
-                  latitude: location.location.lat,
-                  longitude: location.location.lng
-                }}
-                title={location.name}
-                description={location.address}
-              />
-            ))}
+        {/* Enhanced Discover Section */}
+        <View style={styles.discoverSection}>
+          <View style={styles.discoverRow}>
+            <View style={styles.discoverHeaderLeft}>
+              <MaterialCommunityIcons name="compass-outline" size={24} color={colors.btncolor} />
+              <TextDefault style={styles.discoverText}>Discover Nearby</TextDefault>
+            </View>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('DiscoverPlace')}
+              style={styles.viewAllButton}
+            >
+              <TextDefault style={styles.viewAllText}>View All</TextDefault>
+              <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
+            </TouchableOpacity>
+          </View>
+          {renderDiscoverList()}
+        </View>
+      </View>
 
-            {selectedPlaces.length > 1 && (
-              <Polyline
-                coordinates={selectedPlaces.map(loc => ({
-                  latitude: loc.location.lat,
-                  longitude: loc.location.lng
-                }))}
-                strokeColor="#007AFF"
-                strokeWidth={4}
-              />
-            )}
+      {/* Full Map Modal */}
+      <Modal
+        visible={isFullMapVisible}
+        animationType="slide"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsFullMapVisible(false)}
+      >
+        <View style={styles.fullMapContainer}>
+          <View style={styles.fullMapHeader}>
+            {/* <TouchableOpacity 
+              style={styles.fullMapBackButton}
+              onPress={() => setIsFullMapVisible(false)}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={24} color={colors.white} />
+            </TouchableOpacity> */}
+            <Text style={styles.fullMapTitle}>Full Map View</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          <MapView
+            ref={fullMapRef}
+            style={styles.fullMap}
+            initialRegion={getInitialRegion()}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            showsCompass={true}
+          >
+            {renderMapMarkers()}
+            {renderPolyline()}
           </MapView>
 
-          <View style={styles.zoomControls}>
-            <TouchableOpacity 
-              style={styles.zoomButton}
-              onPress={handleZoomIn}
+          <View style={styles.fullMapZoomControls}>
+            {/* <TouchableOpacity 
+              style={styles.fullMapZoomButton}
+              onPress={handleFullMapZoomIn}
             >
               <MaterialCommunityIcons name="plus" size={24} color={colors.white} />
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.zoomButton}
-              onPress={handleZoomOut}
+              style={[styles.fullMapZoomButton, { marginTop: 10 }]}
+              onPress={handleFullMapZoomOut}
             >
               <MaterialCommunityIcons name="minus" size={24} color={colors.white} />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
-
-        <View style={styles.discoverRow}>
-            <TextDefault style={styles.discoverText}>Discover by</TextDefault>
-            <TouchableOpacity onPress={() => navigation.navigate('DiscoverPlace')}>
-            <TextDefault style={styles.viewAllText}>View All</TextDefault>
-          </TouchableOpacity>
-        </View>
-        {renderDiscoverList()}
-      </View>
+      </Modal>
 
       <View style={styles.bottomTabContainer}>
         <BottomTab screen={"WhereToGo"} />
@@ -526,114 +615,326 @@ const styles = StyleSheet.create({
     zIndex: 2,
     paddingBottom: 20,
   },
+  
+  // Enhanced Route Card
+  routeCard: {
+    backgroundColor: colors.white,
+    marginHorizontal: 15,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  routeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.fontMainColor,
+    marginLeft: 8,
+  },
   fromToContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: colors.white,
-    // borderRadius: 10,
-    // elevation: 2,
-    //shadowColor: '#000',
-    // shadowOffset: {
-    //   width: 0,
-    //   height: 2,
-    // },
-    //shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    marginHorizontal: 15,
   },
   locationInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  startMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.btncolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  endMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   locationText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
     marginLeft: 10,
-    color: colors.darkGray,
+    color: colors.fontMainColor,
     flex: 1,
   },
-  arrowIcon: {
-    marginHorizontal: 10,
+  routeLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
   },
-  title: {
-    textAlign: "center",
-    marginVertical: 10,
+  dashedLine: {
+    width: 30,
+    height: 2,
+    backgroundColor: colors.btncolor,
+    marginRight: 8,
+    opacity: 0.5,
+  },
+
+  // Enhanced Map Card
+  mapCard: {
+    backgroundColor: colors.white,
+    marginHorizontal: 15,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  mapHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  mapTitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: colors.fontMainColor,
+  },
+  fullMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.btncolor,
+  },
+  fullMapText: {
+    color: colors.btncolor,
+    fontWeight: '600',
+    marginLeft: 4,
+    fontSize: 12,
   },
   mapContainer: {
     position: 'relative',
-    width: Dimensions.get("window").width * 0.9,
-    alignSelf: 'center',
-    height: Dimensions.get("window").height * 0.4,
+    width: '100%',
+    height: width * 0.6,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   map: {
     width: '100%',
     height: '100%',
   },
-  zoomControls: {
-    position: 'absolute',
-    right: 10,
-    bottom: 10,
-    backgroundColor: 'transparent',
-  },
-  zoomButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: colors.btncolor,
-    borderRadius: 20,
+  customMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 5,
-    elevation: 3,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  explore: {
-    ...alignment.Psmall,
-    fontWeight: "bold",
-    alignSelf: "center",
-    fontSize: 16,
-    marginTop: 20,
-    marginBottom: 10,
+  markerInner: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.btncolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  markerText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+  },
+  zoomButton: {
+    width: 36,
+    height: 36,
+    backgroundColor: colors.btncolor,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+
+  // Enhanced Discover Section
+  discoverSection: {
+    backgroundColor: colors.white,
+    marginHorizontal: 15,
+    borderRadius: 16,
+    padding: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   discoverRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 15,
-    marginVertical: 10,
-    ...alignment.MBmedium,
+    marginBottom: 16,
+  },
+  discoverHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   discoverText: {
     fontSize: 16,
     fontWeight: "bold",
     color: colors.fontMainColor,
+    marginLeft: 8,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.btncolor,
   },
   viewAllText: {
     fontSize: 14,
     color: colors.btncolor,
-    fontWeight: "500",
+    fontWeight: "600",
+    marginRight: 4,
   },
   discoverList: {
     width: '100%',
-    height: 250,
   },
   discoverListContent: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    paddingBottom: 20,
+    paddingVertical: 8,
   },
+  discoverItemWrapper: {
+    marginRight: 12,
+    width: 180,
+  },
+
+  // Enhanced Empty State
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    marginVertical: 16,
+  },
+  emptyText: {
+    color: colors.fontMainColor,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  emptySubText: {
+    color: colors.darkGray,
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+
+  // Full Map Modal Styles
+  fullMapContainer: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  fullMapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.btncolor,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 44, // Account for status bar
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  fullMapBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  fullMapTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.white,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  fullMap: {
+    flex: 1,
+  },
+  fullMapZoomControls: {
+    position: 'absolute',
+    right: 16,
+    bottom: 80,
+    zIndex: 1000,
+  },
+  fullMapZoomButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: colors.btncolor,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+
+  // Bottom Tab Container
+  bottomTabContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 3,
+    backgroundColor: colors.white,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+
+  // Additional utility styles
   cardContainer: {
     marginRight: 15,
     width: 180,
@@ -649,103 +950,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
     overflow: 'hidden',
-  },
-  bottomTabContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 3,
-    backgroundColor: colors.white,
-  },
-  placesList: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    marginBottom: 10,
-  },
-  placeItem: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginHorizontal: 5,
-    borderRadius: 20,
-    backgroundColor: colors.grayLinesColor,
-    borderWidth: 1,
-    borderColor: colors.graycolor,
-  },
-  selectedPlace: {
-    backgroundColor: colors.btncolor,
-    borderColor: colors.btncolor,
-  },
-  placeText: {
-    color: colors.darkGray,
-    fontWeight: 'bold',
-  },
-  selectedPlaceText: {
-    color: colors.white,
-  },
-  placesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    marginBottom: 10,
-  },
-  selectedCount: {
-    fontSize: 16,
-    color: colors.darkGray,
-    fontWeight: 'bold',
-  },
-  selectAllButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    backgroundColor: colors.btncolor,
-    borderRadius: 20,
-  },
-  selectAllText: {
-    color: colors.white,
-    fontWeight: 'bold',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  exportButton: {
-    backgroundColor: colors.btncolor,
-  },
-  headerButtonText: {
-    color: colors.white,
-    fontWeight: 'bold',
-    marginLeft: 5,
-  },
-  emptyContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    marginHorizontal: 15,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  emptyText: {
-    color: colors.fontMainColor,
-    fontSize: 16,
-    fontWeight: '500',
   },
 });
 
