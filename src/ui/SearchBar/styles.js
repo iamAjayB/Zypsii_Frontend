@@ -5,10 +5,11 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.backgroudGray,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    borderRadius: scale(5)
+    borderRadius: scale(5),
+    ...alignment.PLsmall
   },
   button: {
     height: '100%',

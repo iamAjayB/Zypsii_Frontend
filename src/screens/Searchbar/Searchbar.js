@@ -630,7 +630,8 @@ const styles = StyleSheet.create({
   },
   recommendCardWrapper: {
     marginTop: 8,
-    marginHorizontal: 16,
+    marginLeft: 0,
+    marginRight: 0,
     marginBottom: 8,
   },
   emptyStateContainer: {

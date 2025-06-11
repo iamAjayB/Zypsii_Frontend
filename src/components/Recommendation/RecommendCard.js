@@ -207,7 +207,7 @@ const RecommendedScheduleCard = ({ onSchedulePress, title, suggestions }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-            <Text style={styles.title}>{title || suggestions[0].tripName}</Text>
+                <Text style={styles.title}>{title || suggestions[0].tripName}</Text>
                 <TouchableOpacity 
                     style={styles.viewAllButton}
                     onPress={() => handleViewAll(suggestions[0])}
@@ -322,26 +322,25 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        width: '100%',
+        marginBottom: 12,
+        paddingHorizontal: 16,
     },
     title: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '600',
         color: '#333',
     },
     viewAllButton: {
-        paddingHorizontal: 10,
         paddingVertical: 4,
+        paddingHorizontal: 12,
         borderRadius: 16,
-        backgroundColor: colors.Zypsii_color + '15',
+        backgroundColor: colors.Zypsii_color + '10',
     },
     viewAllText: {
-        fontSize: 12,
         color: colors.Zypsii_color,
+        fontSize: 14,
         fontWeight: '500',
     },
     scrollView: {
