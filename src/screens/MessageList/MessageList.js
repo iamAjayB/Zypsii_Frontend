@@ -66,9 +66,7 @@ const MessageList = ({ navigation }) => {
           email: '', // Not provided in response
           profileImage: user.profilePicture || null,
           lastMessage: 'No messages yet',
-          unreadCount: Math.floor(Math.random() * 5), // Random for demo
-          lastMessageTime: user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString() : 'No time',
-          isOnline: Math.random() > 0.5 // Demo data
+          lastMessageTime: user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString() : 'No time'
         };
       });
       
@@ -159,7 +157,7 @@ const MessageList = ({ navigation }) => {
                 <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
               </View>
             )}
-            {item.isOnline && <View style={styles.onlineIndicator} />}
+            {/* {item.isOnline && <View style={styles.onlineIndicator} />} */}
           </View>
           
           <View style={styles.textContent}>
@@ -168,12 +166,12 @@ const MessageList = ({ navigation }) => {
               <Text style={styles.timeText}>{item.lastMessageTime}</Text>
             </View>
             <Text style={styles.userName} numberOfLines={1}>@{item.userName}</Text>
-            <Text style={styles.lastMessage} numberOfLines={2}>
+            {/* <Text style={styles.lastMessage} numberOfLines={2}>
               {item.lastMessage}
-            </Text>
+            </Text> */}
           </View>
           
-          <View style={styles.rightContent}>
+          {/* <View style={styles.rightContent}>
             {item.unreadCount > 0 && (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadCount}>
@@ -182,7 +180,7 @@ const MessageList = ({ navigation }) => {
               </View>
             )}
             <Ionicons name="chevron-forward" size={16} color="#C7C7CC" style={styles.chevron} />
-          </View>
+          </View> */}
         </TouchableOpacity>
       </Animated.View>
     );
@@ -439,17 +437,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#34C759',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
   textContent: {
     flex: 1,
     marginRight: 12,
@@ -481,25 +468,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#8E8E93',
     lineHeight: 20,
-  },
-  rightContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadBadge: {
-    backgroundColor: '#A60F93',
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    marginBottom: 8,
-  },
-  unreadCount: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
   },
   chevron: {
     opacity: 0.6,
