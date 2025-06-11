@@ -212,7 +212,7 @@ function MySchedule({ navigation }) {
               style={{ flex: 1, width: '100%' }}
               contentContainerStyle={{ 
                 paddingBottom: 80,
-                paddingHorizontal: 10,
+                paddingHorizontal: 0,
                 width: '100%'
               }}
               vertical
