@@ -248,13 +248,13 @@ function Destination({ route, navigation }) {
   const handleOpenMap = () => {
     console.log('Opening Map')
     // Navigate to map screen or open native maps
-    // navigation.navigate('MapView', { location: subtitle });
+     navigation.navigate('MapView', { location: subtitle });
   }
 
-  const handleCall = () => {
-    console.log('Making call to destination')
-    Linking.openURL('tel:+1234567890')
-  }
+  // const handleCall = () => {
+  //   console.log('Making call to destination')
+  //   Linking.openURL('tel:+1234567890')
+  // }
 
   const handleOpenWebsite = () => {
     console.log('Opening website/blog')
@@ -533,22 +533,22 @@ function Destination({ route, navigation }) {
                 </TouchableOpacity>
               </View>
               {/* Quick Action Icons */}
-              <View style={actionStyles.actionContainer}>
-                {/* <TouchableOpacity style={actionStyles.actionItem} onPress={handleCall}>
+             {/*    <View style={actionStyles.actionContainer}>
+              <TouchableOpacity style={actionStyles.actionItem} onPress={handleCall}>
                   <View style={actionStyles.actionIconContainer}>
                     <Feather name="phone-call" size={20} color="#FFFFFF" />
                   </View>
                   <Text style={actionStyles.actionText}>Call</Text>
                 </TouchableOpacity> */}
 
-                <TouchableOpacity style={actionStyles.actionItem} onPress={handleOpenWebsite}>
+                {/* <TouchableOpacity style={actionStyles.actionItem} onPress={handleOpenWebsite}>
                   <View style={actionStyles.actionIconContainer}>
                     <FontAwesome5 name="blog" size={20} color="#FFFFFF" />
                   </View>
                   <Text style={actionStyles.actionText}>Blog</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
-                <TouchableOpacity style={actionStyles.actionItem} onPress={() => navigation.navigate('MakeSchedule')}>
+                {/* <TouchableOpacity style={actionStyles.actionItem} onPress={() => navigation.navigate('MakeSchedule')}>
                   <View style={actionStyles.actionIconContainer}>
                     <AntDesign name="calendar" size={20} color="#FFFFFF" />
                   </View>
@@ -561,10 +561,10 @@ function Destination({ route, navigation }) {
                   </View>
                   <Text style={actionStyles.actionText}>Save</Text>
                 </TouchableOpacity>
-              </View>
+              </View> */}
 
               {/* About Destination */}
-              <View style={styles.aboutContainer}>
+              {/* <View style={styles.aboutContainer}>
                 <Text style={styles.aboutTitle}>{destinationData?.title}</Text>
                 <Text style={styles.aboutText}>
                   {destinationData?.shortDescription}{' '}
@@ -573,7 +573,7 @@ function Destination({ route, navigation }) {
                   </TouchableOpacity>
                 </Text>
                 {isExpanded && <Text style={styles.expandedText}>{destinationData?.fullDescription}</Text>}
-              </View>
+              </View> */}
 
               {/* Horizontal Tab Menu */}
               <View style={tabStyles.tabSection}>
