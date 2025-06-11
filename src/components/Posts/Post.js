@@ -20,8 +20,12 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   const [isSaved, setIsSaved] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likesCount || 0);
   const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [comments, setComments] = useState([]);
+  const [isCommenting, setIsCommenting] = useState(false);
   const socketRef = useRef(null);
   const isRoomJoined = useRef(false);
+  const isCommentRoomJoined = useRef(false);
   const [isLiking, setIsLiking] = useState(false);
 
   useEffect(() => {
@@ -41,15 +45,28 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     // Initialize socket connection if not already connected
     if (!socketRef.current) {
       socketRef.current = io(SOCKET_URL);
-      console.log('Socket connected:', socketRef.current.id);
+      
+      // Wait for socket to connect before setting up listeners
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected:', socketRef.current.id);
+        setupSocketListeners();
+      });
 
-      // Set up socket event listeners
-      setupSocketListeners();
+      socketRef.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
     }
 
     return () => {
-      if (socketRef.current && isRoomJoined.current) {
-        leaveLikeRoom();
+      if (socketRef.current) {
+        if (isRoomJoined.current) {
+          leaveLikeRoom();
+        }
+        if (isCommentRoomJoined.current) {
+          leaveCommentRoom();
+        }
+        // Remove all listeners
+        socketRef.current.removeAllListeners();
       }
     };
   }, []);
@@ -75,18 +92,19 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     }
   }, [isVisible, currentUserId]);
 
+  // Setup socket listeners
   const setupSocketListeners = () => {
-    // Listen for join-like-room-status
+    if (!socketRef.current) return;
+
+    // Like-related listeners
     socketRef.current.on('join-like-room-status', (data) => {
       console.log(`Post ${item._id} - Join room status:`, data);
       if (data.moduleId === item._id) {
         isRoomJoined.current = true;
-        // Request initial like count after joining room
         requestLikeCount();
       }
     });
 
-    // Listen for leave-like-room-status
     socketRef.current.on('leave-like-room-status', (data) => {
       console.log(`Post ${item._id} - Leave room status:`, data);
       if (data.moduleId === item._id) {
@@ -94,7 +112,6 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       }
     });
 
-    // Listen for like-count-status
     socketRef.current.on('like-count-status', (data) => {
       if (data.moduleId === item._id) {
         console.log(`Post ${item._id} - Like count updated:`, data.likeCount);
@@ -102,14 +119,12 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       }
     });
 
-    // Listen for like-status
     socketRef.current.on('like-status', (data) => {
       if (data.moduleId === item._id) {
         console.log(`Post ${item._id} - Like status response:`, data);
         if (data.liked !== undefined) {
           setLike(data.liked);
         } else if (data.message) {
-          // Handle like/unlike action response
           if (data.message.includes('liked')) {
             setLike(true);
           } else if (data.message.includes('unliked')) {
@@ -117,41 +132,63 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
           }
         }
         setIsLiking(false);
-        // Request updated like count
         requestLikeCount();
       }
     });
 
-    // Listen for like-count-error
-    socketRef.current.on('like-count-error', (error) => {
-      console.error(`Post ${item._id} - Like count error:`, error);
-      Alert.alert('Error', 'Failed to update like count');
-      setIsLiking(false);
+    // Comment-related listeners
+    socketRef.current.on('join-comment-room-status', (data) => {
+      console.log('Joined comment room:', data);
+      if (data.moduleId === item._id) {
+        isCommentRoomJoined.current = true;
+      }
     });
 
-    // Listen for like-status-error
-    socketRef.current.on('like-status-error', (error) => {
-      console.error(`Post ${item._id} - Like status error:`, error);
-      Alert.alert('Error', 'Failed to check like status');
-      setIsLiking(false);
+    socketRef.current.on('leave-comment-room-status', (data) => {
+      console.log('Left comment room:', data);
+      if (data.moduleId === item._id) {
+        isCommentRoomJoined.current = false;
+      }
     });
 
-    // Listen for like-error
-    socketRef.current.on('like-error', (error) => {
-      console.error(`Post ${item._id} - Like error:`, error);
-      Alert.alert('Error', 'Failed to like post');
-      setIsLiking(false);
-      // Revert like state on error
-      setLike(!like);
+    socketRef.current.on('comment-status', (data) => {
+      console.log('Received comment status:', data);
+      if (data.status && data.comment && data.moduleId === item._id) {
+        setComments(prevComments => [data.comment, ...prevComments]);
+        setCommentText('');
+        setIsCommenting(false);
+      }
     });
 
-    // Listen for unlike-error
-    socketRef.current.on('unlike-error', (error) => {
-      console.error(`Post ${item._id} - Unlike error:`, error);
-      Alert.alert('Error', 'Failed to unlike post');
-      setIsLiking(false);
-      // Revert like state on error
-      setLike(!like);
+    socketRef.current.on('comment-list', (data) => {
+      console.log('Comment list received:', data);
+      if (data.moduleId === item._id && data.comments) {
+        setComments(data.comments);
+      }
+    });
+
+    socketRef.current.on('comment-error', (error) => {
+      console.error('Comment error:', error);
+      if (error.moduleId === item._id) {
+        setIsCommenting(false);
+        Alert.alert('Error', error.message || 'Failed to add comment');
+      }
+    });
+
+    socketRef.current.on('comment-deleted', (data) => {
+      console.log('Comment deleted:', data);
+      if (data.moduleId === item._id) {
+        setComments(prevComments => 
+          prevComments.filter(comment => comment._id !== data.commentId)
+        );
+      }
+    });
+
+    socketRef.current.on('comment-delete-error', (error) => {
+      console.error('Comment delete error:', error);
+      if (error.moduleId === item._id) {
+        Alert.alert('Error', error.message || 'Failed to delete comment');
+      }
     });
   };
 
@@ -169,6 +206,26 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     if (socketRef.current && isRoomJoined.current) {
       console.log(`Post ${item._id} - Leaving like room`);
       socketRef.current.emit('leave-like-room', {
+        moduleId: item._id,
+        moduleType: 'post'
+      });
+    }
+  };
+
+  const joinCommentRoom = () => {
+    if (socketRef.current && !isCommentRoomJoined.current) {
+      console.log(`Post ${item._id} - Joining comment room`);
+      socketRef.current.emit('join-comment-room', {
+        moduleId: item._id,
+        moduleType: 'post'
+      });
+    }
+  };
+
+  const leaveCommentRoom = () => {
+    if (socketRef.current && isCommentRoomJoined.current) {
+      console.log(`Post ${item._id} - Leaving comment room`);
+      socketRef.current.emit('leave-comment-room', {
         moduleId: item._id,
         moduleType: 'post'
       });
@@ -266,71 +323,71 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     }
   };
 
-  const handleSavePost = async () => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
+  // const handleSavePost = async () => {
+  //   try {
+  //     const token = await AsyncStorage.getItem('accessToken');
       
-      if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
-        return;
-      }
+  //     if (!token) {
+  //       Alert.alert('Error', 'Authentication token not found');
+  //       return;
+  //     }
 
-      const response = await fetch(`${base_url}/post/save/${item._id}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  //     const response = await fetch(`${base_url}/post/save/${item._id}`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
 
-      const data = await response.json();
-      console.log(data)
+  //     const data = await response.json();
+  //     console.log(data)
 
-      if (response.ok && data.status) {
-        setIsSaved(!isSaved);
-        Alert.alert('Success', isSaved ? 'Post unsaved successfully' : 'Post saved successfully');
-      } else {
-        Alert.alert('Error', data.message || 'Failed to save post');
-      }
-    } catch (error) {
-      console.error('Save Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
-    }
-  };
+  //     if (response.ok && data.status) {
+  //       setIsSaved(!isSaved);
+  //       Alert.alert('Success', isSaved ? 'Post unsaved successfully' : 'Post saved successfully');
+  //     } else {
+  //       Alert.alert('Error', data.message || 'Failed to save post');
+  //     }
+  //   } catch (error) {
+  //     console.error('Save Error:', error);
+  //     Alert.alert('Error', 'Network error. Please check your connection and try again.');
+  //   }
+  // };
 
-  const renderImage = ({ item: imageUrl }) => {
-    let processedUrl = imageUrl;
+  // const renderImage = ({ item: imageUrl }) => {
+  //   let processedUrl = imageUrl;
     
-    try {
-      // If the URL is a stringified array
-      if (typeof imageUrl === 'string' && imageUrl.startsWith('[')) {
-        const parsedUrls = JSON.parse(imageUrl);
-        processedUrl = parsedUrls[0];
-      }
+  //   try {
+  //     // If the URL is a stringified array
+  //     if (typeof imageUrl === 'string' && imageUrl.startsWith('[')) {
+  //       const parsedUrls = JSON.parse(imageUrl);
+  //       processedUrl = parsedUrls[0];
+  //     }
 
-      // Clean up the URL
-      if (processedUrl.startsWith('/data/')) {
-        processedUrl = `file://${processedUrl}`;
-      } else if (processedUrl.includes('file:///data/')) {
-        processedUrl = processedUrl.replace('file:///', 'file://');
-      }
+  //     // Clean up the URL
+  //     if (processedUrl.startsWith('/data/')) {
+  //       processedUrl = `file://${processedUrl}`;
+  //     } else if (processedUrl.includes('file:///data/')) {
+  //       processedUrl = processedUrl.replace('file:///', 'file://');
+  //     }
 
-      console.log('Processed URL:', processedUrl);
-    } catch (e) {
-      console.log('Error processing URL:', e);
-      processedUrl = imageUrl;
-    }
+  //     console.log('Processed URL:', processedUrl);
+  //   } catch (e) {
+  //     console.log('Error processing URL:', e);
+  //     processedUrl = imageUrl;
+  //   }
 
-    return (
-      <View style={styles.postImageContainer}>
-        <Image
-          source={{ uri: processedUrl }}
-          style={styles.postImage}
-          resizeMode="cover"
-        />
-      </View>
-    );
-  };
+  //   return (
+  //     <View style={styles.postImageContainer}>
+  //       <Image
+  //         source={{ uri: processedUrl }}
+  //         style={styles.postImage}
+  //         resizeMode="cover"
+  //       />
+  //     </View>
+  //   );
+  // };
 
   const formatDate = (dateString) => {
     try {
@@ -352,6 +409,137 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     Array.isArray(item.imageUrl) && item.imageUrl.length > 0 && typeof item.imageUrl[0] === 'string' && item.imageUrl[0].trim() !== ''
       ? item.imageUrl[0]
       : 'https://via.placeholder.com/150';
+
+  // Handle comment modal visibility
+  useEffect(() => {
+    if (showCommentModal) {
+      joinCommentRoom();
+      // Load comments when modal opens with a slight delay
+      setTimeout(() => {
+        handleListComments();
+      }, 300);
+    } else {
+      leaveCommentRoom();
+    }
+  }, [showCommentModal]);
+
+  // Function to handle comment deletion (add this new function)
+const handleDeleteComment = (commentId) => {
+  if (!currentUserId) {
+    Alert.alert('Error', 'Please login to delete comments');
+    return;
+  }
+
+  Alert.alert(
+    'Delete Comment',
+    'Are you sure you want to delete this comment?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          socketRef.current.emit('delete-comment', {
+            commentId,
+            commentedBy: currentUserId
+          });
+        }
+      }
+    ]
+  );
+};
+
+ // Updated comment submission handler
+const handleCommentSubmit = async () => {
+    if (!currentUserId) {
+        Alert.alert('Login Required', 'Please login to comment');
+        return;
+    }
+
+    if (!commentText.trim()) {
+        Alert.alert('Error', 'Comment cannot be empty');
+        return;
+    }
+
+    if (isCommenting) {
+        return; // Prevent multiple submissions
+    }
+
+    try {
+        setIsCommenting(true);
+        console.log('Submitting comment for post:', item._id);
+
+        // First join the comment room
+        socketRef.current.emit('join-comment-room', {
+            moduleId: item._id,
+            moduleType: 'post'
+        });
+
+        // Wait a bit for the room to be joined
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Prepare the comment payload
+        const commentPayload = {
+            moduleId: item._id,
+            moduleType: 'post',
+            moduleCreatedBy: item.createdBy,
+            commentedBy: currentUserId,
+            commentData: commentText.trim()
+        };
+
+        console.log('Sending comment payload:', commentPayload);
+
+        // Send the comment
+        socketRef.current.emit('comment', commentPayload);
+
+        // Set a timeout to reset commenting state if it takes too long
+        setTimeout(() => {
+            if (isCommenting) {
+                setIsCommenting(false);
+                Alert.alert('Error', 'Comment submission timed out. Please try again.');
+            }
+        }, 5000);
+
+    } catch (error) {
+        console.error('Error submitting comment:', error);
+        setIsCommenting(false);
+        Alert.alert('Error', 'Failed to submit comment. Please try again.');
+    }
+};
+
+  // Updated comment item render (modify the FlatList renderItem in your JSX)
+const renderCommentItem = ({ item: comment }) => (
+  <View style={styles.commentItem}>
+    <View style={styles.commentHeader}>
+      <Text style={styles.commentUser}>
+        {comment.commentedBy?.fullName || comment.commentedBy?.username || 'User'}
+      </Text>
+      {comment.commentedBy?._id === currentUserId && (
+        <TouchableOpacity
+          onPress={() => handleDeleteComment(comment._id)}
+          style={styles.deleteCommentButton}
+        >
+          <Feather name="trash-2" size={16} color="#FF3B30" />
+        </TouchableOpacity>
+      )}
+    </View>
+    <Text style={styles.commentText}>{comment.commentData}</Text>
+    <Text style={styles.commentDate}>
+      {formatDate(comment.createdAt)}
+    </Text>
+  </View>
+);
+
+  // Updated comment list handler
+const handleListComments = () => {
+  if (socketRef.current && item._id) {
+    console.log('Requesting comments for post:', item._id);
+    socketRef.current.emit('list-comment', {
+      moduleId: item._id,  
+      moduleType: 'post'
+    });
+  }
+};
 
   // Log the URL before rendering
   return (
@@ -436,25 +624,48 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
         animationType="slide"
         onRequestClose={() => setShowCommentModal(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCommentModal(false)}
-        >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowCommentModal(false)}
+          />
           <View style={styles.commentModalContainer}>
             <View style={styles.modalHandle} />
             <View style={styles.commentModalContent}>
               <View style={styles.commentInputContainer}>
                 <TextInput
-                  placeholder="Add a comment"
+                  placeholder="Add a comment..."
                   style={styles.commentInput}
                   multiline
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  maxLength={500}
                 />
+                <TouchableOpacity 
+                  style={[
+                    styles.commentSubmitButton,
+                    { opacity: commentText.trim() ? 1 : 0.5 }
+                  ]}
+                  onPress={handleCommentSubmit}
+                  disabled={isCommenting || !commentText.trim()}
+                >
+                  <Text style={styles.commentSubmitText}>
+                    {isCommenting ? 'Posting...' : 'Post'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-             
+              
+              <FlatList
+  data={comments}
+  keyExtractor={(comment, index) => comment._id || index.toString()}
+  renderItem={renderCommentItem}
+  style={styles.commentsList}
+  showsVerticalScrollIndicator={false}
+ />
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Menu Modal */}
@@ -592,35 +803,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 8,
   },
-  commentInputContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  commentInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    fontSize: 14,
-  },
-  emojiContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  emojiIcon: {
-    fontSize: 20,
-    marginLeft: 10,
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  },
+  modalBackdrop: {
+    flex: 1,
   },
   menuContainer: {
     backgroundColor: 'white',
@@ -654,7 +843,7 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
   },
   commentModalContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -666,7 +855,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    height: '40%',
+    height: '60%',
+    maxHeight: '80%',
   },
   modalHandle: {
     width: 40,
@@ -677,38 +867,61 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   commentModalContent: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    height: '100%',
+    flex: 1,
   },
   commentInputContainer: {
-    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   commentInput: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 20,
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 10,
     fontSize: 16,
-    maxHeight: 150,
-    minHeight: 100,
-    width: '100%',
+    maxHeight: 100,
+    marginRight: 10,
   },
-  emojiContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+  commentSubmitButton: {
+    backgroundColor: '#A60F93',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  emojiIcon: {
-    fontSize: 24,
-    marginHorizontal: 15,
+  commentSubmitText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  commentsList: {
+    flex: 1,
+  },
+  commentItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  commentUser: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+    fontSize: 14,
+    color: '#333',
+  },
+  commentText: {
+    color: '#333',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 5,
+  },
+  commentDate: {
+    fontSize: 12,
+    color: '#666',
   },
 });
 
