@@ -133,7 +133,7 @@ function CreateSplit() {
           />
         </View>
 
-        <View style={styles.inputContainer}>
+        {/* <View style={styles.inputContainer}>
           <Text style={styles.label}>Add Members</Text>
           <View style={styles.searchContainer}>
             <Ionicons name="person-add" size={24} color={colors.grayLinesColor} style={styles.searchIcon} />
@@ -156,9 +156,9 @@ function CreateSplit() {
               onAddSelected={handleAddSelectedUsers}
             />
           )}
-        </View>
+        </View> */}
 
-        <View style={styles.inputContainer}>
+        {/* <View style={styles.inputContainer}>
           <Text style={styles.label}>Selected Members</Text>
           {selectedUsers.map(user => (
             <SelectedUserItem
@@ -168,7 +168,7 @@ function CreateSplit() {
               onRemove={handleRemoveUser}
             />
           ))}
-        </View>
+        </View> */}
 
         <TouchableOpacity
           style={[styles.createButton, createSplitLoading && styles.disabledButton]}
