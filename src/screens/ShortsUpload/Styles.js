@@ -29,11 +29,11 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     width: '100%',
-    aspectRatio: 9/16,
+    aspectRatio: 12/12,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: verticalScale(15),
+    marginBottom: verticalScale(10),
   },
   videoPreviewContainer: {
     width: '100%',
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     color: colors.btncolor,
   },
   inputContainer: {
-    padding: scale(15),
+    padding: scale(10),
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: colors.btncolor,
-    margin: scale(15),
-    padding: scale(12),
+    margin: scale(10),
+    padding: scale(10),
     borderRadius: scale(5),
     alignItems: 'center',
   },
