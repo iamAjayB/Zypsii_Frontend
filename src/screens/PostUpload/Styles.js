@@ -16,13 +16,13 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  videoContainer: {
+  imageContainer: {
     width: '100%',
-    height: 400,
+    height: 300,
     backgroundColor: colors.background,
     marginBottom: 16,
   },
-  selectedVideo: {
+  selectedImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
@@ -83,4 +83,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default styles; 

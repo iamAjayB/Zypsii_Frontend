@@ -30,7 +30,7 @@ function BottomTab({ screen }) {
 
   const handleCreatePost = () => {
     setShowUploadModal(false);
-    navigation.navigate('CreatePost');
+    navigation.navigate('PostUpload');
   };
 
   return (

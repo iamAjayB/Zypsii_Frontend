@@ -24,7 +24,7 @@ import ContentTypeModal from "../../components/ContentTypeModal/ContentTypeModal
 function ReelUpload() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [image, setImage] = useState(null);
+  const [video, setVideo] = useState(null);
   const [showContentTypeModal, setShowContentTypeModal] = useState(true);
   const [contentType, setContentType] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ function ReelUpload() {
     navigation.goBack();
   };
 
-  const pickImage = async () => {
+  const pickVideo = async () => {
     Alert.alert(
       "Select Media",
       "Choose an option",
@@ -69,17 +69,17 @@ function ReelUpload() {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (permissionResult.granted) {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7,
+        quality: 1,
+        videoMaxDuration: 60,
       });
 
       if (!result.canceled) {
-        setImage(result.assets[0]);
+        setVideo(result.assets[0]);
       }
     } else {
-      Alert.alert("Permission required", "You need to allow camera access to take photos.");
+      Alert.alert("Permission required", "You need to allow camera access to record videos.");
     }
   };
 
@@ -87,14 +87,14 @@ function ReelUpload() {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted) {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7,
+        quality: 1,
+        videoMaxDuration: 60,
       });
 
       if (!result.canceled) {
-        setImage(result.assets[0]);
+        setVideo(result.assets[0]);
       }
     } else {
       Alert.alert("Permission required", "You need to allow access to your media library.");
@@ -102,8 +102,8 @@ function ReelUpload() {
   };
 
   const handleSubmit = async () => {
-    if (!image) {
-      Alert.alert("Error", "Please select an image to upload.");
+    if (!video) {
+      Alert.alert("Error", "Please select a video to upload.");
       return;
     }
   
@@ -118,27 +118,16 @@ function ReelUpload() {
       }
 
       const uploadFormData = new FormData();
-      const fileUri = image.uri.replace('file://', '');
+      const fileUri = video.uri.replace('file://', '');
       
-      const fileExtension = fileUri.split('.').pop().toLowerCase();
-      let mimeType = 'image/jpeg';
-      
-      if (fileExtension === 'png') {
-        mimeType = 'image/png';
-      } else if (fileExtension === 'gif') {
-        mimeType = 'image/gif';
-      } else if (fileExtension === 'webp') {
-        mimeType = 'image/webp';
-      }
-
       uploadFormData.append('mediaFile', {
-        uri: image.uri,
-        type: mimeType,
-        name: `image.${fileExtension}`
+        uri: video.uri,
+        type: 'video/mp4',
+        name: 'video.mp4'
       });
 
       try {
-        const uploadResponse = await fetch(`${base_url}/uploadFile?mediaType=post`, {
+        const uploadResponse = await fetch(`${base_url}/uploadFile?mediaType=reel`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -176,31 +165,31 @@ function ReelUpload() {
           return;
         }
 
-        const postFormData = new FormData();
-        postFormData.append('postTitle', title);
-        postFormData.append('postType', 'Public');
-        postFormData.append('mediaType', 'image');
-        postFormData.append('mediaUrl[]', uploadResponseData.urls[0]);
-        postFormData.append('tags[]', 'new');
+        const reelFormData = new FormData();
+        reelFormData.append('reelTitle', title);
+        reelFormData.append('reelType', 'Public');
+        reelFormData.append('mediaType', 'video');
+        reelFormData.append('mediaUrl', uploadResponseData.urls[0]);
+        reelFormData.append('tags[]', 'new');
 
-        const response = await fetch(`${base_url}/post/create`, {
+        const response = await fetch(`${base_url}/reel/create`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'multipart/form-data',
           },
-          body: postFormData,
+          body: reelFormData,
         });
 
         const responseData = await response.json();
 
         if (response.ok) {
-          Alert.alert("Success", "Your post was successfully created!");
+          Alert.alert("Success", "Your reel was successfully created!");
           navigation.goBack();
         } else {
-          console.error("Error creating post. Status:", response.status);
+          console.error("Error creating reel. Status:", response.status);
           console.error("Error response data:", responseData);
-          Alert.alert("Error", responseData.message || "There was an error creating your post.");
+          Alert.alert("Error", responseData.message || "There was an error creating your reel.");
         }
       } catch (error) {
         console.error("Network error:", error);
@@ -210,8 +199,8 @@ function ReelUpload() {
         );
       }
     } catch (error) {
-      console.error("Error in creating post:", error);
-      Alert.alert("Error", "There was an error creating your post. Please try again.");
+      console.error("Error in creating reel:", error);
+      Alert.alert("Error", "There was an error creating your reel. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -257,23 +246,23 @@ function ReelUpload() {
       {contentType && (
         <ScrollView>
           <TouchableOpacity 
-            style={styles.imageContainer} 
-            onPress={pickImage}
+            style={styles.videoContainer} 
+            onPress={pickVideo}
           >
-            {image ? (
+            {video ? (
               <Image 
-                source={{ uri: image.uri }} 
-                style={styles.selectedImage} 
+                source={{ uri: video.uri }} 
+                style={styles.selectedVideo} 
               />
             ) : (
               <View style={styles.placeholderContainer}>
                 <Ionicons 
-                  name="camera"
+                  name="videocam"
                   size={50} 
                   color={colors.btncolor} 
                 />
                 <Text style={styles.placeholderText}>
-                  Tap to add photo
+                  Tap to add video
                 </Text>
               </View>
             )}
