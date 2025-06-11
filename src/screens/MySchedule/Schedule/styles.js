@@ -33,7 +33,7 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
     backgroundColor: colors.lightpink,
     borderRadius: scale(20),
-    padding: scale(10),
+    padding: scale(0),
     marginBottom: scale(10),
     ...alignment.MBmedium,
     borderWidth: 1,

@@ -1075,11 +1075,11 @@ function MainLanding(props) {
           showsVerticalScrollIndicator={false}
           keyExtractor={(item) => item.id}
           data={all_schedule}
-          contentContainerStyle={{ paddingBottom: 20 }}
+         
           renderItem={({ item }) => (
-            <View style={{ marginBottom: -20 }}>
+           
               <AllSchedule item={item} />
-            </View>
+         
           )}
         />
       </View>

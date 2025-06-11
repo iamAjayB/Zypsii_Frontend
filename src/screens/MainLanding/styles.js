@@ -288,10 +288,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   scheduleContainer: {
-    padding: wp('1%'), // Dynamic padding based on screen width
+    // padding: wp('1%'), // Dynamic padding based on screen width
     //marginTop: hp('2%'),
     // marginTop: verticalScale(20),
-    paddingHorizontal: scale(4),
+    paddingHorizontal: scale(0),
     backgroundColor: '#fff',
     paddingBottom: verticalScale(0),
   },
