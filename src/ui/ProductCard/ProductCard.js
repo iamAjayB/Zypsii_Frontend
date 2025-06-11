@@ -169,6 +169,20 @@ function ProductCard(props) {
           resizeMode="cover"
         />
 
+        {/* Location and Rating Info */}
+        <View style={styles.infoOverlay}>
+          <View style={styles.distanceContainer}>
+            <Ionicons name="location-outline" size={14} color={colors.white} />
+            <Text style={[styles.distanceText, { color: colors.white }]}>
+              {formatDistance(props.distance)}
+            </Text>
+          </View>
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={14} color={colors.white} />
+            <Text style={[styles.ratingText, { color: colors.white }]}>{props.rating || '0'}</Text>
+          </View>
+        </View>
+
         {/* Like Button */}
         {/* <View style={styles.likeContainer}>
           <TouchableOpacity
@@ -191,19 +205,6 @@ function ProductCard(props) {
           <Text style={{ color: colors.fontMainColor }} numberOfLines={1}>
             {props.name}
           </Text>
-
-          <View style={styles.priceContainer}>
-            <View style={styles.distanceContainer}>
-              <Ionicons name="location-outline" size={14} color={colors.Zypsii_color} />
-              <Text style={styles.distanceText}>
-                {formatDistance(props.distance)}
-              </Text>
-            </View>
-            <View style={styles.ratingContainer}>
-              <Ionicons name="star" size={14} color={colors.Zypsii_color} />
-              <Text style={styles.ratingText}>{props.rating || '0'}</Text>
-            </View>
-          </View>
         </View>
       </View>
     </TouchableOpacity>

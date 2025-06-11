@@ -1205,10 +1205,16 @@ function MainLanding(props) {
   );
 
   const renderAllDestination = () => (
-    <View style={styles.titleSpacer}>
-      <TextDefault textColor={colors.fontMainColor} H4 bold>
+    <View style={styles.titleSpacerdesti}>
+      <TextDefault textColor={colors.fontMainColor} H5 bold style={styles.titleSpacer}>
         {'All Destination'}
       </TextDefault>
+      <View style={styles.seeAllTextContainer}>
+        <TouchableOpacity onPress={() => navigation.navigate('WhereToGo')}>
+          <TextDefault textColor={colors.greenColor} H5 style={styles.seeAllText}>View All</TextDefault>
+        </TouchableOpacity>
+      </View>
+
       {isAllDestinationLoading && all_destination.length === 0 ? (
         renderInitialLoading()
       ) : (

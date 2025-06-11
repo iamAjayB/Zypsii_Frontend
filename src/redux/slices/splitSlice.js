@@ -405,7 +405,8 @@ const splitSlice = createSlice({
       })
       .addCase(fetchExpenses.fulfilled, (state, action) => {
         state.expensesLoading = false;
-        state.expenses = action.payload;
+        state.expenses = action.payload.data;
+        state.expensesPagination = action.payload.pagination;
       })
       .addCase(fetchExpenses.rejected, (state, action) => {
         state.expensesLoading = false;
