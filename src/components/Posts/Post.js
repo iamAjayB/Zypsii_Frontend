@@ -19,6 +19,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likesCount || 0);
+  const [showCommentModal, setShowCommentModal] = useState(false);
   const socketRef = useRef(null);
   const isRoomJoined = useRef(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -402,7 +403,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
               ]}
             />
           </TouchableOpacity>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowCommentModal(true)}>
             <Ionic name="chatbubble-outline" style={styles.icon} />
           </TouchableOpacity>
           <TouchableOpacity>
@@ -421,26 +422,44 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
         <Text style={styles.statsText}>
           {likeCount} likes • {item.commentsCount} comments • {item.shareCount} shares
         </Text>
-        {item.tags && item.tags.length > 0 && (
+        {/* {item.tags && item.tags.length > 0 && (
           <Text style={styles.tagsText}>
             Tags: {item.tags.join(', ')}
           </Text>
-        )}
+        )} */}
       </View>
 
-      <View style={styles.commentSection}>
-        <View style={styles.commentInputContainer}>
-          <TextInput
-            placeholder="Add a comment"
-            style={styles.commentInput}
-          />
-        </View>
-        <View style={styles.emojiContainer}>
-          <Entypo name="emoji-happy" style={[styles.emojiIcon, { color: 'lightgreen' }]} />
-          <Entypo name="emoji-neutral" style={[styles.emojiIcon, { color: 'pink' }]} />
-          <Entypo name="emoji-sad" style={[styles.emojiIcon, { color: 'red' }]} />
-        </View>
-      </View>
+      {/* Comment Modal */}
+      <Modal
+        visible={showCommentModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCommentModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCommentModal(false)}
+        >
+          <View style={styles.commentModalContainer}>
+            <View style={styles.modalHandle} />
+            <View style={styles.commentModalContent}>
+              <View style={styles.commentInputContainer}>
+                <TextInput
+                  placeholder="Add a comment"
+                  style={styles.commentInput}
+                  multiline
+                />
+              </View>
+              <View style={styles.emojiContainer}>
+                <Entypo name="emoji-happy" style={[styles.emojiIcon, { color: 'lightgreen' }]} />
+                <Entypo name="emoji-neutral" style={[styles.emojiIcon, { color: 'pink' }]} />
+                <Entypo name="emoji-sad" style={[styles.emojiIcon, { color: 'red' }]} />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Menu Modal */}
       <Modal
@@ -599,9 +618,13 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   menuContainer: {
     backgroundColor: 'white',
@@ -633,6 +656,63 @@ const styles = StyleSheet.create({
   },
   deleteMenuText: {
     color: '#FF3B30',
+  },
+  commentModalContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    height: '40%',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#ccc',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
+  commentModalContent: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    height: '100%',
+  },
+  commentInputContainer: {
+    width: '100%',
+    marginBottom: 15,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    maxHeight: 150,
+    minHeight: 100,
+    width: '100%',
+  },
+  emojiContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  emojiIcon: {
+    fontSize: 24,
+    marginHorizontal: 15,
   },
 });
 
