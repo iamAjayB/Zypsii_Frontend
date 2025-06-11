@@ -451,11 +451,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
                   multiline
                 />
               </View>
-              <View style={styles.emojiContainer}>
-                <Entypo name="emoji-happy" style={[styles.emojiIcon, { color: 'lightgreen' }]} />
-                <Entypo name="emoji-neutral" style={[styles.emojiIcon, { color: 'pink' }]} />
-                <Entypo name="emoji-sad" style={[styles.emojiIcon, { color: 'red' }]} />
-              </View>
+             
             </View>
           </View>
         </TouchableOpacity>
