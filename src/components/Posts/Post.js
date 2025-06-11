@@ -409,12 +409,12 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
             <Feather name="navigation" style={styles.icon} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleSavePost}>
+        {/* <TouchableOpacity onPress={handleSavePost}>
           <Feather 
             name="bookmark"
             style={[styles.bookmarkIcon, { color: isSaved ? '#A60F93' : '#000' }]} 
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <View style={styles.likesContainer}>

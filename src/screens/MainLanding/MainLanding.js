@@ -1260,9 +1260,9 @@ function MainLanding(props) {
 
   const renderPosts = () => (
     <View>
-      <TextDefault textColor={colors.fontMainColor} style={styles.titleSpacer}H4>
+      {/* <TextDefault textColor={colors.fontMainColor} style={styles.titleSpacer}H4>
         {'Posts'}
-      </TextDefault>
+      </TextDefault> */}
       {isPostsLoading ? (
         <VerticalListLoader count={5} />
       ) : (
