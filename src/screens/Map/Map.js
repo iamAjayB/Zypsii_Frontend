@@ -269,9 +269,9 @@ const Map = ({ route }) => {
         keyExtractor={(item) => item.id || item._id}
         data={discoverbynearest}
         renderItem={({ item }) => {
-          console.log('Rendering discover item:', item); // Debug log
+         // console.log('Rendering discover item:', item); // Debug log
           if (!item) {
-            console.warn('Received null or undefined item in FlatList');
+           // console.warn('Received null or undefined item in FlatList');
             return null;
           }
           return (

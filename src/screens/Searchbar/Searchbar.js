@@ -39,13 +39,13 @@ function SearchPage() {
     
     setIsLoading(true);
     const accessToken = await AsyncStorage.getItem('accessToken');
-    console.log('Access Token:', accessToken);
+    //console.log('Access Token:', accessToken);
 
     const url = activeTab === "People"
       ? `${base_url}/user/getProfile?search=${encodeURIComponent(text)}`
       : `${base_url}/schedule/places/searchWithItinerary?searchPlaceName=${encodeURIComponent(text)}`;
 
-    console.log('Fetching from URL:', url);
+    
 
     try {
       const response = await fetch(url, {
@@ -86,7 +86,7 @@ function SearchPage() {
           const usersArray = Array.isArray(data.data) ? data.data : [data.data];
           const formattedData = usersArray.map(user => ({
             id: user._id,
-            image: user.image || 'https://via.placeholder.com/50',
+            image: user.profilePicture || 'https://via.placeholder.com/50',
             name: user.fullName,
             tagline: user.userName,
             email: user.email,

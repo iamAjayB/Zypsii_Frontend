@@ -650,7 +650,7 @@ function Destination({ route, navigation }) {
               )}
 
               {/* Comments Section */}
-              <View style={styles.commentContainer}>
+              {/* <View style={styles.commentContainer}>
                 <TextDefault style={styles.commentTitle}>Leave a comment</TextDefault>
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -664,7 +664,7 @@ function Destination({ route, navigation }) {
                     <TextDefault style={styles.sendButtonText}>Send</TextDefault>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </View> */}
 
               <View style={stylescomment.commentSection}>
                 {comments.map((comment) => (
