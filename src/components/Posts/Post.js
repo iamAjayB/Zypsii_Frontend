@@ -9,7 +9,6 @@ import { base_url } from '../../utils/base_url';
 import FollowButton from '../Follow/FollowButton';
 import io from 'socket.io-client';
 import { SOCKET_URL } from '../../config';
-
 const { width } = Dimensions.get('window');
 
 const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
@@ -31,6 +30,8 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   const isRoomJoined = useRef(false);
   const isCommentRoomJoined = useRef(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [shareCount, setShareCount] = useState(item.shareCount || 0);
+  const isShareRoomJoined = useRef(false);
 
   useEffect(() => {
     const getCurrentUserId = async () => {
@@ -39,6 +40,8 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
         if (userId) {
           const userData = JSON.parse(userId);
           setCurrentUserId(userData._id);
+          // Check like status after getting user ID
+          checkLikeStatus();
         }
       } catch (error) {
         console.error('Error getting user ID:', error);
@@ -49,7 +52,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     // Initialize socket connection if not already connected
     if (!socketRef.current) {
       socketRef.current = io(SOCKET_URL);
-      
+
       // Wait for socket to connect before setting up listeners
       socketRef.current.on('connect', () => {
         console.log('Socket connected:', socketRef.current.id);
@@ -79,6 +82,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   useEffect(() => {
     if (isVisible && !isRoomJoined.current) {
       joinLikeRoom();
+      checkLikeStatus();
     } else if (!isVisible && isRoomJoined.current) {
       leaveLikeRoom();
     }
@@ -183,6 +187,34 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       console.error('Comment delete error:', error);
       Alert.alert('Error', error.message || 'Failed to delete comment');
     });
+
+    // Share-related listeners
+    socketRef.current.on('join-share-room-status', (data) => {
+      console.log(`Post ${item._id} - Join share room status:`, data);
+      if (data.moduleId === item._id) {
+        isShareRoomJoined.current = true;
+        requestShareCount();
+      }
+    });
+
+    socketRef.current.on('leave-share-room-status', (data) => {
+      console.log(`Post ${item._id} - Leave share room status:`, data);
+      if (data.moduleId === item._id) {
+        isShareRoomJoined.current = false;
+      }
+    });
+
+    socketRef.current.on('share-count', (data) => {
+      if (data.moduleId === item._id) {
+        console.log(`Post ${item._id} - Share count updated:`, data.count);
+        setShareCount(data.count);
+      }
+    });
+
+    socketRef.current.on('share-error', (error) => {
+      console.error('Share error:', error);
+      Alert.alert('Error', error.message || 'Failed to share post');
+    });
   };
 
   const joinLikeRoom = () => {
@@ -247,7 +279,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     try {
       setIsLiking(true);
-      
+
       if (like) {
         // Unlike
         console.log(`Post ${item._id} - Emitting unlike event`);
@@ -282,7 +314,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       setIsDeleting(true);
       setShowMenu(false);
       const token = await AsyncStorage.getItem('accessToken');
-      
+
       if (!token) {
         Alert.alert('Error', 'Authentication token not found');
         return;
@@ -319,7 +351,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   // const handleSavePost = async () => {
   //   try {
   //     const token = await AsyncStorage.getItem('accessToken');
-      
+
   //     if (!token) {
   //       Alert.alert('Error', 'Authentication token not found');
   //       return;
@@ -350,7 +382,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
   // const renderImage = ({ item: imageUrl }) => {
   //   let processedUrl = imageUrl;
-    
+
   //   try {
   //     // If the URL is a stringified array
   //     if (typeof imageUrl === 'string' && imageUrl.startsWith('[')) {
@@ -417,130 +449,130 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   }, [showCommentModal]);
 
   // Function to handle comment deletion (add this new function)
-const handleDeleteComment = (commentId) => {
-  if (!currentUserId) {
-    Alert.alert('Error', 'Please login to delete comments');
-    return;
-  }
-
-  Alert.alert(
-    'Delete Comment',
-    'Are you sure you want to delete this comment?',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          socketRef.current.emit('delete-comment', {
-            commentId,
-            commentedBy: currentUserId
-          });
-        }
-      }
-    ]
-  );
-};
-
- // Updated comment submission handler
-const handleCommentSubmit = async () => {
+  const handleDeleteComment = (commentId) => {
     if (!currentUserId) {
-        Alert.alert('Login Required', 'Please login to comment');
-        return;
+      Alert.alert('Error', 'Please login to delete comments');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            socketRef.current.emit('delete-comment', {
+              commentId,
+              commentedBy: currentUserId
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  // Updated comment submission handler
+  const handleCommentSubmit = async () => {
+    if (!currentUserId) {
+      Alert.alert('Login Required', 'Please login to comment');
+      return;
     }
 
     if (!commentText.trim()) {
-        Alert.alert('Error', 'Comment cannot be empty');
-        return;
+      Alert.alert('Error', 'Comment cannot be empty');
+      return;
     }
 
     if (isCommenting) {
-        return; // Prevent multiple submissions
+      return; // Prevent multiple submissions
     }
 
     try {
-        setIsCommenting(true);
-        console.log('Submitting comment for post:', item._id);
+      setIsCommenting(true);
+      console.log('Submitting comment for post:', item._id);
 
-        // Prepare the comment payload matching backend structure
-        const commentPayload = {
-            moduleId: item._id,
-            moduleType: 'post',
-            moduleCreatedBy: item.createdBy,
-            commentedBy: currentUserId,
-            commentDataValue: commentText.trim() // Changed from commentValue to commentDataValue
-        };
+      // Prepare the comment payload matching backend structure
+      const commentPayload = {
+        moduleId: item._id,
+        moduleType: 'post',
+        moduleCreatedBy: item.createdBy,
+        commentedBy: currentUserId,
+        commentDataValue: commentText.trim() // Changed from commentValue to commentDataValue
+      };
 
-        console.log('Sending comment payload:', commentPayload);
+      console.log('Sending comment payload:', commentPayload);
 
-        // Send the comment
-        socketRef.current.emit('comment', commentPayload);
+      // Send the comment
+      socketRef.current.emit('comment', commentPayload);
 
-        // Set a timeout to reset commenting state if it takes too long
-        setTimeout(() => {
-            if (isCommenting) {
-                setIsCommenting(false);
-                Alert.alert('Error', 'Comment submission timed out. Please try again.');
-            }
-        }, 5000);
+      // Set a timeout to reset commenting state if it takes too long
+      setTimeout(() => {
+        if (isCommenting) {
+          setIsCommenting(false);
+          Alert.alert('Error', 'Comment submission timed out. Please try again.');
+        }
+      }, 5000);
 
     } catch (error) {
-        console.error('Error submitting comment:', error);
-        setIsCommenting(false);
-        Alert.alert('Error', 'Failed to submit comment. Please try again.');
+      console.error('Error submitting comment:', error);
+      setIsCommenting(false);
+      Alert.alert('Error', 'Failed to submit comment. Please try again.');
     }
-};
+  };
 
   // Updated comment item render (modify the FlatList renderItem in your JSX)
-const renderCommentItem = ({ item: comment }) => (
-  <View style={styles.commentItem}>
-    <View style={styles.commentHeader}>
-      <View style={styles.commentUserInfo}>
-        <Image
-          source={{ 
-            uri: comment.commentedBy?.profilePicture || 'https://via.placeholder.com/40'
-          }}
-          style={styles.commentUserImage}
-        />
-        <View style={styles.commentUserDetails}>
-          <Text style={styles.commentUser}>
-            {comment.commentedBy?.fullName || comment.commentedBy?.username}
-          </Text>
-          <Text style={styles.commentDate}>
-            {formatDate(comment.createdAt)}
-          </Text>
+  const renderCommentItem = ({ item: comment }) => (
+    <View style={styles.commentItem}>
+      <View style={styles.commentHeader}>
+        <View style={styles.commentUserInfo}>
+          <Image
+            source={{
+              uri: comment.commentedBy?.profilePicture || 'https://via.placeholder.com/40'
+            }}
+            style={styles.commentUserImage}
+          />
+          <View style={styles.commentUserDetails}>
+            <Text style={styles.commentUser}>
+              {comment.commentedBy?.fullName || comment.commentedBy?.username}
+            </Text>
+            <Text style={styles.commentDate}>
+              {formatDate(comment.createdAt)}
+            </Text>
+          </View>
         </View>
+        {comment.commentedBy?._id === currentUserId && (
+          <TouchableOpacity
+            onPress={() => handleDeleteComment(comment._id)}
+            style={styles.deleteCommentButton}
+          >
+            <Feather name="trash-2" size={16} color="#FF3B30" />
+          </TouchableOpacity>
+        )}
       </View>
-      {comment.commentedBy?._id === currentUserId && (
-        <TouchableOpacity
-          onPress={() => handleDeleteComment(comment._id)}
-          style={styles.deleteCommentButton}
-        >
-          <Feather name="trash-2" size={16} color="#FF3B30" />
-        </TouchableOpacity>
-      )}
+      <Text style={styles.commentText}>{comment.commentData}</Text>
     </View>
-    <Text style={styles.commentText}>{comment.commentData}</Text>
-  </View>
-);
+  );
 
   // Updated comment list handler
-const handleListComments = () => {
-  if (socketRef.current && item._id) {
-    console.log('Requesting comments for post:', item._id);
-    socketRef.current.emit('list-comment', {
-      moduleId: item._id,  
-      moduleType: 'post'
-    });
-  }
-};
+  const handleListComments = () => {
+    if (socketRef.current && item._id) {
+      console.log('Requesting comments for post:', item._id);
+      socketRef.current.emit('list-comment', {
+        moduleId: item._id,
+        moduleType: 'post'
+      });
+    }
+  };
 
   // Add fetchFollowers function
   const fetchFollowers = async () => {
     try {
       setIsLoadingFollowers(true);
       const token = await AsyncStorage.getItem('accessToken');
-      
+
       if (!token) {
         Alert.alert('Error', 'Authentication token not found');
         return;
@@ -577,13 +609,35 @@ const handleListComments = () => {
     }
     setShowShareModal(true);
     await fetchFollowers();
+    joinShareRoom();
+  };
+
+  // Add handleShareWithFollower function
+  const handleShareWithFollower = (follower) => {
+    if (!currentUserId) {
+      Alert.alert('Error', 'Please login to share posts');
+      return;
+    }
+
+    socketRef.current.emit('share', {
+      moduleId: item._id,
+      moduleType: 'post',
+      moduleCreatedBy: item.createdBy,
+      sharedBy: currentUserId
+    });
+
+    setShowShareModal(false);
+    Alert.alert('Success', 'Post shared successfully');
   };
 
   // Add renderFollowerItem function
   const renderFollowerItem = ({ item: follower }) => (
-    <TouchableOpacity style={styles.followerItem}>
+    <TouchableOpacity
+      style={styles.followerItem}
+      onPress={() => handleShareWithFollower(follower)}
+    >
       <Image
-        source={{ 
+        source={{
           uri: follower.profilePicture || 'https://via.placeholder.com/50'
         }}
         style={styles.followerImage}
@@ -594,6 +648,30 @@ const handleListComments = () => {
       </View>
     </TouchableOpacity>
   );
+ 
+  const checkLikeStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) return;
+
+      const response = await fetch(`${base_url}/like-status?moduleType=post&moduleId=${item._id}&moduleCreatedBy=${item.createdBy}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+   
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setLike(data.success);
+      
+      }
+    } catch (error) {
+      console.error('Error checking like status:', error);
+    }
+  };
 
   // Log the URL before rendering
   return (
@@ -619,7 +697,7 @@ const handleListComments = () => {
 
       {/* Only render the image if the URL is a non-empty string */}
       {hasImages && firstImageUrl && firstImageUrl !== '' && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.postImageContainer}
           onPress={() => setShowFullImage(true)}
         >
@@ -633,17 +711,17 @@ const handleListComments = () => {
 
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleLike}
             disabled={isLiking}
           >
             <AntDesign
               name={like ? 'heart' : 'hearto'}
               style={[
-                styles.likeIcon, 
-                { 
+                styles.likeIcon,
+                {
                   color: like ? 'red' : 'black',
-                  opacity: isLiking ? 0.5 : 1 
+                  opacity: isLiking ? 0.5 : 1
                 }
               ]}
             />
@@ -665,7 +743,7 @@ const handleListComments = () => {
 
       <View style={styles.likesContainer}>
         <Text style={styles.statsText}>
-          {likeCount} likes • {item.commentsCount} comments • {item.shareCount} shares
+          {likeCount} likes • {item.commentsCount} comments • {shareCount} shares
         </Text>
         {/* {item.tags && item.tags.length > 0 && (
           <Text style={styles.tagsText}>
@@ -682,7 +760,7 @@ const handleListComments = () => {
         onRequestClose={() => setShowCommentModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => setShowCommentModal(false)}
@@ -699,7 +777,7 @@ const handleListComments = () => {
                   onChangeText={setCommentText}
                   maxLength={500}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
                     styles.commentSubmitButton,
                     { opacity: commentText.trim() ? 1 : 0.5 }
@@ -712,14 +790,14 @@ const handleListComments = () => {
                   </Text>
                 </TouchableOpacity>
               </View>
-              
+
               <FlatList
-  data={comments}
-  keyExtractor={(comment, index) => comment._id || index.toString()}
-  renderItem={renderCommentItem}
-  style={styles.commentsList}
-  showsVerticalScrollIndicator={false}
- />
+                data={comments}
+                keyExtractor={(comment, index) => comment._id || index.toString()}
+                renderItem={renderCommentItem}
+                style={styles.commentsList}
+                showsVerticalScrollIndicator={false}
+              />
             </View>
           </View>
         </View>
@@ -732,13 +810,13 @@ const handleListComments = () => {
         animationType="fade"
         onRequestClose={() => setShowMenu(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowMenu(false)}
         >
           <View style={styles.menuContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.menuItem, styles.deleteMenuItem]}
               onPress={handleDelete}
               disabled={isDeleting}
@@ -760,7 +838,7 @@ const handleListComments = () => {
         onRequestClose={() => setShowFullImage(false)}
       >
         <View style={styles.modalContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setShowFullImage(false)}
           >
@@ -782,7 +860,7 @@ const handleListComments = () => {
         onRequestClose={() => setShowShareModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => setShowShareModal(false)}
