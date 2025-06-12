@@ -111,7 +111,7 @@ const ChatScreen = ({ route, navigation }) => {
       // Get current user ID from AsyncStorage
       const token = await AsyncStorage.getItem('accessToken');
       const userDataString = await AsyncStorage.getItem('user');
-      
+
       if (!token || !userDataString) {
         Alert.alert('Error', 'Authentication required');
         navigation.goBack();
@@ -121,7 +121,7 @@ const ChatScreen = ({ route, navigation }) => {
       // Parse the user data string to get the user ID
       const userData = JSON.parse(userDataString);
       const userIdFromStorage = userData._id;
-      
+
       setCurrentUserId(userIdFromStorage);
 
       // Initialize socket connection with reconnection options
@@ -140,20 +140,20 @@ const ChatScreen = ({ route, navigation }) => {
       // Socket event listeners
       socketInstance.on('connect', () => {
         console.log('Connected to socket server');
-        
+
         // Join chat room
         socketInstance.emit('join-chat-room', {
           senderId: userIdFromStorage,
           receiverId: userId
         });
-        
+
         // Fetch chat history with error handling
         try {
           console.log('Fetching chat history for:', {
             senderId: userIdFromStorage,
             receiverId: userId
           });
-          
+
           // Add a timeout for chat history request
           // const timeoutId = setTimeout(() => {
           //   console.log('Chat history request timed out');
@@ -291,14 +291,14 @@ const ChatScreen = ({ route, navigation }) => {
 
     setSending(true);
     animateSendButton();
-    
+
     try {
       socket.emit('send-message', {
         senderId: currentUserId,
         receiverId: userId,
         message: newMessage.trim()
       });
-      
+
       setNewMessage('');
       setSending(false);
     } catch (error) {
@@ -333,9 +333,10 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const renderMessage = ({ item, index }) => {
-    const isMyMessage = item.senderId === currentUserId;
-    const isFirstInGroup = index === 0 || messages[index - 1].senderId !== item.senderId;
-    const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== item.senderId;
+    // Fix the sender ID comparison to handle nested structure
+    const isMyMessage = item.senderId._id === currentUserId;
+    const isFirstInGroup = index === 0 || messages[index - 1].senderId._id !== item.senderId._id;
+    const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId._id !== item.senderId._id;
     
     return (
       <Animated.View style={[
@@ -379,7 +380,7 @@ const ChatScreen = ({ route, navigation }) => {
 
   const renderTypingIndicator = () => {
     if (!isTyping) return null;
-    
+
     return (
       <Animated.View style={[styles.typingContainer, { opacity: typingOpacity }]}>
         <View style={styles.typingBubble}>
@@ -409,7 +410,7 @@ const ChatScreen = ({ route, navigation }) => {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor={colors.Zypsii_color} />
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
