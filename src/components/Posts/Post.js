@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet, FlatList, Dimensions, Modal, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet, FlatList, Dimensions, Modal, Alert, ActivityIndicator } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionic from 'react-native-vector-icons/Ionicons';
@@ -24,6 +24,9 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   const [comments, setComments] = useState([]);
   const [isCommenting, setIsCommenting] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const socketRef = useRef(null);
   const isRoomJoined = useRef(false);
   const isCommentRoomJoined = useRef(false);
@@ -485,7 +488,7 @@ const handleCommentSubmit = async () => {
             moduleType: 'post',
             moduleCreatedBy: item.createdBy,
             commentedBy: currentUserId,
-            commentData: commentText.trim()
+            commentValue: commentText.trim()
         };
 
         console.log('Sending comment payload:', commentPayload);
@@ -541,6 +544,66 @@ const handleListComments = () => {
     });
   }
 };
+
+  // Add fetchFollowers function
+  const fetchFollowers = async () => {
+    try {
+      setIsLoadingFollowers(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) {
+        Alert.alert('Error', 'Authentication token not found');
+        return;
+      }
+
+      const response = await fetch(`${base_url}/follow/getFollowers/${currentUserId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.status) {
+        setFollowers(data.followers);
+      } else {
+        Alert.alert('Error', data.message || 'Failed to fetch followers');
+      }
+    } catch (error) {
+      console.error('Fetch Followers Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoadingFollowers(false);
+    }
+  };
+
+  // Add handleShare function
+  const handleShare = async () => {
+    if (!currentUserId) {
+      Alert.alert('Error', 'Please login to share posts');
+      return;
+    }
+    setShowShareModal(true);
+    await fetchFollowers();
+  };
+
+  // Add renderFollowerItem function
+  const renderFollowerItem = ({ item: follower }) => (
+    <TouchableOpacity style={styles.followerItem}>
+      <Image
+        source={{ 
+          uri: follower.profilePicture || 'https://via.placeholder.com/50'
+        }}
+        style={styles.followerImage}
+      />
+      <View style={styles.followerInfo}>
+        <Text style={styles.followerName}>{follower.fullName}</Text>
+        <Text style={styles.followerUsername}>{follower.userName}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   // Log the URL before rendering
   return (
@@ -598,7 +661,7 @@ const handleListComments = () => {
           <TouchableOpacity onPress={() => setShowCommentModal(true)}>
             <Ionic name="chatbubble-outline" style={styles.icon} />
           </TouchableOpacity>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleShare}>
             <Feather name="navigation" style={styles.icon} />
           </TouchableOpacity>
         </View>
@@ -718,6 +781,39 @@ const handleListComments = () => {
             style={styles.fullScreenImage}
             resizeMode="contain"
           />
+        </View>
+      </Modal>
+
+      {/* Share Modal */}
+      <Modal
+        visible={showShareModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowShareModal(false)}
+          />
+          <View style={styles.shareModalContainer}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.shareModalTitle}>Share with followers</Text>
+            {isLoadingFollowers ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#A60F93" />
+              </View>
+            ) : (
+              <FlatList
+                data={followers}
+                keyExtractor={(item) => item._id}
+                renderItem={renderFollowerItem}
+                style={styles.followersList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </View>
         </View>
       </Modal>
     </View>
@@ -965,6 +1061,62 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 1,
     padding: 10,
+  },
+  shareModalContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    height: '60%',
+    maxHeight: '80%',
+  },
+  shareModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  followersList: {
+    flex: 1,
+  },
+  followerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  followerImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+  },
+  followerInfo: {
+    flex: 1,
+  },
+  followerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  followerUsername: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
 });
 
