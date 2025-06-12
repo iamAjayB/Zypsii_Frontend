@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, KeyboardAvoidingView, ScrollView, Platform, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, KeyboardAvoidingView, ScrollView, Platform, Dimensions, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location'; // Use expo-location
 import { base_url } from '../../utils/base_url';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 const SignUpScreen = () => {
   const [fullName, setFullName] = useState('');
@@ -14,6 +16,7 @@ const SignUpScreen = () => {
   const [loading, setLoading] = useState(false);
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const navigation = useNavigation();
 
   // Request location permission and fetch location
@@ -42,192 +45,224 @@ const SignUpScreen = () => {
   }, []);
 
   const handleSignUp = async () => {
-    if (!email || !password || !fullName || !countryCode || !phoneNumber || latitude === null || longitude === null) {
-      Alert.alert('Error', 'Please enter all fields and allow location access');
+    if (!fullName || !email || !password || !countryCode || !phoneNumber) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
     // Validate country code format
     if (!countryCode.startsWith('+') || countryCode.length < 2 || countryCode.length > 5) {
-      Alert.alert('Error', 'Country code must start with + and be 1 to 4 digits');
+      Alert.alert('Error', 'Please enter a valid country code (e.g., +91)');
       return;
     }
 
     // Validate phone number format
     if (phoneNumber.length < 7 || phoneNumber.length > 15 || !/^\d+$/.test(phoneNumber)) {
-      Alert.alert('Error', 'Phone number must be 7 to 15 digits');
+      Alert.alert('Error', 'Please enter a valid phone number');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Starting signup process...');
-      console.log('Signup data:', { fullName, email, password, countryCode, phoneNumber, latitude, longitude });
-      console.log('API URL:', `${base_url}/user/signUp`);
-      
       const response = await fetch(`${base_url}/user/signUp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          fullName, 
-          email, 
-          password, 
-          countryCode, 
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          countryCode,
           phoneNumber,
-          latitude, 
-          longitude 
+          latitude: latitude || 0,
+          longitude: longitude || 0
         }),
       });
 
-      console.log('Signup response status:', response.status);
       const data = await response.json();
-      console.log('Signup response data:', data);
+      console.log('Signup response:', data);
 
-      if (response.ok) {
-        if (!data.error) {
-          console.log('Signup successful, navigating to Login...');
-          Alert.alert('Success', 'Account created successfully');
-          navigation.navigate('Login');
-        } else {
-          console.log('Signup failed with error:', data.message);
-          Alert.alert('Error', data.message || 'Signup failed');
-        }
+      if (response.ok && !data.error) {
+        Alert.alert(
+          'Success',
+          'Account created successfully! Please login to continue.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
       } else {
-        console.log('Signup failed with status:', response.status);
-        Alert.alert('Error', 'Signup failed, please try again.');
+        Alert.alert('Error', data.message || 'Signup failed. Please try again.');
       }
     } catch (error) {
-      console.error('Signup error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      Alert.alert('Error', 'Signup failed due to a network error');
+      console.error('Signup error:', error);
+      Alert.alert(
+        'Error',
+        'Network error occurred. Please check your internet connection and try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        bounces={false}
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
-        <View style={styles.topSection}>
-          <Text style={styles.title}>Sign Up</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your full name"
-              placeholderTextColor="#999"
-              value={fullName}
-              onChangeText={setFullName}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#999"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
-
-          <View style={styles.phoneContainer}>
-            <View style={styles.countryCodeContainer}>
-              <Text style={styles.label}>Country Code</Text>
-              <TextInput
-                style={[styles.input, styles.countryCodeInput]}
-                placeholder="+91"
-                placeholderTextColor="#999"
-                value={countryCode}
-                onChangeText={setCountryCode}
-                keyboardType="phone-pad"
-              />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <LinearGradient
+            colors={['#8A2BE2', '#FF69B4', '#9932CC']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.topSection}
+          >
+            <View style={styles.logoContainer}>
+              <View style={styles.logoCircle}>
+                <Ionicons name="person-add" size={40} color="#fff" />
+              </View>
             </View>
-            <View style={styles.phoneNumberContainer}>
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={[styles.input, styles.phoneNumberInput]}
-                placeholder="Enter your phone number"
-                placeholderTextColor="#999"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-              />
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Sign up to get started</Text>
+
+            <View style={styles.inputContainer}>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your full name"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  value={fullName}
+                  onChangeText={setFullName}
+                />
+              </View>
             </View>
-          </View>
-        </View>
 
-        <View style={styles.bottomSection}>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginButtonText}>LOGIN</Text>
-            </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
 
+            <View style={styles.inputContainer}>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  secureTextEntry={!passwordVisible}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setPasswordVisible(!passwordVisible)}
+                >
+                  <Ionicons 
+                    name={passwordVisible ? "eye-outline" : "eye-off-outline"} 
+                    size={20} 
+                    color="rgba(255,255,255,0.8)" 
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.phoneContainer}>
+              <View style={styles.countryCodeContainer}>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="+91"
+                    placeholderTextColor="rgba(255,255,255,0.7)"
+                    value={countryCode}
+                    onChangeText={setCountryCode}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </View>
+              <View style={styles.phoneNumberContainer}>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="call-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your phone number"
+                    placeholderTextColor="rgba(255,255,255,0.7)"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.bottomSection}>
             <TouchableOpacity 
-              style={[styles.signupButton, loading && styles.disabledButton]} 
+              style={[styles.signupButton, loading && styles.buttonDisabled]} 
               onPress={handleSignUp}
               disabled={loading}
             >
-              <Text style={styles.signupButtonText}>
-                {loading ? 'SIGNING UP...' : 'SIGNUP'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.signupButtonText}>SIGN UP</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
+                </>
+              )}
             </TouchableOpacity>
+
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.signupLink}>Login</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <Text style={styles.orText}>or signup with</Text>
-
-          <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity>
-              <Image source={require('../../assets/icons/google.png')} style={styles.socialIcon} />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Image source={require('../../assets/icons/facebook.png')} style={styles.socialIcon} />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.loginText}>Already have an account? <Text style={styles.loginLink}>LOGIN</Text></Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#a60f93',
+    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -235,100 +270,67 @@ const styles = StyleSheet.create({
   },
   topSection: {
     flex: 1,
-    backgroundColor: '#a60f93',
     paddingHorizontal: 30,
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 40,
+    minHeight: Dimensions.get('window').height * 0.65,
   },
-  bottomSection: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 30,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
     marginBottom: 40,
   },
-  label: {
-    color: '#FFFFFF',
-    marginBottom: 8,
-    fontSize: 16,
-  },
   inputContainer: {
-    marginBottom: 25,
+    marginBottom: 20,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 15,
+    height: 55,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 8,
-    padding: 15,
+    flex: 1,
     color: '#FFFFFF',
     fontSize: 16,
+    height: '100%',
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  loginButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    borderRadius: 25,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#a60f93',
-  },
-  signupButton: {
-    flex: 1,
-    backgroundColor: '#a60f93',
-    paddingVertical: 15,
-    borderRadius: 25,
-    marginLeft: 10,
-  },
-  loginButtonText: {
-    color: '#a60f93',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  signupButtonText: {
-    color: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  orText: {
-    color: '#999',
-    textAlign: 'center',
-    marginVertical: 20,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 30,
-  },
-  socialIcon: {
-    width: 40,
-    height: 40,
-    marginHorizontal: 15,
-  },
-  loginText: {
-    color: '#666',
-    textAlign: 'center',
-    fontSize: 14,
-  },
-  loginLink: {
-    color: '#000000',
-    fontWeight: 'bold',
+  eyeIcon: {
+    padding: 5,
   },
   phoneContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 25,
+    marginBottom: 20,
   },
   countryCodeContainer: {
     width: '30%',
@@ -336,14 +338,66 @@ const styles = StyleSheet.create({
   phoneNumberContainer: {
     width: '65%',
   },
-  countryCodeInput: {
-    width: '100%',
+  bottomSection: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 30,
+    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -5,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+    marginTop: -30,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  phoneNumberInput: {
-    width: '100%',
+  signupButton: {
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 18,
+    borderRadius: 25,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    shadowColor: '#8A2BE2',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  disabledButton: {
+  buttonDisabled: {
     opacity: 0.7,
+  },
+  signupButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  buttonIcon: {
+    marginLeft: 5,
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signupText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  signupLink: {
+    color: '#8A2BE2',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
 

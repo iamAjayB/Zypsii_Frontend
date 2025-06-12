@@ -46,6 +46,34 @@ const Map = ({ route }) => {
   const fullMapRef = useRef(null);
   const { tripId } = route.params || {};
 
+  // Add sample locations for 4 days
+  const [dayLocations, setDayLocations] = useState([
+    {
+      id: 'day1',
+      name: 'Kanyakumari',
+      location: { lat: 8.0883, lng: 77.5385 }, // Kanyakumari coordinates
+      address: 'Kanyakumari, Tamil Nadu'
+    },
+    {
+      id: 'day2',
+      name: 'Thiruvananthapuram',
+      location: { lat: 8.5241, lng: 76.9366 }, // Thiruvananthapuram coordinates
+      address: 'Thiruvananthapuram, Kerala'
+    },
+    {
+      id: 'day3',
+      name: 'Bangalore',
+      location: { lat: 12.9716, lng: 77.5946 }, // Bangalore coordinates
+      address: 'Bangalore, Karnataka'
+    },
+    {
+      id: 'day4',
+      name: 'Goa',
+      location: { lat: 15.4989, lng: 73.8278 }, // Goa coordinates
+      address: 'Goa'
+    }
+  ]);
+
   useEffect(() => {
     fetchScheduleData();
   }, [tripId]);
@@ -131,13 +159,13 @@ const Map = ({ route }) => {
 
   // Calculate initial region based on selected locations
   const getInitialRegion = () => {
-    const locations = selectedPlaces.length > 0 ? selectedPlaces : getAllLocations();
+    const locations = dayLocations;
     if (locations.length === 0) {
       return {
-        latitude: 13.0827,
-        longitude: 80.2707,
-        latitudeDelta: 4.5,
-        longitudeDelta: 4.5,
+        latitude: 12.9716, // Center on Bangalore
+        longitude: 77.5946,
+        latitudeDelta: 8, // Increased to show all locations
+        longitudeDelta: 8,
       };
     }
 
@@ -376,9 +404,9 @@ const Map = ({ route }) => {
   };
 
   const renderMapMarkers = () => {
-    return selectedPlaces.map((location, index) => (
+    return dayLocations.map((location, index) => (
       <Marker
-        key={location._id}
+        key={location.id}
         coordinate={{
           latitude: location.location.lat,
           longitude: location.location.lng
@@ -387,7 +415,7 @@ const Map = ({ route }) => {
         description={location.address}
       >
         <View style={styles.customMarker}>
-          <View style={styles.markerInner}>
+          <View style={[styles.markerInner, { backgroundColor: colors.btncolor }]}>
             <Text style={styles.markerText}>{index + 1}</Text>
           </View>
         </View>
@@ -396,16 +424,15 @@ const Map = ({ route }) => {
   };
 
   const renderPolyline = () => {
-    if (selectedPlaces.length > 1) {
+    if (dayLocations.length > 1) {
       return (
         <Polyline
-          coordinates={selectedPlaces.map(loc => ({
+          coordinates={dayLocations.map(loc => ({
             latitude: loc.location.lat,
             longitude: loc.location.lng
           }))}
           strokeColor={colors.btncolor}
           strokeWidth={3}
-          lineDashPattern={[5, 5]}
         />
       );
     }
@@ -433,100 +460,105 @@ const Map = ({ route }) => {
         />
       </View>
 
-      <View style={[styles.mainContent, { marginTop: 20 }]}>
-        {/* Enhanced Route Display */}
-        {selectedPlaces.length > 0 && (
-          <View style={styles.routeCard}>
-            <View style={styles.routeHeader}>
-              <MaterialCommunityIcons name="navigation" size={20} color={colors.btncolor} />
-              <Text style={styles.routeTitle}>Your Route</Text>
-            </View>
-            <View style={styles.fromToContainer}>
-              <View style={styles.locationInfo}>
-                <View style={styles.startMarker}>
-                  <MaterialCommunityIcons name="map-marker" size={16} color={colors.white} />
-                </View>
-                <Text style={styles.locationText} numberOfLines={1}>
-                  {selectedPlaces[0].name}
-                </Text>
+      <View style={styles.mainContent}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 80 }} // Add padding to account for bottom tab
+        >
+          {/* Enhanced Route Display */}
+          {dayLocations.length > 0 && (
+            <View style={styles.routeCard}>
+              <View style={styles.routeHeader}>
+                <MaterialCommunityIcons name="navigation" size={20} color={colors.btncolor} />
+                <Text style={[styles.routeTitle, { color: colors.btncolor }]}>South India Route</Text>
               </View>
-              <View style={styles.routeLine}>
-                <View style={styles.dashedLine} />
+              <View style={styles.fromToContainer}>
+                <View style={styles.locationInfo}>
+                  <View style={[styles.startMarker, { backgroundColor: colors.btncolor }]}>
+                    <MaterialCommunityIcons name="map-marker" size={16} color={colors.white} />
+                  </View>
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {dayLocations[0].name}
+                  </Text>
+                </View>
+                <View style={styles.routeLine}>
+                  <View style={[styles.dashedLine, { backgroundColor: colors.btncolor }]} />
+                  <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
+                </View>
+                <View style={styles.locationInfo}>
+                  <View style={[styles.endMarker, { backgroundColor: colors.btncolor }]}>
+                    <MaterialCommunityIcons name="flag" size={16} color={colors.white} />
+                  </View>
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {dayLocations[dayLocations.length - 1].name}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Enhanced Map Container */}
+          <View style={styles.mapCard}>
+            <View style={styles.mapHeader}>
+              <Text style={styles.mapTitle}>Interactive Map</Text>
+              <TouchableOpacity 
+                style={styles.fullMapButton}
+                onPress={() => setIsFullMapVisible(true)}
+              >
+                <MaterialCommunityIcons name="fullscreen" size={18} color={colors.btncolor} />
+                <Text style={styles.fullMapText}>Full View</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.mapContainer}>
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                initialRegion={getInitialRegion()}
+                showsUserLocation={true}
+                showsMyLocationButton={false}
+                showsCompass={false}
+                toolbarEnabled={false}
+              >
+                {renderMapMarkers()}
+                {renderPolyline()}
+              </MapView>
+
+              <View style={styles.zoomControls}>
+                <TouchableOpacity 
+                  style={styles.zoomButton}
+                  onPress={handleZoomIn}
+                >
+                  <MaterialCommunityIcons name="plus" size={20} color={colors.white} />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.zoomButton, { marginTop: 8 }]}
+                  onPress={handleZoomOut}
+                >
+                  <MaterialCommunityIcons name="minus" size={20} color={colors.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Enhanced Discover Section */}
+          <View style={styles.discoverSection}>
+            <View style={styles.discoverRow}>
+              <View style={styles.discoverHeaderLeft}>
+                <MaterialCommunityIcons name="compass-outline" size={24} color={colors.btncolor} />
+                <TextDefault style={styles.discoverText}>Discover Nearby</TextDefault>
+              </View>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('DiscoverPlace')}
+                style={styles.viewAllButton}
+              >
+                <TextDefault style={styles.viewAllText}>View All</TextDefault>
                 <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
-              </View>
-              <View style={styles.locationInfo}>
-                <View style={styles.endMarker}>
-                  <MaterialCommunityIcons name="flag" size={16} color={colors.white} />
-                </View>
-                <Text style={styles.locationText} numberOfLines={1}>
-                  {selectedPlaces[selectedPlaces.length - 1].name}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Enhanced Map Container */}
-        <View style={styles.mapCard}>
-          <View style={styles.mapHeader}>
-            <Text style={styles.mapTitle}>Interactive Map</Text>
-            <TouchableOpacity 
-              style={styles.fullMapButton}
-              onPress={() => setIsFullMapVisible(true)}
-            >
-              <MaterialCommunityIcons name="fullscreen" size={18} color={colors.btncolor} />
-              <Text style={styles.fullMapText}>Full View</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.mapContainer}>
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              initialRegion={getInitialRegion()}
-              showsUserLocation={true}
-              showsMyLocationButton={false}
-              showsCompass={false}
-              toolbarEnabled={false}
-            >
-              {renderMapMarkers()}
-              {renderPolyline()}
-            </MapView>
-
-            <View style={styles.zoomControls}>
-              <TouchableOpacity 
-                style={styles.zoomButton}
-                onPress={handleZoomIn}
-              >
-                <MaterialCommunityIcons name="plus" size={20} color={colors.white} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.zoomButton, { marginTop: 8 }]}
-                onPress={handleZoomOut}
-              >
-                <MaterialCommunityIcons name="minus" size={20} color={colors.white} />
               </TouchableOpacity>
             </View>
+            {renderDiscoverList()}
           </View>
-        </View>
-
-        {/* Enhanced Discover Section */}
-        <View style={styles.discoverSection}>
-          <View style={styles.discoverRow}>
-            <View style={styles.discoverHeaderLeft}>
-              <MaterialCommunityIcons name="compass-outline" size={24} color={colors.btncolor} />
-              <TextDefault style={styles.discoverText}>Discover Nearby</TextDefault>
-            </View>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('DiscoverPlace')}
-              style={styles.viewAllButton}
-            >
-              <TextDefault style={styles.viewAllText}>View All</TextDefault>
-              <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
-            </TouchableOpacity>
-          </View>
-          {renderDiscoverList()}
-        </View>
+        </ScrollView>
       </View>
 
       {/* Full Map Modal */}
@@ -613,13 +645,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 90,
     zIndex: 2,
-    paddingBottom: 20,
   },
   
   // Enhanced Route Card
   routeCard: {
     backgroundColor: colors.white,
     marginHorizontal: 15,
+    marginTop: 20,
     borderRadius: 16,
     padding: 16,
     marginBottom: 15,
@@ -661,7 +693,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.btncolor,
     justifyContent: 'center',
     alignItems: 'center',
   },
