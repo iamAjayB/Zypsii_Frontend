@@ -143,21 +143,17 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     // Comment-related listeners
     socketRef.current.on('join-comment-room-status', (data) => {
       console.log('Joined comment room:', data);
-      if (data.moduleId === item._id) {
-        isCommentRoomJoined.current = true;
-      }
+      isCommentRoomJoined.current = true;
     });
 
     socketRef.current.on('leave-comment-room-status', (data) => {
       console.log('Left comment room:', data);
-      if (data.moduleId === item._id) {
-        isCommentRoomJoined.current = false;
-      }
+      isCommentRoomJoined.current = false;
     });
 
     socketRef.current.on('comment-status', (data) => {
       console.log('Received comment status:', data);
-      if (data.status && data.comment && data.moduleId === item._id) {
+      if (data.comment) {
         setComments(prevComments => [data.comment, ...prevComments]);
         setCommentText('');
         setIsCommenting(false);
@@ -166,33 +162,26 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     socketRef.current.on('comment-list', (data) => {
       console.log('Comment list received:', data);
-      if (data.moduleId === item._id && data.comments) {
+      if (data.comments) {
         setComments(data.comments);
       }
     });
 
     socketRef.current.on('comment-error', (error) => {
       console.error('Comment error:', error);
-      if (error.moduleId === item._id) {
-        setIsCommenting(false);
-        Alert.alert('Error', error.message || 'Failed to add comment');
-      }
+      setIsCommenting(false);
+      Alert.alert('Error', error.message || 'Failed to add comment');
     });
 
     socketRef.current.on('comment-deleted', (data) => {
       console.log('Comment deleted:', data);
-      if (data.moduleId === item._id) {
-        setComments(prevComments => 
-          prevComments.filter(comment => comment._id !== data.commentId)
-        );
-      }
+      // Refresh the comment list after successful deletion
+      handleListComments();
     });
 
     socketRef.current.on('comment-delete-error', (error) => {
       console.error('Comment delete error:', error);
-      if (error.moduleId === item._id) {
-        Alert.alert('Error', error.message || 'Failed to delete comment');
-      }
+      Alert.alert('Error', error.message || 'Failed to delete comment');
     });
   };
 
@@ -473,22 +462,13 @@ const handleCommentSubmit = async () => {
         setIsCommenting(true);
         console.log('Submitting comment for post:', item._id);
 
-        // First join the comment room
-        socketRef.current.emit('join-comment-room', {
-            moduleId: item._id,
-            moduleType: 'post'
-        });
-
-        // Wait a bit for the room to be joined
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Prepare the comment payload
+        // Prepare the comment payload matching backend structure
         const commentPayload = {
             moduleId: item._id,
             moduleType: 'post',
             moduleCreatedBy: item.createdBy,
             commentedBy: currentUserId,
-            commentValue: commentText.trim()
+            commentDataValue: commentText.trim() // Changed from commentValue to commentDataValue
         };
 
         console.log('Sending comment payload:', commentPayload);
@@ -515,9 +495,22 @@ const handleCommentSubmit = async () => {
 const renderCommentItem = ({ item: comment }) => (
   <View style={styles.commentItem}>
     <View style={styles.commentHeader}>
-      <Text style={styles.commentUser}>
-        {comment.commentedBy?.fullName || comment.commentedBy?.username || 'User'}
-      </Text>
+      <View style={styles.commentUserInfo}>
+        <Image
+          source={{ 
+            uri: comment.commentedBy?.profilePicture || 'https://via.placeholder.com/40'
+          }}
+          style={styles.commentUserImage}
+        />
+        <View style={styles.commentUserDetails}>
+          <Text style={styles.commentUser}>
+            {comment.commentedBy?.fullName || comment.commentedBy?.username}
+          </Text>
+          <Text style={styles.commentDate}>
+            {formatDate(comment.createdAt)}
+          </Text>
+        </View>
+      </View>
       {comment.commentedBy?._id === currentUserId && (
         <TouchableOpacity
           onPress={() => handleDeleteComment(comment._id)}
@@ -528,9 +521,6 @@ const renderCommentItem = ({ item: comment }) => (
       )}
     </View>
     <Text style={styles.commentText}>{comment.commentData}</Text>
-    <Text style={styles.commentDate}>
-      {formatDate(comment.createdAt)}
-    </Text>
   </View>
 );
 
@@ -1029,9 +1019,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  commentUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  commentUserImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  commentUserDetails: {
+    flex: 1,
+  },
   commentUser: {
     fontWeight: 'bold',
-    marginBottom: 5,
     fontSize: 14,
     color: '#333',
   },
@@ -1039,11 +1048,15 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 5,
+    marginLeft: 50, // Align with the comment text after the profile image
   },
   commentDate: {
     fontSize: 12,
     color: '#666',
+    marginTop: 2,
+  },
+  deleteCommentButton: {
+    padding: 5,
   },
   modalContainer: {
     flex: 1,
