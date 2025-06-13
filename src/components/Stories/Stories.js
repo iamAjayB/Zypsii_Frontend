@@ -785,80 +785,47 @@ const Stories = () => {
     return (
       <View style={styles.container}>
         {renderImagePickerModal()}
-        <View style={styles.storiesContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.storiesContainer}
+          decelerationRate="fast"
+          snapToInterval={83} // Width of story item (68) + margin (15)
+          snapToAlignment="start"
+        >
           <View style={styles.storiesLeftSection}>
             {renderYourStory()}
           </View>
 
-          {stories.length > 4 ? (
-            <ScrollView
-              horizontal
-              scrollEnabled
-              showsHorizontalScrollIndicator={false}
-              style={styles.storiesRightSection}
+          {stories.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.storyItemContainer}
+              onPress={() => handleStoryPress(item)}
+              activeOpacity={0.7}
             >
-              {stories.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.storyItemContainer}
-                  onPress={() => handleStoryPress(item)}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.storyCircle,
-                      !item.stories?.length && styles.disabledStoryCircle,
-                      item.stories?.length > 0 && !isStorySeen(item.user_id, item.stories[0].story_id) && styles.unseenStoryCircle,
-                      item.stories?.length > 0 && isStorySeen(item.user_id, item.stories[0].story_id) && styles.seenStoryCircle
-                    ]}
-                  >
-                    <Image source={{ uri: item.user_image }} style={styles.storyImage} />
-                  </View>
-                  <Text 
-                    style={[
-                      styles.storyName,
-                      item.stories?.length > 0 && !isStorySeen(item.user_id, item.stories[0].story_id) && styles.unseenStoryName,
-                      item.stories?.length > 0 && isStorySeen(item.user_id, item.stories[0].story_id) && styles.seenStoryName
-                    ]}
-                  >
-                    {item.user_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={[styles.storiesRightSection, { flexDirection: 'row' }]}>
-              {stories.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.storyItemContainer}
-                  onPress={() => handleStoryPress(item)}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.storyCircle,
-                      !item.stories?.length && styles.disabledStoryCircle,
-                      item.stories?.length > 0 && !isStorySeen(item.user_id, item.stories[0].story_id) && styles.unseenStoryCircle,
-                      item.stories?.length > 0 && isStorySeen(item.user_id, item.stories[0].story_id) && styles.seenStoryCircle
-                    ]}
-                  >
-                    <Image source={{ uri: item.user_image }} style={styles.storyImage} />
-                  </View>
-                  <Text 
-                    style={[
-                      styles.storyName,
-                      item.stories?.length > 0 && !isStorySeen(item.user_id, item.stories[0].story_id) && styles.unseenStoryName,
-                      item.stories?.length > 0 && isStorySeen(item.user_id, item.stories[0].story_id) && styles.seenStoryName
-                    ]}
-                  >
-                    {item.user_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+              <View
+                style={[
+                  styles.storyCircle,
+                  !item.stories?.length && styles.disabledStoryCircle,
+                  item.stories?.length > 0 && !isStorySeen(item.user_id, item.stories[0].story_id) && styles.unseenStoryCircle,
+                  item.stories?.length > 0 && isStorySeen(item.user_id, item.stories[0].story_id) && styles.seenStoryCircle
+                ]}
+              >
+                <Image source={{ uri: item.user_image }} style={styles.storyImage} />
+              </View>
+              <Text 
+                style={[
+                  styles.storyName,
+                  item.stories?.length > 0 && !isStorySeen(item.user_id, item.stories[0].story_id) && styles.unseenStoryName,
+                  item.stories?.length > 0 && isStorySeen(item.user_id, item.stories[0].story_id) && styles.seenStoryName
+                ]}
+              >
+                {item.user_name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         <Modal
           visible={showStories}
@@ -897,6 +864,7 @@ const styles = StyleSheet.create({
   storyItemContainer: {
     alignItems: 'center',
     marginRight: 15,
+    width: 68, // Fixed width for consistent snapping
   },
   storyCircle: {
     width: 68,
@@ -1038,12 +1006,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 10,
     alignItems: 'center',
+    paddingRight: 20, // Add extra padding at the end for better scrolling
   },
   storiesLeftSection: {
     marginRight: 15,
   },
-  storiesRightSection: {
-    flex: 1,
+  storyItemContainer: {
+    alignItems: 'center',
+    marginRight: 15,
+    width: 68, // Fixed width for consistent snapping
   },
   storyVideo: {
     width: '100%',
