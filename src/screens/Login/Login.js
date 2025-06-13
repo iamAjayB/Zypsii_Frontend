@@ -396,7 +396,7 @@ const SignInScreen = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
+      <StatusBar barStyle="light-content" backgroundColor="#A60F93" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -409,7 +409,7 @@ const SignInScreen = () => {
           bounces={false}
         >
           <LinearGradient
-            colors={['#8A2BE2', '#FF69B4', '#9932CC']}
+            colors={['#A60F93', '#FF69B4', '#9932CC']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.topSection}
@@ -501,7 +501,7 @@ const SignInScreen = () => {
                 style={styles.socialButton} 
                 onPress={() => setOtpLoginModal(true)}
               >
-                <Ionicons name="phone-portrait-outline" size={24} color="#8A2BE2" />
+                <Ionicons name="phone-portrait-outline" size={24} color="#A60F93" />
                 <Text style={styles.socialButtonText}>Phone</Text>
               </TouchableOpacity>
             </View>
@@ -528,7 +528,7 @@ const SignInScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Ionicons name="phone-portrait" size={40} color="#8A2BE2" />
+                <Ionicons name="phone-portrait" size={40} color="#A60F93" />
                 <Text style={styles.modalTitle}>
                   {otpLoginStep === 'phone' ? 'Phone Login' : 'Verify OTP'}
                 </Text>
@@ -617,7 +617,7 @@ const SignInScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Ionicons name="key" size={40} color="#8A2BE2" />
+                <Ionicons name="key" size={40} color="#A60F93" />
                 <Text style={styles.modalTitle}>Reset Password</Text>
                 <Text style={styles.modalSubtitle}>
                   Enter your email address and we'll send you an OTP to reset your password.
@@ -666,7 +666,7 @@ const SignInScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Ionicons name="shield-checkmark" size={40} color="#8A2BE2" />
+                <Ionicons name="shield-checkmark" size={40} color="#A60F93" />
                 <Text style={styles.modalTitle}>Enter OTP</Text>
                 <Text style={styles.modalSubtitle}>
                   Please enter the 4-digit OTP sent to your email.
@@ -850,14 +850,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   loginButton: {
-    backgroundColor: '#8A2BE2',
+    backgroundColor: '#A60F93',
     paddingVertical: 18,
     borderRadius: 25,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,
-    shadowColor: '#8A2BE2',
+    shadowColor: '#A60F93',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signupLink: {
-    color: '#8A2BE2',
+    color: '#A60F93',
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -1014,14 +1014,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   modalButton: {
-    backgroundColor: '#8A2BE2',
+    backgroundColor: '#A60F93',
     width: '100%',
     height: 55,
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
-    shadowColor: '#8A2BE2',
+    shadowColor: '#A60F93',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   resendButtonText: {
-    color: '#8A2BE2',
+    color: '#A60F93',
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
