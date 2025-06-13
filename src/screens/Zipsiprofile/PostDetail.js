@@ -10,6 +10,7 @@ import {
   StatusBar,
   ImageBackground,
   Alert,
+  Modal,
 } from 'react-native';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { colors } from '../../utils';
@@ -20,7 +21,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const PostDetail = ({ route, navigation }) => {
   const { post } = route.params;
-
+  const [showFullImage, setShowFullImage] = useState(false);
   const [accessToken, setAccessToken] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -104,10 +105,13 @@ const PostDetail = ({ route, navigation }) => {
 
       <ScrollView style={styles.scrollView} bounces={false}>
         {post.imageUrl && post.imageUrl.length > 0 && (
-          <View style={styles.imageContainer}>
+          <TouchableOpacity 
+            style={styles.imageContainer}
+            onPress={() => setShowFullImage(true)}
+          >
             <Image source={{ uri: post.imageUrl[0] }} style={styles.postImage} resizeMode="cover" />
             <View style={styles.imageOverlay} />
-          </View>
+          </TouchableOpacity>
         )}
 
         <View style={styles.contentContainer}>
@@ -163,6 +167,28 @@ const PostDetail = ({ route, navigation }) => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={showFullImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFullImage(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowFullImage(false)}
+          >
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+          <Image
+            source={{ uri: post.imageUrl?.[0] }}
+            style={styles.fullScreenImage}
+            resizeMode="contain"
+          />
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -289,6 +315,23 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
     marginLeft: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 1,
+    padding: 10,
   },
 });
 
