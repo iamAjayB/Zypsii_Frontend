@@ -160,7 +160,7 @@ const DummyScreen = ({ navigation }) => {
       console.error('Invalid schedule item:', item);
       return;
     }
-    navigation.navigate('TripDetails', { tripId: item.id });
+    navigation.navigate('TripDetail', { tripId: item.id });
   };
 
   // Function to get place name from coordinates

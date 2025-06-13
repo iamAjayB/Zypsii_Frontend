@@ -9,12 +9,30 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url';
 
 const TripDetail = ({ route, navigation }) => {
-  const { tripData } = route.params;
+  const { tripData } = route.params || {};
   const [activeDay, setActiveDay] = useState(1);
   const [scheduleData, setScheduleData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [placeDescriptions, setPlaceDescriptions] = useState([]);
   const [isBackButtonLoading, setIsBackButtonLoading] = useState(false);
+  
+  // Default values if tripData is undefined
+  const defaultTripData = {
+    id: '',
+    title: 'Trip',
+    from: 'Starting Point',
+    to: 'End Point',
+    date: new Date().toISOString().split('T')[0],
+    numberOfDays: '1',
+    imageUrl: null,
+    locationDetails: [],
+    riders: '1',
+    travelMode: 'Bike',
+    visible: 'Public'
+  };
+
+  // Use tripData if available, otherwise use default values
+  const safeTripData = tripData || defaultTripData;
   
   // Enhanced color scheme
   const enhancedColors = {
@@ -35,14 +53,14 @@ const TripDetail = ({ route, navigation }) => {
   };
   
   const getFixedLocations = () => {
-    const allLocations = tripData.locationDetails;
+    const allLocations = safeTripData.locationDetails;
     return {
       from: allLocations[0]?.name || 'Starting Point',
       to: allLocations[allLocations.length - 1]?.name || 'End Point'
     };
   };
 
-  console.log(tripData);
+  console.log(safeTripData);
 
   useEffect(() => {
     getPlaceDescriptions();
@@ -104,10 +122,10 @@ const TripDetail = ({ route, navigation }) => {
       }
     }
     
-    const locationsPerDay = Math.ceil(tripData.locationDetails.length / parseInt(tripData.numberOfDays));
+    const locationsPerDay = Math.ceil(safeTripData.locationDetails.length / parseInt(safeTripData.numberOfDays));
     const startIndex = (day - 1) * locationsPerDay;
-    const endIndex = Math.min(startIndex + locationsPerDay, tripData.locationDetails.length);
-    const locations = tripData.locationDetails.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + locationsPerDay, safeTripData.locationDetails.length);
+    const locations = safeTripData.locationDetails.slice(startIndex, endIndex);
     
     return locations.map(location => {
       const placeInfo = placeDescriptions.find(place => place.id === location.id);
@@ -134,7 +152,7 @@ const TripDetail = ({ route, navigation }) => {
   };
 
   const daysWithLocations = Array.from(
-    { length: parseInt(tripData.numberOfDays) }, 
+    { length: parseInt(safeTripData.numberOfDays) }, 
     (_, i) => i + 1
   ).filter(day => getLocationsForDay(day).length > 0);
 
@@ -502,7 +520,7 @@ const TripDetail = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <Image source={{ uri: tripData.imageUrl }} style={styles.image} />
+            <Image source={{ uri: safeTripData.imageUrl }} style={styles.image} />
           </View>
 
           <View style={styles.ridersDateContainer}>
@@ -511,10 +529,10 @@ const TripDetail = ({ route, navigation }) => {
               {' '}
               {scheduleData[activeDay - 1]?.date 
                 ? new Date(scheduleData[activeDay - 1].date).toLocaleDateString() 
-                : tripData.date}
+                : safeTripData.date}
             </Text>
             <Text style={styles.riders}>
-              🏍️ Riders: {tripData.riders}
+              🏍️ Riders: {safeTripData.riders}
             </Text>
           </View>
 
@@ -523,7 +541,7 @@ const TripDetail = ({ route, navigation }) => {
             <TouchableOpacity 
               onPress={() =>
                 navigation.navigate('Map', { 
-                  tripId: tripData.id
+                  tripId: safeTripData.id
                 })
               }
             >
