@@ -10,7 +10,7 @@ export const styles = StyleSheet.create({
     zIndex: 2, // Place it above the protractorShape
     position: 'relative', // Adjust from absolute to prevent overlap
     width: '100%',
-    ...alignment.Pmedium
+    ...alignment.Psmall
   },
   headerRow: {
     flexDirection: 'row',
@@ -35,10 +35,12 @@ export const styles = StyleSheet.create({
     borderRadius: scale(20),
     padding: scale(0),
     marginBottom: scale(10),
-    ...alignment.MBmedium,
+    ...alignment.MBsmall,
     borderWidth: 1,
     borderColor: colors.grayLinesColor,
-    elevation: 4
+    elevation: 4,
+    width: '102%',
+    alignSelf: 'center'
   },
   image: {
     width: scale(100),

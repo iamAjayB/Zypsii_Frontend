@@ -1165,7 +1165,7 @@ function MainLanding(props) {
     if (!all_schedule || all_schedule.length === 0) {
       return (
         <View style={styles.scheduleContainer}>
-          <View style={styles.scheduleheadContainer}>
+          <View style={styles.sectionHeader}>
             <TextDefault textColor={colors.fontMainColor} H5 bold>
               {'Schedule'}
             </TextDefault>
@@ -1183,8 +1183,8 @@ function MainLanding(props) {
     }
   
     return (
-      <View style={styles.scheduleContainer}>
-        <View style={styles.scheduleheadContainer}>
+      <View style={styles.titleSpacerdesti}>
+        <View style={styles.sectionHeader}>
           <TextDefault textColor={colors.fontMainColor} H5 bold>
             {'Schedule'}
           </TextDefault>
@@ -1213,13 +1213,13 @@ function MainLanding(props) {
 
 
   const renderDiscoverByNearest = () => (
-    <View style={styles.titleSpaceredge}>
-      <TextDefault textColor={colors.fontMainColor} H5 bold style={styles.titleSpacernearest}>
-        {'Discover by Nearest'}
-      </TextDefault>
-      <View style={styles.seeAllTextContainer}>
+    <View style={styles.titleSpacerdesti}>
+      <View style={styles.sectionHeader}>
+        <TextDefault textColor={colors.fontMainColor} H5 bold>
+          {'Discover by Nearest'}
+        </TextDefault>
         <TouchableOpacity onPress={() => navigation.navigate('DiscoverPlace')}>
-          <TextDefault textColor={colors.greenColor} H5 style={styles.seeAllText}>View All</TextDefault>
+          <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
 
@@ -1255,12 +1255,12 @@ function MainLanding(props) {
 
   const renderBestDestination = () => (
     <View style={styles.titleSpacerdesti}>
-      <TextDefault textColor={colors.fontMainColor} H5 bold style={styles.titleSpacer}>
-        {'Best Destination'}
-      </TextDefault>
-      <View style={styles.seeAllTextContainer}>
+      <View style={styles.sectionHeader}>
+        <TextDefault textColor={colors.fontMainColor} H5 bold>
+          {'Best Destination'}
+        </TextDefault>
         <TouchableOpacity onPress={() => navigation.navigate('WhereToGo')}>
-          <TextDefault textColor={colors.greenColor} H5 style={styles.seeAllText}>View All</TextDefault>
+          <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
 
@@ -1331,12 +1331,12 @@ function MainLanding(props) {
 
   const renderAllDestination = () => (
     <View style={styles.titleSpacerdesti}>
-      <TextDefault textColor={colors.fontMainColor} H5 bold style={styles.titleSpacer}>
-        {'All Destination'}
-      </TextDefault>
-      <View style={styles.seeAllTextContainer}>
+      <View style={styles.sectionHeader}>
+        <TextDefault textColor={colors.fontMainColor} H5 bold>
+          {'All Destination'}
+        </TextDefault>
         <TouchableOpacity onPress={() => navigation.navigate('WhereToGo')}>
-          <TextDefault textColor={colors.greenColor} H5 style={styles.seeAllText}>View All</TextDefault>
+          <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
 

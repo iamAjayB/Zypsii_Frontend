@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10), // Adjust for proper spacing
   },
   titleSpacer: {
-    marginLeft: '2%',
+    marginLeft: '1%',
     marginTop: scale(15)
   },
   titleSpacernearest: {
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     marginBottom: '1%',
   },
   titleSpaceredge: {
-    marginLeft: '2%',
+    marginLeft: '1%',
     marginTop: scale(5)
   },
   titleSpacerdesti: {
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   scheduleContainer: {
-    // padding: wp('1%'), // Dynamic padding based on screen width
+    //padding: wp('4%'), // Dynamic padding based on screen width
     //marginTop: hp('2%'),
     // marginTop: verticalScale(20),
     paddingHorizontal: scale(0),
@@ -300,6 +300,7 @@ const styles = StyleSheet.create({
     //marginBottom: hp('2%'),
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginLeft: scale(6),
     ...alignment.PxSmall
   },
   card: {
@@ -473,8 +474,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
+    paddingHorizontal: 6,
+    marginBottom: 10,
   },
   shortsListContainer: {
     flex: 1,

@@ -158,7 +158,7 @@ const AllSchedule = ({item, isFromProfile}) => {
     <View style={styles.container}>
       <TouchableOpacity
         key={item.id}
-        style={[styles.card, { padding: 12 }]}
+        style={[styles.card, { padding: 4 }]}
         onPress={() => handleCardPress(item)}
       >
         {isFromProfile &&  (
