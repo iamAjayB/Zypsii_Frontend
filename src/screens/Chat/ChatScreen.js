@@ -333,10 +333,20 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const renderMessage = ({ item, index }) => {
-    // Fix the sender ID comparison to handle nested structure
-    const isMyMessage = item.senderId._id === currentUserId;
-    const isFirstInGroup = index === 0 || messages[index - 1].senderId._id !== item.senderId._id;
-    const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId._id !== item.senderId._id;
+    // Fix the sender ID comparison to handle both string and object formats
+    const isMyMessage = typeof item.senderId === 'string' 
+      ? item.senderId === currentUserId 
+      : item.senderId._id === currentUserId;
+    
+    const isFirstInGroup = index === 0 || 
+      (typeof messages[index - 1].senderId === 'string' 
+        ? messages[index - 1].senderId !== item.senderId 
+        : messages[index - 1].senderId._id !== item.senderId._id);
+    
+    const isLastInGroup = index === messages.length - 1 || 
+      (typeof messages[index + 1].senderId === 'string'
+        ? messages[index + 1].senderId !== item.senderId
+        : messages[index + 1].senderId._id !== item.senderId._id);
     
     return (
       <Animated.View style={[
@@ -378,21 +388,21 @@ const ChatScreen = ({ route, navigation }) => {
     );
   };
 
-  const renderTypingIndicator = () => {
-    if (!isTyping) return null;
+  // const renderTypingIndicator = () => {
+  //   if (!isTyping) return null;
 
-    return (
-      <Animated.View style={[styles.typingContainer, { opacity: typingOpacity }]}>
-        <View style={styles.typingBubble}>
-          <View style={styles.typingDots}>
-            <View style={[styles.typingDot, styles.dot1]} />
-            <View style={[styles.typingDot, styles.dot2]} />
-            <View style={[styles.typingDot, styles.dot3]} />
-          </View>
-        </View>
-      </Animated.View>
-    );
-  };
+  //   return (
+  //     <Animated.View style={[styles.typingContainer, { opacity: typingOpacity }]}>
+  //       <View style={styles.typingBubble}>
+  //         <View style={styles.typingDots}>
+  //           <View style={[styles.typingDot, styles.dot1]} />
+  //           <View style={[styles.typingDot, styles.dot2]} />
+  //           <View style={[styles.typingDot, styles.dot3]} />
+  //         </View>
+  //       </View>
+  //     </Animated.View>
+  //   );
+  // };
 
   const renderSeparator = () => <View style={styles.messageSeparator} />;
 
@@ -432,7 +442,7 @@ const ChatScreen = ({ route, navigation }) => {
               </View>
             </View>
           }
-          ListFooterComponent={renderTypingIndicator}
+          // ListFooterComponent={renderTypingIndicator}
           onContentSizeChange={() => scrollToBottom()}
           onLayout={() => scrollToBottom()}
           showsVerticalScrollIndicator={false}
@@ -527,12 +537,15 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     marginVertical: 1,
+    width: '100%',
   },
   myMessageContainer: {
     alignItems: 'flex-end',
+    width: '100%',
   },
   otherMessageContainer: {
     alignItems: 'flex-start',
+    width: '100%',
   },
   firstInGroup: {
     marginTop: 12,
