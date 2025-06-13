@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
+import { useToast } from '../../context/ToastContext';
 import { base_url } from '../../utils/base_url';
 import {
   addExpense,
@@ -34,7 +34,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddParticipantModal from '../../components/Split/AddParticipantModal';
 import AddExpenseModal from '../../components/Split/AddExpenseModal';
 
-
 const { width, height } = Dimensions.get('window');
 
 const TABS = [
@@ -47,6 +46,7 @@ function SplitDetail() {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch();
+  const { showToast } = useToast();
   const { split } = route.params;
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -75,7 +75,7 @@ function SplitDetail() {
         ]);
       } catch (error) {
         console.error('Error loading split data:', error);
-        Alert.alert('Error', 'Failed to load split details');
+        showToast('Failed to load split details', 'error');
       }
     };
 
@@ -92,24 +92,22 @@ function SplitDetail() {
       await dispatch(addExpense({ splitId: split._id, expenseData })).unwrap();
       setShowAddExpenseModal(false);
       await dispatch(fetchExpenses(split._id));
-      Alert.alert('Success', 'Expense added successfully');
+      showToast('Expense added successfully', 'success');
     } catch (error) {
       console.error('Error adding expense:', error);
-      Alert.alert('Error', error.message || 'Failed to add expense');
+      showToast(error.message || 'Failed to add expense', 'error');
     }
   };
 
   const handleUpdateExpense = async (expenseId, expenseData) => {
     try {
       await dispatch(updateExpense({ splitId: split._id, expenseId, newAmount: expenseData.amount })).unwrap();
-      Alert.alert('Success', 'Expense updated successfully');
+      showToast('Expense updated successfully', 'success');
     } catch (error) {
       console.error('Error updating expense:', error);
-      Alert.alert('Error', error.message || 'Failed to update expense');
+      showToast(error.message || 'Failed to update expense', 'error');
     }
   };
-
- 
 
   const renderTabContent = () => {
     switch (activeTab) {

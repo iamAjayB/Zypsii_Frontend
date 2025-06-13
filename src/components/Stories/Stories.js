@@ -4,7 +4,6 @@ import {
   Text, 
   TouchableOpacity,
   Image, 
-  Alert, 
   StyleSheet,
   Button,
   Modal,
@@ -23,10 +22,12 @@ import InstaStory from 'react-native-insta-story';
 import { Video } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { markStorySeen, setSeenStories } from '../../redux/reducers/storiesReducer';
+import { useToast } from '../../context/ToastContext';
 
 const { width } = Dimensions.get('window');
 
 const Stories = () => {
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const seenStories = useSelector(state => state.stories?.seenStories || {});
@@ -194,7 +195,7 @@ const Stories = () => {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert("Permission required", "You need to allow access to photos to upload media.");
+        showToast('You need to allow access to photos to upload media', 'error');
         return;
       }
 
@@ -211,7 +212,7 @@ const Stories = () => {
       }
     } catch (error) {
       console.error('Error picking media:', error);
-      Alert.alert('Error', 'Failed to pick media. Please try again.');
+      showToast('Failed to pick media. Please try again', 'error');
     }
   };
 
@@ -220,7 +221,7 @@ const Stories = () => {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert("Permission required", "You need to allow access to camera to take photos.");
+        showToast('You need to allow access to camera to take photos', 'error');
         return;
       }
 
@@ -237,7 +238,7 @@ const Stories = () => {
       }
     } catch (error) {
       console.error('Error capturing media:', error);
-      Alert.alert('Error', 'Failed to capture media. Please try again.');
+      showToast('Failed to capture media. Please try again', 'error');
     }
   };
 
@@ -356,7 +357,7 @@ const Stories = () => {
       
       if (response.ok) {
         console.log('Story uploaded successfully:', data.data);
-        Alert.alert('Success', 'Story uploaded successfully');
+        showToast('Story uploaded successfully', 'success');
         fetchStories();
         setShowImagePickerModal(false);
       } else {
@@ -364,10 +365,7 @@ const Stories = () => {
       }
     } catch (error) {
       console.error('Error uploading story:', error);
-      Alert.alert(
-        'Error',
-        'Failed to upload story. Please check your internet connection and try again.'
-      );
+      showToast('Failed to upload story. Please check your internet connection and try again', 'error');
     }
   };
 
@@ -516,13 +514,13 @@ const Stories = () => {
           }
         }
 
-        Alert.alert('Success', 'Story deleted successfully');
+        showToast('Story deleted successfully', 'success');
       } else {
         throw new Error(data.message || 'Failed to delete story');
       }
     } catch (error) {
       console.error('Error deleting story:', error);
-      Alert.alert('Error', 'Failed to delete story. Please try again.');
+      showToast('Failed to delete story. Please try again', 'error');
     }
   };
 

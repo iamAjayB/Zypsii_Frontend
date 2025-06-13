@@ -5,35 +5,26 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import { formatCurrency } from '../../utils/splitCalculations';
+import { useToast } from '../../context/ToastContext';
 
 const BalanceList = ({ balances, onMarkAsPaid }) => {
+  const { showToast } = useToast();
   const [paidBalances, setPaidBalances] = useState({});
 
   const handleMarkAsPaid = (balanceId) => {
-    Alert.alert(
-      'Mark as Paid',
-      'Are you sure you want to mark this balance as paid?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Mark as Paid',
-          onPress: () => {
-            setPaidBalances(prev => ({ ...prev, [balanceId]: true }));
-            if (onMarkAsPaid) {
-              onMarkAsPaid(balanceId);
-            }
-          },
-        },
-      ]
-    );
+    showToast('Are you sure you want to mark this balance as paid?', 'warning');
+    // Add a small delay to allow the user to see the confirmation toast
+    setTimeout(() => {
+      setPaidBalances(prev => ({ ...prev, [balanceId]: true }));
+      if (onMarkAsPaid) {
+        onMarkAsPaid(balanceId);
+      }
+      showToast('Balance marked as paid successfully', 'success');
+    }, 1000);
   };
 
   const renderBalanceItem = (balance) => {

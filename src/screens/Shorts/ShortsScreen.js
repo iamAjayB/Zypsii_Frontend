@@ -25,10 +25,12 @@ import { base_url } from '../../utils/base_url';
 import FollowButton from '../../components/Follow/FollowButton';
 import io from 'socket.io-client';
 import { SOCKET_URL } from '../../config';
+import { useToast } from '../../context/ToastContext';
 
 const { height, width } = Dimensions.get('window');
 
 function ShortsScreen() {
+  const { showToast } = useToast();
   const [all_shorts, setAllShorts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -253,7 +255,7 @@ function ShortsScreen() {
     socketRef.current.on('comment-error', (error) => {
       console.error('Comment error:', error);
       setIsCommenting(false);
-      Alert.alert('Error', error.message || 'Failed to add comment');
+      showToast(error.message || 'Failed to add comment', 'error');
     });
 
     socketRef.current.on('comment-deleted', (data) => {
@@ -280,7 +282,7 @@ function ShortsScreen() {
 
     socketRef.current.on('comment-delete-error', (error) => {
       console.error('Comment delete error:', error);
-      Alert.alert('Error', error.message || 'Failed to delete comment');
+      showToast(error.message || 'Failed to delete comment', 'error');
     });
 
     // Share-related listeners
@@ -380,7 +382,7 @@ function ShortsScreen() {
 
   const handleLike = async (short) => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to like shorts');
+      showToast('Please login to like shorts', 'error');
       return;
     }
 
@@ -419,7 +421,7 @@ function ShortsScreen() {
       }
     } catch (error) {
       console.error('Like/Unlike Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error');
       // Revert optimistic update on error
       setLikes(prev => ({
         ...prev,
@@ -439,12 +441,12 @@ function ShortsScreen() {
 
   const handleCommentSubmit = async () => {
     if (!currentUserId) {
-      Alert.alert('Login Required', 'Please login to comment');
+      showToast('Please login to comment', 'error');
       return;
     }
 
     if (!commentText.trim()) {
-      Alert.alert('Error', 'Comment cannot be empty');
+      showToast('Comment cannot be empty', 'error');
       return;
     }
 
@@ -456,7 +458,6 @@ function ShortsScreen() {
       setIsCommenting(true);
       console.log('Submitting comment for short:', selectedShort._id);
 
-      // Prepare the comment payload matching backend structure
       const commentPayload = {
         moduleId: selectedShort._id,
         moduleType: 'shorts',
@@ -466,25 +467,20 @@ function ShortsScreen() {
       };
 
       console.log('Sending comment payload:', commentPayload);
-
-      // Send the comment
       socketRef.current.emit('comment', commentPayload);
-
-      // Clear the comment text immediately
       setCommentText('');
 
-      // Set a timeout to reset commenting state if it takes too long
       setTimeout(() => {
         if (isCommenting) {
           setIsCommenting(false);
-          Alert.alert('Error', 'Comment submission timed out. Please try again.');
+          showToast('Comment submission timed out. Please try again.', 'error');
         }
       }, 5000);
 
     } catch (error) {
       console.error('Error submitting comment:', error);
       setIsCommenting(false);
-      Alert.alert('Error', 'Failed to submit comment. Please try again.');
+      showToast('Failed to submit comment. Please try again.', 'error');
     }
   };
 
@@ -500,7 +496,7 @@ function ShortsScreen() {
 
   const handleShare = async (short) => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to share shorts');
+      showToast('Please login to share shorts', 'error');
       return;
     }
     setSelectedShort(short);
@@ -515,7 +511,7 @@ function ShortsScreen() {
       const token = await AsyncStorage.getItem('accessToken');
 
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
+        showToast('Authentication token not found', 'error');
         return;
       }
 
@@ -532,11 +528,11 @@ function ShortsScreen() {
       if (response.ok && data.status) {
         setFollowers(data.followers);
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch followers');
+        showToast(data.message || 'Failed to fetch followers', 'error');
       }
     } catch (error) {
       console.error('Fetch Followers Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error');
     } finally {
       setIsLoadingFollowers(false);
     }
@@ -544,7 +540,7 @@ function ShortsScreen() {
 
   const handleShareWithFollower = (follower) => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to share shorts');
+      showToast('Please login to share shorts', 'error');
       return;
     }
 
@@ -556,7 +552,7 @@ function ShortsScreen() {
     });
 
     setShowShareModal(false);
-    Alert.alert('Success', 'Short shared successfully');
+    showToast('Short shared successfully', 'success');
   };
 
   const renderCommentItem = ({ item: comment }) => (
@@ -730,7 +726,7 @@ function ShortsScreen() {
   // Update handleDeleteComment to match Post.js implementation
   const handleDeleteComment = (commentId) => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to delete comments');
+      showToast('Please login to delete comments', 'error');
       return;
     }
 

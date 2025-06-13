@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Provider } from 'react-redux';
 import { store } from './src/redux/store';
 import { FollowProvider } from './src/components/Follow/FollowContext';
+import { ToastProvider } from './src/context/ToastContext';
 
 export default function App() {
   const [fontLoaded, setFontLoaded] = useState(false);
@@ -78,19 +79,21 @@ export default function App() {
  
 
   return (
-    <Provider store={store}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={colors.headerbackground}
-      />
-      <AuthProvider>
-        <ScheduleProvider>
-          <FollowProvider>
-            <AppContainer />
-          </FollowProvider>
-        </ScheduleProvider>
-      </AuthProvider>
-      <FlashMessage position="top" />
-    </Provider>
+    <ToastProvider>
+      <Provider store={store}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.headerbackground}
+        />
+        <AuthProvider>
+          <ScheduleProvider>
+            <FollowProvider>
+              <AppContainer />
+            </FollowProvider>
+          </ScheduleProvider>
+        </AuthProvider>
+        <FlashMessage position="top" />
+      </Provider>
+    </ToastProvider>
   );
 }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, KeyboardAvoidingView, ScrollView, Platform, Dimensions, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, ScrollView, Platform, Dimensions, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location'; // Use expo-location
 import { base_url } from '../../utils/base_url';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../../context/ToastContext';
 
 const SignUpScreen = () => {
   const [fullName, setFullName] = useState('');
@@ -18,6 +19,7 @@ const SignUpScreen = () => {
   const [longitude, setLongitude] = useState(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const navigation = useNavigation();
+  const { showToast } = useToast();
 
   // Request location permission and fetch location
   const getLocation = async () => {
@@ -32,11 +34,11 @@ const SignUpScreen = () => {
         setLatitude(location.coords.latitude);
         setLongitude(location.coords.longitude);
       } else {
-        Alert.alert('Permission Denied', 'Location permission is required');
+        showToast('Location permission is required', 'error');
       }
     } catch (error) {
       console.warn('Error fetching location:', error);
-      Alert.alert('Error', 'Unable to fetch location');
+      showToast('Unable to fetch location', 'error');
     }
   };
 
@@ -44,34 +46,43 @@ const SignUpScreen = () => {
     getLocation(); // Fetch location when the component mounts
   }, []);
 
+  const handleLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        showToast('Location permission is required', 'error');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      showToast('Unable to fetch location', 'error');
+      return false;
+    }
+  };
+
   const handleSignUp = async () => {
     if (!fullName || !email || !password || !countryCode || !phoneNumber) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'error');
       return;
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    if (!email.includes('@')) {
+      showToast('Please enter a valid email address', 'error');
       return;
     }
 
-    // Validate password length
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      showToast('Password must be at least 6 characters long', 'error');
       return;
     }
 
-    // Validate country code format
     if (!countryCode.startsWith('+') || countryCode.length < 2 || countryCode.length > 5) {
-      Alert.alert('Error', 'Please enter a valid country code (e.g., +91)');
+      showToast('Please enter a valid country code (e.g., +91)', 'error');
       return;
     }
 
-    // Validate phone number format
     if (phoneNumber.length < 7 || phoneNumber.length > 15 || !/^\d+$/.test(phoneNumber)) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+      showToast('Please enter a valid phone number', 'error');
       return;
     }
 
@@ -97,25 +108,14 @@ const SignUpScreen = () => {
       console.log('Signup response:', data);
 
       if (response.ok && !data.error) {
-        Alert.alert(
-          'Success',
-          'Account created successfully! Please login to continue.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login')
-            }
-          ]
-        );
+        showToast('Account created successfully! Please login to continue.', 'success');
+        navigation.navigate('Login');
       } else {
-        Alert.alert('Error', data.message || 'Signup failed. Please try again.');
+        showToast(data.message || 'Signup failed. Please try again.', 'error');
       }
     } catch (error) {
       console.error('Signup error:', error);
-      Alert.alert(
-        'Error',
-        'Network error occurred. Please check your internet connection and try again.'
-      );
+      showToast('Network error. Please try again.', 'error');
     } finally {
       setLoading(false);
     }

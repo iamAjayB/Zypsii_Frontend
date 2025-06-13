@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFollow } from './FollowContext';
 import { useAuth } from '../Auth/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../../context/ToastContext';
 import { colors } from '../../utils/colors';
 
 const FollowButton = ({ userId }) => {
@@ -14,10 +14,11 @@ const FollowButton = ({ userId }) => {
     isLoading 
   } = useFollow();
   const [error, setError] = useState(null);
+  const { showToast } = useToast();
 
   const handlePress = async () => {
     if (!user?._id) {
-      Alert.alert('Error', 'Please log in to follow users');
+      showToast('Please log in to follow users', 'error');
       return;
     }
     
@@ -42,7 +43,7 @@ const FollowButton = ({ userId }) => {
     } catch (error) {
       console.error("Follow action failed:", error.message);
       setError(error.message);
-      Alert.alert('Error', error.message || 'Failed to update follow status');
+      showToast(error.message || 'Failed to update follow status', 'error');
     }
   };
 
@@ -64,7 +65,6 @@ const FollowButton = ({ userId }) => {
         <ActivityIndicator size="small" color={following ? '#fff' : colors.primary} />
       ) : (
         <>
-          
           <Text style={[
             styles.buttonText,
             following && styles.followingText,

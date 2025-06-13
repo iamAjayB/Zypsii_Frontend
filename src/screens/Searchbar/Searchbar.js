@@ -8,7 +8,6 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  Alert,
   StatusBar,
   Animated,
 } from "react-native";
@@ -19,9 +18,11 @@ import { base_url } from "../../utils/base_url";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from '@react-navigation/native';
 import RecommendCard from "../../components/Recommendation/RecommendCard";
+import { useToast } from '../../context/ToastContext';
 
 function SearchPage() {
   const navigation = useNavigation();
+  const { showToast } = useToast();
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
@@ -186,7 +187,7 @@ function SearchPage() {
                       style={styles.chatButton}
                       onPress={() => {
                         if (!item.id || !item.name) {
-                          Alert.alert('Error', 'Invalid user data');
+                          showToast('Invalid user data', 'error');
                           return;
                         }
                         
@@ -222,10 +223,6 @@ function SearchPage() {
                 </View>
               </View>
             )}
-            
-            
-            
-           
           </View>
         </View>
       </TouchableOpacity>

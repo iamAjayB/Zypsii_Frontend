@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  Alert,
   PermissionsAndroid,
   Platform,
   TextInput,
@@ -15,10 +14,12 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
 import { colors, scale } from '../../../utils';
 import { TextDefault } from '../../../components';
+import { useToast } from '../../../context/ToastContext';
 import styles from './styles';
 
 const TripDetail = ({ route, navigation }) => {
   const { trip } = route.params;
+  const { showToast } = useToast();
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [selectedContacts, setSelectedContacts] = useState([]);
@@ -48,7 +49,7 @@ const TripDetail = ({ route, navigation }) => {
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         fetchContacts();
       } else {
-        Alert.alert('Permission Denied', 'Please enable contacts permission in settings to invite friends.');
+        showToast('Please enable contacts permission in settings to invite friends.', 'error');
         setLoading(false);
       }
     } else {
@@ -66,10 +67,10 @@ const TripDetail = ({ route, navigation }) => {
         setContacts(data);
         setFilteredContacts(data);
       } else {
-        Alert.alert('Permission Denied', 'Please enable contacts permission in settings to invite friends.');
+        showToast('Please enable contacts permission in settings to invite friends.', 'error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to fetch contacts. Please try again.');
+      showToast('Failed to fetch contacts. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -104,11 +105,11 @@ const TripDetail = ({ route, navigation }) => {
 
   const handleInvite = () => {
     if (selectedContacts.length === 0) {
-      Alert.alert('No Contacts Selected', 'Please select at least one contact to invite.');
+      showToast('Please select at least one contact to invite.', 'error');
       return;
     }
     // TODO: Implement invitation logic
-    Alert.alert('Success', `${selectedContacts.length} friends invited to the trip!`);
+    showToast(`${selectedContacts.length} friends invited to the trip!`, 'success');
     navigation.goBack();
   };
 

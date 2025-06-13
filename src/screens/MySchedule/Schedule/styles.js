@@ -123,10 +123,20 @@ export const styles = StyleSheet.create({
     paddingVertical: scale(5),
     paddingHorizontal: scale(15),
     marginTop: scale(90),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinedButtonActive: {
+    backgroundColor: colors.greenColor,
   },
   joinedText: {
     color: 'white',
     fontWeight: 'bold',
+    marginLeft: scale(5),
+  },
+  joinedIcon: {
+    marginRight: scale(5),
   },
   deleteButton: {
     backgroundColor: '#FF3B30',

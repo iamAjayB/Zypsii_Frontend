@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, Text, StyleSheet, TextInput, Image, ActivityIndicator, Alert, Animated } from 'react-native';
+import { View, FlatList, TouchableOpacity, Text, StyleSheet, TextInput, Image, ActivityIndicator, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_URL } from '../../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useToast } from '../../context/ToastContext';
 
 const MessageList = ({ navigation }) => {
   const [users, setUsers] = useState([]);
@@ -11,6 +12,7 @@ const MessageList = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchFocused, setSearchFocused] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -83,11 +85,9 @@ const MessageList = ({ navigation }) => {
       let errorMessage = 'Failed to load messages. ';
       if (error.message === 'No authentication token found') {
         errorMessage = 'Please login to view messages';
-        Alert.alert(
-          'Authentication Required',
-          errorMessage,
-          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-        );
+        showToast(errorMessage, 'error', {
+          onConfirm: () => navigation.navigate('Login')
+        });
       } else if (error.response) {
         errorMessage += `Server responded with status ${error.response.status}`;
       } else if (error.request) {
@@ -98,11 +98,9 @@ const MessageList = ({ navigation }) => {
       
       setError(errorMessage);
       if (error.message !== 'No authentication token found') {
-        Alert.alert(
-          'Connection Error',
-          errorMessage,
-          [{ text: 'OK', onPress: () => fetchUsers() }]
-        );
+        showToast(errorMessage, 'error', {
+          onConfirm: () => fetchUsers()
+        });
       }
     } finally {
       setLoading(false);

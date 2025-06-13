@@ -5,13 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './styles';
 import { colors } from '../../utils';
+import { useToast } from '../../context/ToastContext';
 
 const categories = [
   'Food',
@@ -23,6 +23,7 @@ const categories = [
 ];
 
 const ExpenseCalculator = ({ navigation }) => {
+  const { showToast } = useToast();
   const [step, setStep] = useState(1);
   const [expenseAmount, setExpenseAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -35,25 +36,25 @@ const ExpenseCalculator = ({ navigation }) => {
     switch (step) {
       case 1:
         if (!expenseAmount || isNaN(expenseAmount) || parseFloat(expenseAmount) <= 0) {
-          Alert.alert('Error', 'Please enter a valid expense amount');
+          showToast('Please enter a valid expense amount', 'error');
           return;
         }
         break;
       case 2:
         if (!selectedCategory) {
-          Alert.alert('Error', 'Please select a category');
+          showToast('Please select a category', 'error');
           return;
         }
         break;
       case 3:
         if (!description.trim()) {
-          Alert.alert('Error', 'Please enter a description');
+          showToast('Please enter a description', 'error');
           return;
         }
         break;
       case 4:
         if (!numberOfMembers || isNaN(numberOfMembers) || parseInt(numberOfMembers) <= 0) {
-          Alert.alert('Error', 'Please enter a valid number of members');
+          showToast('Please enter a valid number of members', 'error');
           return;
         }
         break;
@@ -75,6 +76,7 @@ const ExpenseCalculator = ({ navigation }) => {
 
     setMembers(newMembers);
     setShowResults(true);
+    showToast('Expense split calculated successfully', 'success');
   };
 
   const togglePaidStatus = (memberId) => {
@@ -83,6 +85,8 @@ const ExpenseCalculator = ({ navigation }) => {
         ? { ...member, paid: !member.paid }
         : member
     ));
+    const member = members.find(m => m.id === memberId);
+    showToast(`${member.name} marked as ${member.paid ? 'unpaid' : 'paid'}`, 'success');
   };
 
   const renderStep = () => {

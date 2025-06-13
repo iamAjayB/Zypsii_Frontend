@@ -20,6 +20,7 @@ import styles from "./Styles";
 import { base_url } from "../../utils/base_url";
 import NotificationService from "../../services/NotificationService";
 import ContentTypeModal from "../../components/ContentTypeModal/ContentTypeModal";
+import { useToast } from '../../context/ToastContext';
 
 function ReelUpload() {
   const [title, setTitle] = useState("");
@@ -29,6 +30,7 @@ function ReelUpload() {
   const [contentType, setContentType] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
+  const { showToast } = useToast();
 
   useEffect(() => {
     setShowContentTypeModal(true);
@@ -79,7 +81,7 @@ function ReelUpload() {
         setVideo(result.assets[0]);
       }
     } else {
-      Alert.alert("Permission required", "You need to allow camera access to record videos.");
+      showToast("You need to allow camera access to record videos.", "error");
     }
   };
 
@@ -97,13 +99,13 @@ function ReelUpload() {
         setVideo(result.assets[0]);
       }
     } else {
-      Alert.alert("Permission required", "You need to allow access to your media library.");
+      showToast("You need to allow access to your media library.", "error");
     }
   };
 
   const handleSubmit = async () => {
     if (!video) {
-      Alert.alert("Error", "Please select a video to upload.");
+      showToast("Please select a video to upload.", "error");
       return;
     }
   
@@ -112,7 +114,7 @@ function ReelUpload() {
       const accessToken = await AsyncStorage.getItem('accessToken');
 
       if (!accessToken) {
-        Alert.alert("Error", "You need to be logged in to submit.");
+        showToast("You need to be logged in to submit.", "error");
         setIsLoading(false);
         return;
       }
@@ -137,7 +139,7 @@ function ReelUpload() {
         });
 
         if (uploadResponse.status === 413) {
-          Alert.alert("Error", "The file is too large. Please try uploading a smaller file.");
+          showToast("The file is too large. Please try uploading a smaller file.", "error");
           setIsLoading(false);
           return;
         }
@@ -148,19 +150,19 @@ function ReelUpload() {
           uploadResponseData = JSON.parse(responseText);
         } catch (error) {
           console.error('Error parsing response:', error);
-          Alert.alert("Error", "Failed to process the upload response. Please try again.");
+          showToast("Failed to process the upload response. Please try again.", "error");
           setIsLoading(false);
           return;
         }
 
         if (!uploadResponseData.status) {
-          Alert.alert("Error", uploadResponseData.message || "Failed to upload file");
+          showToast(uploadResponseData.message || "Failed to upload file", "error");
           setIsLoading(false);
           return;
         }
 
         if (!uploadResponseData.urls || !uploadResponseData.urls[0]) {
-          Alert.alert("Error", "No file URL returned from upload");
+          showToast("No file URL returned from upload", "error");
           setIsLoading(false);
           return;
         }
@@ -184,23 +186,23 @@ function ReelUpload() {
         const responseData = await response.json();
 
         if (response.ok) {
-          Alert.alert("Success", "Your reel was successfully created!");
+          showToast("Your reel was successfully created!", "success");
           navigation.goBack();
         } else {
           console.error("Error creating reel. Status:", response.status);
           console.error("Error response data:", responseData);
-          Alert.alert("Error", responseData.message || "There was an error creating your reel.");
+          showToast(responseData.message || "There was an error creating your reel.", "error");
         }
       } catch (error) {
         console.error("Network error:", error);
-        Alert.alert(
-          "Network Error",
-          "Please check your internet connection and try again. If the problem persists, try uploading a smaller file."
+        showToast(
+          "Please check your internet connection and try again. If the problem persists, try uploading a smaller file.",
+          "error"
         );
       }
     } catch (error) {
       console.error("Error in creating reel:", error);
-      Alert.alert("Error", "There was an error creating your reel. Please try again.");
+      showToast("There was an error creating your reel. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -214,15 +216,15 @@ function ReelUpload() {
       const expoPushToken = await AsyncStorage.getItem('expoPushToken');
       
       if (!expoPushToken) {
-        Alert.alert("Error", "No push token found. Please make sure you're logged in.");
+        showToast("No push token found. Please make sure you're logged in.", "error");
         return;
       }
 
       await NotificationService.sendReelNotification(user.fullName, expoPushToken);
-      Alert.alert("Success", "Test notification sent!");
+      showToast("Test notification sent!", "success");
     } catch (error) {
       console.error("Error sending test notification:", error);
-      Alert.alert("Error", "Failed to send test notification");
+      showToast("Failed to send test notification", "error");
     }
   };
 

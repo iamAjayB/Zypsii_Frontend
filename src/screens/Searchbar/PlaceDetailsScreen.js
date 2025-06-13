@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, SafeAreaView, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, SafeAreaView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url';
 import CustomLoader from '../../components/Loader/CustomLoader';
+import { useToast } from '../../context/ToastContext';
 
 const { width } = Dimensions.get('window');
 
@@ -12,6 +13,7 @@ const PlaceDetailsScreen = ({ route, navigation }) => {
     const { place, isAllPlaces, places } = route.params;
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const { showToast } = useToast();
 
     const getVehicleIcon = (vehicle) => {
         let icon = '🚗';
@@ -35,7 +37,7 @@ const PlaceDetailsScreen = ({ route, navigation }) => {
             const accessToken = await AsyncStorage.getItem('accessToken');
             
             if (!accessToken) {
-                Alert.alert('Error', 'Authentication required');
+                showToast('Authentication required', 'error');
                 return;
             }
 
@@ -56,7 +58,7 @@ const PlaceDetailsScreen = ({ route, navigation }) => {
             console.log('Selected Place:', selectedPlace);
 
             if (!selectedPlace) {
-                Alert.alert('Error', 'No place data available');
+                showToast('No place data available', 'error');
                 return;
             }
 
@@ -183,12 +185,12 @@ const PlaceDetailsScreen = ({ route, navigation }) => {
                 }
             }
 
-            Alert.alert('Success', 'Schedule created successfully!');
+            showToast('Schedule created successfully!', 'success');
             navigation.navigate('MySchedule');
 
         } catch (error) {
             console.error('Schedule creation error:', error);
-            Alert.alert('Error', error.message || 'Failed to create schedule');
+            showToast(error.message || 'Failed to create schedule', 'error');
         } finally {
             setIsLoading(false);
         }

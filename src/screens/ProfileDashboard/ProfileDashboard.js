@@ -11,12 +11,13 @@ import { colors } from '../../utils';
 import { base_url } from '../../utils/base_url';
 import { useStatusBar } from '../../utils/useStatusBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { useToast } from '../../context/ToastContext';
 
 //const baseUrl = 'https://admin.zypsii.com';
 function ProfileDashboard(props) {
   useStatusBar(colors.btncolor, 'light-content');
   const navigation = useNavigation();
+  const { showToast } = useToast();
   const [profileInfo, setProfileInfo] = useState({
     id: '',
     name: '',
@@ -73,7 +74,7 @@ function ProfileDashboard(props) {
       }
     } catch (error) {
       console.error('Error fetching profile data:', error);
-      Alert.alert('Error', 'Failed to load profile data. Please try again.');
+      showToast('Failed to load profile data. Please try again.', 'error');
     }
   };
 

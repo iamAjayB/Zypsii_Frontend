@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet, FlatList, Dimensions, Modal, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet, FlatList, Dimensions, Modal, ActivityIndicator ,Alert} from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionic from 'react-native-vector-icons/Ionicons';
@@ -9,6 +9,7 @@ import { base_url } from '../../utils/base_url';
 import FollowButton from '../Follow/FollowButton';
 import io from 'socket.io-client';
 import { SOCKET_URL } from '../../config';
+import Toast from '../Toast/Toast';
 const { width } = Dimensions.get('window');
 
 const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
@@ -32,6 +33,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   const [isLiking, setIsLiking] = useState(false);
   const [shareCount, setShareCount] = useState(item.shareCount || 0);
   const isShareRoomJoined = useRef(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
   useEffect(() => {
     const getCurrentUserId = async () => {
@@ -174,7 +176,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     socketRef.current.on('comment-error', (error) => {
       console.error('Comment error:', error);
       setIsCommenting(false);
-      Alert.alert('Error', error.message || 'Failed to add comment');
+      showToast('Failed to add comment', 'error');
     });
 
     socketRef.current.on('comment-deleted', (data) => {
@@ -185,7 +187,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     socketRef.current.on('comment-delete-error', (error) => {
       console.error('Comment delete error:', error);
-      Alert.alert('Error', error.message || 'Failed to delete comment');
+      showToast('Failed to delete comment', 'error');
     });
 
     // Share-related listeners
@@ -213,7 +215,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     socketRef.current.on('share-error', (error) => {
       console.error('Share error:', error);
-      Alert.alert('Error', error.message || 'Failed to share post');
+      showToast('Failed to share post', 'error');
     });
   };
 
@@ -269,20 +271,18 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
   const handleLike = async () => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to like posts');
+      showToast('Please login to like posts', 'error');
       return;
     }
 
     if (isLiking) {
-      return; // Prevent multiple clicks while processing
+      return;
     }
 
     try {
       setIsLiking(true);
 
       if (like) {
-        // Unlike
-        console.log(`Post ${item._id} - Emitting unlike event`);
         socketRef.current.emit('unlike', {
           likedBy: currentUserId,
           moduleType: 'post',
@@ -290,8 +290,6 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
           moduleCreatedBy: item.createdBy
         });
       } else {
-        // Like
-        console.log(`Post ${item._id} - Emitting like event`);
         socketRef.current.emit('like', {
           likedBy: currentUserId,
           moduleType: 'post',
@@ -301,8 +299,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       }
     } catch (error) {
       console.error('Like/Unlike Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
-      // Revert optimistic update on error
+      showToast('Network error. Please check your connection and try again.', 'error');
       setLike(like);
       setLikeCount(prevCount => like ? prevCount + 1 : prevCount - 1);
       setIsLiking(false);
@@ -316,7 +313,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       const token = await AsyncStorage.getItem('accessToken');
 
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
+        showToast('Authentication token not found', 'error');
         return;
       }
 
@@ -331,18 +328,18 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       const data = await response.json();
 
       if (response.ok && data.status) {
-        Alert.alert('Success', 'Post deleted successfully');
+        showToast('Post deleted successfully', 'success');
         if (isFromProfile) {
           if (typeof onDelete === 'function') {
             onDelete(item.id);
           }
         }
       } else {
-        Alert.alert('Error', data.message || 'Failed to delete post');
+        showToast(data.message || 'Failed to delete post', 'error');
       }
     } catch (error) {
       console.error('Delete Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -451,7 +448,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   // Function to handle comment deletion (add this new function)
   const handleDeleteComment = (commentId) => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to delete comments');
+      showToast('Please login to delete comments', 'error');
       return;
     }
 
@@ -477,49 +474,44 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   // Updated comment submission handler
   const handleCommentSubmit = async () => {
     if (!currentUserId) {
-      Alert.alert('Login Required', 'Please login to comment');
+      showToast('Please login to comment', 'error');
       return;
     }
 
     if (!commentText.trim()) {
-      Alert.alert('Error', 'Comment cannot be empty');
+      showToast('Comment cannot be empty', 'error');
       return;
     }
 
     if (isCommenting) {
-      return; // Prevent multiple submissions
+      return;
     }
 
     try {
       setIsCommenting(true);
       console.log('Submitting comment for post:', item._id);
 
-      // Prepare the comment payload matching backend structure
       const commentPayload = {
         moduleId: item._id,
         moduleType: 'post',
         moduleCreatedBy: item.createdBy,
         commentedBy: currentUserId,
-        commentDataValue: commentText.trim() // Changed from commentValue to commentDataValue
+        commentDataValue: commentText.trim()
       };
 
-      console.log('Sending comment payload:', commentPayload);
-
-      // Send the comment
       socketRef.current.emit('comment', commentPayload);
 
-      // Set a timeout to reset commenting state if it takes too long
       setTimeout(() => {
         if (isCommenting) {
           setIsCommenting(false);
-          Alert.alert('Error', 'Comment submission timed out. Please try again.');
+          showToast('Comment submission timed out. Please try again.', 'error');
         }
       }, 5000);
 
     } catch (error) {
       console.error('Error submitting comment:', error);
       setIsCommenting(false);
-      Alert.alert('Error', 'Failed to submit comment. Please try again.');
+      showToast('Failed to submit comment. Please try again.', 'error');
     }
   };
 
@@ -574,7 +566,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       const token = await AsyncStorage.getItem('accessToken');
 
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
+        showToast('Authentication token not found', 'error');
         return;
       }
 
@@ -591,11 +583,11 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       if (response.ok && data.status) {
         setFollowers(data.followers);
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch followers');
+        showToast(data.message || 'Failed to fetch followers', 'error');
       }
     } catch (error) {
       console.error('Fetch Followers Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error');
     } finally {
       setIsLoadingFollowers(false);
     }
@@ -604,7 +596,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   // Add handleShare function
   const handleShare = async () => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to share posts');
+      showToast('Please login to share posts', 'error');
       return;
     }
     setShowShareModal(true);
@@ -615,7 +607,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   // Add handleShareWithFollower function
   const handleShareWithFollower = (follower) => {
     if (!currentUserId) {
-      Alert.alert('Error', 'Please login to share posts');
+      showToast('Please login to share posts', 'error');
       return;
     }
 
@@ -627,7 +619,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     });
 
     setShowShareModal(false);
-    Alert.alert('Success', 'Post shared successfully');
+    showToast('Post shared successfully', 'success');
   };
 
   // Add renderFollowerItem function
@@ -673,9 +665,23 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     }
   };
 
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast({ ...toast, visible: false });
+  };
+
   // Log the URL before rendering
   return (
     <View style={styles.postContainer}>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{item.postTitle}</Text>

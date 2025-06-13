@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -17,8 +16,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url';
 import { addParticipant, fetchSplitMembers } from '../../redux/slices/splitSlice';
 import { useDispatch } from 'react-redux';
+import { useToast } from '../../context/ToastContext';
 
 const AddParticipantModal = ({ visible, onClose, splitId, existingParticipants }) => {
+  const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const dispatch = useDispatch();
@@ -64,7 +65,7 @@ const AddParticipantModal = ({ visible, onClose, splitId, existingParticipants }
       }
     } catch (error) {
       console.error('Error searching users:', error);
-      Alert.alert('Error', 'Failed to search users');
+      showToast('Failed to search users', 'error');
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -86,15 +87,11 @@ const AddParticipantModal = ({ visible, onClose, splitId, existingParticipants }
         try {
           await dispatch(addParticipant({ splitId, memberIds: [item._id] })).unwrap();
           await dispatch(fetchSplitMembers(splitId));
+          showToast(`${item.name} has been added as a participant`, 'success');
           onClose();
-          Alert.alert(
-            'Success',
-            `${item.name} has been added as a participant`,
-            [{ text: 'OK', onPress: onClose }]
-          );
         } catch (error) {
           console.error('Error adding participant:', error);
-          Alert.alert('Error', error.message || 'Failed to add participant');
+          showToast(error.message || 'Failed to add participant', 'error');
         }
       }}
     >

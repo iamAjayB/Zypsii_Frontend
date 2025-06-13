@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList, Alert, Modal } from 'react-native';
+import { View, Text, Image, TouchableOpacity, FlatList, Modal, ActivityIndicator } from 'react-native';
 import { styles } from './styles';
 import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 import Icon from 'react-native-vector-icons/Ionicons'; // Import vector icons
@@ -7,9 +7,11 @@ import { AntDesign } from '@expo/vector-icons'; // Import AntDesign icons
 import { colors } from '../../../utils';// Import colors
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../../utils/base_url';
+import { useToast } from '../../../context/ToastContext';
 
 const AllSchedule = ({item, isFromProfile}) => {
   const navigation = useNavigation(); // Access navigation object
+  const { showToast } = useToast();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -46,17 +48,15 @@ const AllSchedule = ({item, isFromProfile}) => {
       const token = await AsyncStorage.getItem('accessToken');
       
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
+        showToast('Authentication token not found', 'error');
         return;
       }
 
-      // Log the entire item to see all available properties
       // Check if we have the required IDs
       if (!item.createdBy || !item.id) {
-        Alert.alert('Error', 'Missing required schedule information');
+        showToast('Missing required schedule information', 'error');
         return;
       }
-
 
       const response = await fetch(`${base_url}/schedule/delete/descriptions/${item.id}/${item.createdBy}`, {
         method: 'DELETE',
@@ -70,10 +70,10 @@ const AllSchedule = ({item, isFromProfile}) => {
 
       if (response.ok && data.status) {
         console.log('Schedule deleted successfully');
-        Alert.alert('Success', 'Schedule deleted successfully');
+        showToast('Schedule deleted successfully', 'success');
       } else {
         console.log('Delete failed:', data.message);
-        Alert.alert('Error', data.message || 'Failed to delete schedule');
+        showToast(data.message || 'Failed to delete schedule', 'error');
       }
     } catch (error) {
       console.error('Delete Error Details:', {
@@ -81,7 +81,7 @@ const AllSchedule = ({item, isFromProfile}) => {
         stack: error.stack,
         item: item
       });
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -106,7 +106,7 @@ const AllSchedule = ({item, isFromProfile}) => {
       const token = await AsyncStorage.getItem('accessToken');
       
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
+        showToast('Authentication token not found', 'error');
         return;
       }
 
@@ -114,7 +114,7 @@ const AllSchedule = ({item, isFromProfile}) => {
       const parsedUser = user ? JSON.parse(user) : null;
       
       if (!parsedUser || !parsedUser._id) {
-        Alert.alert('Error', 'User information not found');
+        showToast('User information not found', 'error');
         return;
       }
 
@@ -136,17 +136,20 @@ const AllSchedule = ({item, isFromProfile}) => {
 
       if (response.ok && data.status) {
         setIsJoined(!isJoined);
-        Alert.alert('Success', isJoined ? 'Successfully unjoined the schedule' : 'Successfully joined the schedule');
+        showToast(
+          isJoined ? 'Successfully unjoined the schedule' : 'Successfully joined the schedule',
+          'success'
+        );
       } else {
         if (data.message === 'Internal Server Error') {
-          Alert.alert('Error', 'Unable to process request. Please try again later.');
+          showToast('Unable to process request. Please try again later.', 'error');
         } else {
-          Alert.alert('Error', data.message || 'Failed to process request');
+          showToast(data.message || 'Failed to process request', 'error');
         }
       }
     } catch (error) {
       console.error('Join/Unjoin Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      showToast('Network error. Please check your connection and try again.', 'error');
     } finally {
       setIsJoining(false);
     }
@@ -207,9 +210,13 @@ const AllSchedule = ({item, isFromProfile}) => {
             onPress={handleJoin}
             disabled={isJoining}
           >
-            <Text style={styles.joinedText}>
-              {isJoining ? 'Processing...' : (isJoined ? 'Joined' : 'Join')}
-            </Text>
+            {isJoining ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : isJoined ? (
+              <Icon name="checkmark-circle" size={20} color={colors.white} />
+            ) : (
+              <Text style={styles.joinedText}>Join</Text>
+            )}
           </TouchableOpacity>
         )}
       </TouchableOpacity>

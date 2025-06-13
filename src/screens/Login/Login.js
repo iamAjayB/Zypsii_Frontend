@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform, Dimensions, Modal, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform, Dimensions, Modal, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../components/Auth/AuthContext';
@@ -10,8 +10,10 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../../context/ToastContext';
 
 const SignInScreen = () => {
+  const { showToast } = useToast();
   const [userNameOrEmail, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,7 @@ const SignInScreen = () => {
       handleGoogleAuthentication(id_token);
     } else if (response?.type === 'error') {
       console.error('Google Auth Error:', response.error);
-      Alert.alert('Error', 'Google authentication failed. Please try again.');
+      showToast('Google authentication failed. Please try again.', 'error');
     } else if (response) {
       console.log('Other Response Type:', response.type);
       console.log('Response Params:', response.params);
@@ -91,13 +93,13 @@ const SignInScreen = () => {
       }
 
       if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!');
+        showToast('Failed to get push token for push notification!', 'error');
         return;
       }
 
       token = (await Notifications.getExpoPushTokenAsync()).data;
     } else {
-      alert('Must use physical device for Push Notifications');
+      showToast('Must use physical device for Push Notifications', 'error');
     }
 
     if (Platform.OS === 'android') {
@@ -114,7 +116,7 @@ const SignInScreen = () => {
 
   const handleLogin = async () => {
     if (!userNameOrEmail || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+      showToast('Please enter email and password', 'error');
       return;
     }
 
@@ -134,7 +136,7 @@ const SignInScreen = () => {
       if (response.ok) {
         const data = await response.json();
         if (!data.error) {
-          Alert.alert('Success', 'Logged in successfully');
+          showToast('Logged in successfully', 'success');
           const { token, userDetails } = data;
           await AsyncStorage.setItem('accessToken', token);
           console.log('Access Token:', token);
@@ -142,14 +144,14 @@ const SignInScreen = () => {
           login(userDetails);
           navigation.navigate('Drawer', { screen: 'MainLanding' });
         } else {
-          Alert.alert('Error', data.message || 'Login failed');
+          showToast(data.message || 'Login failed', 'error');
         }
       } else {
-        Alert.alert('Error', 'Login failed, please try again.');
+        showToast('Login failed, please try again.', 'error');
       }
     } catch (error) {
       console.error('Network or fetch error:', error);
-      Alert.alert('Error', 'Login failed due to a network error');
+      showToast('Login failed due to a network error', 'error');
     } finally {
       setLoading(false);
     }
@@ -197,11 +199,11 @@ const SignInScreen = () => {
         navigation.navigate('Drawer', { screen: 'MainLanding' });
       } else {
         console.error('Authentication failed:', data);
-        Alert.alert('Error', data.message || 'Authentication failed');
+        showToast(data.message || 'Authentication failed', 'error');
       }
     } catch (error) {
       console.error('Google authentication error:', error);
-      Alert.alert('Error', 'Authentication failed due to a network error');
+      showToast('Authentication failed due to a network error', 'error');
     } finally {
       setLoading(false);
     }
@@ -214,14 +216,14 @@ const SignInScreen = () => {
       console.log('Prompt result:', result);
     } catch (error) {
       console.error('Google login prompt error:', error);
-      Alert.alert('Error', 'Failed to open Google login');
+      showToast('Failed to open Google login', 'error');
     }
   };
 
   // OTP Login Functions
   const handleSendOTP = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+      showToast('Please enter a valid phone number', 'error');
       return;
     }
 
@@ -244,13 +246,13 @@ const SignInScreen = () => {
       if (response.ok) {
         setRequestId(data.requestId);
         setOtpLoginStep('verify');
-        Alert.alert('Success', 'OTP sent successfully to your phone');
+        showToast('OTP sent successfully to your phone', 'success');
       } else {
-        Alert.alert('Error', data.message || 'Failed to send OTP');
+        showToast(data.message || 'Failed to send OTP', 'error');
       }
     } catch (error) {
       console.error('Send OTP error:', error);
-      Alert.alert('Error', 'Failed to send OTP due to network error');
+      showToast('Failed to send OTP due to network error', 'error');
     } finally {
       setOtpLoginLoading(false);
     }
@@ -258,7 +260,7 @@ const SignInScreen = () => {
 
   const handleVerifyOTP = async () => {
     if (!otpCode || otpCode.length < 4) {
-      Alert.alert('Error', 'Please enter the complete OTP');
+      showToast('Please enter the complete OTP', 'error');
       return;
     }
 
@@ -293,14 +295,14 @@ const SignInScreen = () => {
         setOtpCode('');
         setRequestId('');
         
-        Alert.alert('Success', 'Logged in successfully');
+        showToast('Logged in successfully', 'success');
         navigation.navigate('Drawer', { screen: 'MainLanding' });
       } else {
-        Alert.alert('Error', data.message || 'Invalid OTP');
+        showToast(data.message || 'Invalid OTP', 'error');
       }
     } catch (error) {
       console.error('Verify OTP error:', error);
-      Alert.alert('Error', 'Failed to verify OTP due to network error');
+      showToast('Failed to verify OTP due to network error', 'error');
     } finally {
       setOtpLoginLoading(false);
     }
@@ -315,7 +317,7 @@ const SignInScreen = () => {
 
   const handleForgotPassword = async () => {
     if (!forgotPasswordEmail) {
-      Alert.alert('Error', 'Please enter your email address');
+      showToast('Please enter your email address', 'error');
       return;
     }
 
@@ -329,19 +331,16 @@ const SignInScreen = () => {
       });
 
       if (response.ok) {
-        Alert.alert('Success', 'OTP has been sent to your email');
+        showToast('OTP has been sent to your email', 'success');
         setForgotPasswordModal(false);
         setOtpModal(true);
       } else {
         const data = await response.json();
-        Alert.alert('Error', data.message || 'Failed to send OTP. Please try again.');
+        showToast(data.message || 'Failed to send OTP. Please try again.', 'error');
       }
     } catch (error) {
       console.error('Error in forgot password:', error);
-      Alert.alert(
-        'Error',
-        'Failed to process your request. Please check your internet connection and try again.'
-      );
+      showToast('Failed to process your request. Please check your internet connection and try again.', 'error');
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -349,12 +348,12 @@ const SignInScreen = () => {
 
   const handleUpdatePassword = async () => {
     if (!otp || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill all fields');
+      showToast('Please fill all fields', 'error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showToast('Passwords do not match', 'error');
       return;
     }
 
@@ -373,7 +372,7 @@ const SignInScreen = () => {
       });
 
       if (response.ok) {
-        Alert.alert('Success', 'Password has been updated successfully');
+        showToast('Password has been updated successfully', 'success');
         setOtpModal(false);
         setOtp('');
         setNewPassword('');
@@ -381,14 +380,11 @@ const SignInScreen = () => {
         setForgotPasswordEmail('');
       } else {
         const data = await response.json();
-        Alert.alert('Error', data.message || 'Failed to update password. Please try again.');
+        showToast(data.message || 'Failed to update password. Please try again.', 'error');
       }
     } catch (error) {
       console.error('Error in updating password:', error);
-      Alert.alert(
-        'Error',
-        'Failed to process your request. Please check your internet connection and try again.'
-      );
+      showToast('Failed to process your request. Please check your internet connection and try again.', 'error');
     } finally {
       setForgotPasswordLoading(false);
     }

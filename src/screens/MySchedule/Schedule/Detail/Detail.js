@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,12 +14,14 @@ import { colors } from '../../../../utils';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSchedule } from '../../../../context/ScheduleContext';
 import { format } from 'date-fns';
+import { useToast } from '../../../../context/ToastContext';
 
 function Detail() {
   const navigation = useNavigation();
   const route = useRoute();
   const { scheduleId } = route.params;
   const { getScheduleById } = useSchedule();
+  const { showToast } = useToast();
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +32,7 @@ function Detail() {
         setSchedule(data);
       } catch (error) {
         console.error('Error fetching schedule:', error);
-        Alert.alert('Error', 'Failed to load schedule details');
+        showToast('Failed to load schedule details', 'error');
       } finally {
         setLoading(false);
       }

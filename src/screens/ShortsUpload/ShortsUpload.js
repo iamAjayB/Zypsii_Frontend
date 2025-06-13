@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
@@ -17,8 +16,10 @@ import { colors } from '../../utils';
 import { base_url } from '../../utils/base_url';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useToast } from '../../context/ToastContext';
 
 function ShortsUpload({ navigation }) {
+  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [video, setVideo] = useState(null);
@@ -38,11 +39,7 @@ function ShortsUpload({ navigation }) {
       // If file is larger than 50MB, we need to compress it
       if (fileInfo.size > 50 * 1024 * 1024) {
         console.log('Video is too large, attempting compression...');
-        Alert.alert(
-          'Large Video',
-          'The video is quite large. We will try to compress it, but please consider selecting a shorter video.',
-          [{ text: 'OK' }]
-        );
+        showToast('The video is quite large. We will try to compress it, but please consider selecting a shorter video.', 'warning');
       }
 
       const compressedUri = `${FileSystem.cacheDirectory}compressed_video.mp4`;
@@ -80,7 +77,7 @@ function ShortsUpload({ navigation }) {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant permission to access your media library');
+        showToast('Please grant permission to access your media library', 'error');
         return;
       }
 
@@ -101,7 +98,7 @@ function ShortsUpload({ navigation }) {
       }
     } catch (error) {
       console.error('Video picker error:', error);
-      Alert.alert('Error', error.message || 'Failed to pick video');
+      showToast(error.message || 'Failed to pick video', 'error');
     }
   };
 
@@ -114,11 +111,11 @@ function ShortsUpload({ navigation }) {
 
   const handleSubmit = async () => {
     if (!video) {
-      Alert.alert('Error', 'Please select a video');
+      showToast('Please select a video', 'error');
       return;
     }
     if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a title');
+      showToast('Please enter a title', 'error');
       return;
     }
 
@@ -253,7 +250,7 @@ function ShortsUpload({ navigation }) {
         throw new Error('Invalid create short response format');
       }
 
-      Alert.alert('Success', 'Short created successfully');
+      showToast('Short created successfully', 'success');
       navigation.navigate('MainLanding');
     } catch (error) {
       console.error('Error creating short:', {
@@ -261,7 +258,7 @@ function ShortsUpload({ navigation }) {
         stack: error.stack,
         response: error.response || 'No response data'
       });
-      Alert.alert('Error', error.message || 'Failed to create short');
+      showToast(error.message || 'Failed to create short', 'error');
     } finally {
       setIsUploading(false);
     }

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,10 +14,12 @@ import { colors } from '../../../../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useSchedule } from '../../../../context/ScheduleContext';
 import { format } from 'date-fns';
+import { useToast } from '../../../../context/ToastContext';
 
 function Listing() {
   const navigation = useNavigation();
   const { schedules, loading, error } = useSchedule();
+  const { showToast } = useToast();
 
   const handleMapPress = (schedule) => {
     navigation.navigate('TripMap', {

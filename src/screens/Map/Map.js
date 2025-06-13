@@ -11,11 +11,13 @@ import DiscoverByNearest from '../../components/DiscoverByNearest/DiscoverByNear
 import { base_url } from '../../utils/base_url';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { useToast } from '../../context/ToastContext';
 
 const { width, height } = Dimensions.get('window');
 
 const Map = ({ route }) => {
   const navigation = useNavigation();
+  const { showToast } = useToast();
   
   const handleBackPress = () => {
     navigation.goBack();
@@ -384,7 +386,7 @@ const Map = ({ route }) => {
 
   const handleExportLocations = async () => {
     if (selectedPlaces.length === 0) {
-      alert('Please select at least one location to export');
+      showToast('Please select at least one location to export', 'error');
       return;
     }
 
@@ -399,7 +401,7 @@ const Map = ({ route }) => {
       });
     } catch (error) {
       console.error('Error sharing locations:', error);
-      alert('Failed to export locations');
+      showToast('Failed to export locations', 'error');
     }
   };
 

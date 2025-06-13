@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +14,7 @@ import { colors } from '../../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useToast } from '../../context/ToastContext';
 import { 
   createSplit,
   searchUsers,
@@ -33,6 +33,7 @@ import SearchResultsContainer from '../../components/Split/SearchResultsContaine
 function CreateSplit() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -87,25 +88,21 @@ function CreateSplit() {
 
   const handleCreateSplit = async () => {
     if (!title) {
-      Alert.alert('Error', 'Please enter a title');
+      showToast('Please enter a title', 'error');
       return;
     }
     if (selectedUsers.length === 0) {
-      Alert.alert('Error', 'Please add at least one member');
+      showToast('Please add at least one member', 'error');
       return;
     }
 
     try {
       const result = await dispatch(createSplit({ title, participants: selectedUsers })).unwrap();
-      Alert.alert('Success', 'Split created successfully', [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('SplitDashboard'),
-        },
-      ]);
+      showToast('Split created successfully', 'success');
+      navigation.navigate('SplitDashboard');
     } catch (error) {
       console.error('Error creating split:', error);
-      Alert.alert('Error', error.message || 'Failed to create split');
+      showToast(error.message || 'Failed to create split', 'error');
     }
   };
 

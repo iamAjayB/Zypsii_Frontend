@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, TouchableOpacity, Alert, Text } from 'react-native';
+import { View, Image, TouchableOpacity, Text } from 'react-native';
 import styles from './styles';
 import { colors, scale } from '../../utils';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { base_url } from '../../utils/base_url';
+import { useToast } from '../../context/ToastContext';
 
 function ProductCard(props) {
   const navigation = useNavigation();
+  const { showToast } = useToast();
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(false); // Loading state
 
@@ -35,7 +37,7 @@ function ProductCard(props) {
       const searchResult = await searchResponse.json();
       
       if (!searchResult.data || searchResult.data.length === 0) {
-        Alert.alert('Error', 'Place not found');
+        showToast('Place not found', 'error');
         setLoading(false);
         return;
       }
@@ -44,7 +46,7 @@ function ProductCard(props) {
 
       // Validate location data
       if (!place.location || !place.location.lat || !place.location.lng) {
-        Alert.alert('Error', 'Location coordinates are required');
+        showToast('Location coordinates are required', 'error');
         setLoading(false);
         return;
       }
@@ -73,11 +75,11 @@ function ProductCard(props) {
         const data = await response.json();
 
         if (!data.error) {
-          Alert.alert('Success', newLikedStatus ? 'Place added to favorites' : 'Place removed from favorites');
+          showToast(newLikedStatus ? 'Place added to favorites' : 'Place removed from favorites', 'success');
           setLiked(newLikedStatus);
         } else {
           console.error('API Error:', data.message);
-          Alert.alert('Error', data.message || 'Failed to update favorite status');
+          showToast(data.message || 'Failed to update favorite status', 'error');
         }
       } else {
         const errorData = await response.json().catch(() => null);
@@ -86,7 +88,7 @@ function ProductCard(props) {
           statusText: response.statusText,
           errorData
         });
-        Alert.alert('Error', errorData?.message || 'Failed to update favorite status, please try again.');
+        showToast(errorData?.message || 'Failed to update favorite status, please try again.', 'error');
       }
     } catch (error) {
       console.error('Network or fetch error:', {
@@ -94,7 +96,7 @@ function ProductCard(props) {
         stack: error.stack,
         name: error.name
       });
-      Alert.alert('Error', 'Failed to update favorite status due to a network error');
+      showToast('Failed to update favorite status due to a network error', 'error');
     } finally {
       setLoading(false);
     }
@@ -124,11 +126,11 @@ function ProductCard(props) {
           searchQuery: searchPlaceName
         });
       } else {
-        Alert.alert('No Results', 'No places found for your search.');
+        showToast('No places found for your search.', 'warning');
       }
     } catch (error) {
       console.error("Error searching places:", error);
-      Alert.alert('Error', 'Failed to search places. Please try again later.');
+      showToast('Failed to search places. Please try again later.', 'error');
     }
   };
 
@@ -145,7 +147,7 @@ function ProductCard(props) {
         longitude: place.location.longitude
       });
     } else {
-      Alert.alert('Error', 'Location information not available for this place.');
+      showToast('Location information not available for this place.', 'error');
     }
   };
 

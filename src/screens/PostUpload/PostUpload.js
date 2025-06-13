@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from 'expo-image-picker';
 import styles from "./Styles";
 import { base_url } from "../../utils/base_url";
+import { useToast } from '../../context/ToastContext';
 
 function PostUpload() {
   const [title, setTitle] = useState("");
@@ -24,6 +25,7 @@ function PostUpload() {
   const [image, setImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
+  const { showToast } = useToast();
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -65,7 +67,7 @@ function PostUpload() {
         setImage(result.assets[0]);
       }
     } else {
-      Alert.alert("Permission required", "You need to allow camera access to take photos.");
+      showToast("You need to allow camera access to take photos.", "error");
     }
   };
 
@@ -83,13 +85,13 @@ function PostUpload() {
         setImage(result.assets[0]);
       }
     } else {
-      Alert.alert("Permission required", "You need to allow access to your media library.");
+      showToast("You need to allow access to your media library.", "error");
     }
   };
 
   const handleSubmit = async () => {
     if (!image) {
-      Alert.alert("Error", "Please select an image to upload.");
+      showToast("Please select an image to upload.", "error");
       return;
     }
   
@@ -98,7 +100,7 @@ function PostUpload() {
       const accessToken = await AsyncStorage.getItem('accessToken');
 
       if (!accessToken) {
-        Alert.alert("Error", "You need to be logged in to submit.");
+        showToast("You need to be logged in to submit.", "error");
         setIsLoading(false);
         return;
       }
@@ -134,7 +136,7 @@ function PostUpload() {
         });
 
         if (uploadResponse.status === 413) {
-          Alert.alert("Error", "The file is too large. Please try uploading a smaller file.");
+          showToast("The file is too large. Please try uploading a smaller file.", "error");
           setIsLoading(false);
           return;
         }
@@ -145,19 +147,19 @@ function PostUpload() {
           uploadResponseData = JSON.parse(responseText);
         } catch (error) {
           console.error('Error parsing response:', error);
-          Alert.alert("Error", "Failed to process the upload response. Please try again.");
+          showToast("Failed to process the upload response. Please try again.", "error");
           setIsLoading(false);
           return;
         }
 
         if (!uploadResponseData.status) {
-          Alert.alert("Error", uploadResponseData.message || "Failed to upload file");
+          showToast(uploadResponseData.message || "Failed to upload file", "error");
           setIsLoading(false);
           return;
         }
 
         if (!uploadResponseData.urls || !uploadResponseData.urls[0]) {
-          Alert.alert("Error", "No file URL returned from upload");
+          showToast("No file URL returned from upload", "error");
           setIsLoading(false);
           return;
         }
@@ -181,23 +183,23 @@ function PostUpload() {
         const responseData = await response.json();
 
         if (response.ok) {
-          Alert.alert("Success", "Your post was successfully created!");
+          showToast("Your post was successfully created!", "success");
           navigation.goBack();
         } else {
           console.error("Error creating post. Status:", response.status);
           console.error("Error response data:", responseData);
-          Alert.alert("Error", responseData.message || "There was an error creating your post.");
+          showToast(responseData.message || "There was an error creating your post.", "error");
         }
       } catch (error) {
         console.error("Network error:", error);
-        Alert.alert(
-          "Network Error",
-          "Please check your internet connection and try again. If the problem persists, try uploading a smaller file."
+        showToast(
+          "Please check your internet connection and try again. If the problem persists, try uploading a smaller file.",
+          "error"
         );
       }
     } catch (error) {
       console.error("Error in creating post:", error);
-      Alert.alert("Error", "There was an error creating your post. Please try again.");
+      showToast("There was an error creating your post. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }

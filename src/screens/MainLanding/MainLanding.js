@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   FlatList, 
-  Alert, 
+  Alert,
   ScrollView, 
   ImageBackground, 
   TouchableOpacity, 
@@ -41,12 +41,14 @@ import FloatingSupportButton from '../../components/FloatingChatButton/FloatingC
 import AllSchedule from '../MySchedule/Schedule/AllSchedule';
 import RecommendCard from '../../components/Recommendation/RecommendCard';
 import FollowButton from '../../components/Follow/FollowButton';
+import { useToast } from '../../context/ToastContext';
 
 const { height, width } = Dimensions.get('window');
 
 function MainLanding(props) { 
   const navigation = useNavigation();
   const { scheduleData } = useSchedule();
+  const { showToast } = useToast();
   const [selectedButton, setSelectedButton] = useState('All');
   const buttons = ['All', 'Posts', 'Shorts', 'Schedule'];
   const [unreadMessages, setUnreadMessages] = useState(0);

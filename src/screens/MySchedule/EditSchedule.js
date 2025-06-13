@@ -23,16 +23,18 @@ import MapView, { Marker } from 'react-native-maps';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import { useToast } from '../../context/ToastContext';
 
 const { width } = Dimensions.get('window');
 
 const EditSchedule = ({ route, navigation }) => {
   const { scheduleId, scheduleData } = route.params || {};
+  const { showToast } = useToast();
   
   // Validate scheduleId
   useEffect(() => {
     if (!scheduleId) {
-      Alert.alert('Error', 'Invalid schedule ID');
+      showToast('Invalid schedule ID', 'error');
       navigation.goBack();
       return;
     }
@@ -300,7 +302,7 @@ const EditSchedule = ({ route, navigation }) => {
       
       if (status !== 'granted') {
         console.log('Image Permission Error:', 'Permission not granted');
-        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+        showToast('Please grant permission to access your photos', 'error');
         return;
       }
 
@@ -361,7 +363,7 @@ const EditSchedule = ({ route, navigation }) => {
           const imageUrl = data.urls[0];
           console.log('Image uploaded successfully, URL:', imageUrl);
           setBannerImage(imageUrl);
-          Alert.alert('Success', data.message || 'Image uploaded successfully');
+          showToast(data.message || 'Image uploaded successfully', 'success');
         } else {
           console.error('Image upload failed:', data.message);
           throw new Error(data.message || 'Failed to upload image');
@@ -374,7 +376,7 @@ const EditSchedule = ({ route, navigation }) => {
         stack: error.stack,
         name: error.name
       });
-      Alert.alert('Error', error.message || 'Failed to upload image');
+      showToast(error.message || 'Failed to upload image', 'error');
     } finally {
       setLoading(false);
     }
@@ -495,12 +497,12 @@ const EditSchedule = ({ route, navigation }) => {
     }
   };
 
-  // Update handleUpdate function to include description updates
+  // Update handleUpdate function
   const handleUpdate = async () => {
     try {
       if (!scheduleId) {
         console.error('Validation Error: Invalid schedule ID');
-        Alert.alert('Error', 'Invalid schedule ID');
+        showToast('Invalid schedule ID', 'error');
         return;
       }
 
@@ -508,45 +510,45 @@ const EditSchedule = ({ route, navigation }) => {
       const validationErrors = validateForm();
       if (validationErrors.length > 0) {
         console.error('Form Validation Errors:', validationErrors);
-        Alert.alert('Validation Error', validationErrors.join('\n'));
+        showToast(validationErrors.join('\n'), 'error');
         return;
       }
 
       // Additional validation for required fields
       if (!formData.tripName || formData.tripName.length < 3) {
         console.error('Validation Error: Invalid trip name');
-        Alert.alert('Error', 'Trip name is required and must be at least 3 characters long');
+        showToast('Trip name is required and must be at least 3 characters long', 'error');
         return;
       }
 
       if (!formData.travelMode) {
         console.error('Validation Error: Travel mode required');
-        Alert.alert('Error', 'Travel mode is required');
+        showToast('Travel mode is required', 'error');
         return;
       }
 
       if (!formData.fromPlace || !formData.toPlace) {
         console.error('Validation Error: Location required');
-        Alert.alert('Error', 'From and To locations are required');
+        showToast('From and To locations are required', 'error');
         return;
       }
 
       if (!formData.fromDate) {
         console.error('Validation Error: Start date required');
-        Alert.alert('Error', 'Start date is required');
+        showToast('Start date is required', 'error');
         return;
       }
 
       if (!formData.numberOfDays || parseInt(formData.numberOfDays) < 1) {
         console.error('Validation Error: Invalid number of days');
-        Alert.alert('Error', 'Number of days must be at least 1');
+        showToast('Number of days must be at least 1', 'error');
         return;
       }
 
       // Validate location coordinates
       if (!formData.fromLatitude || !formData.fromLongitude || !formData.toLatitude || !formData.toLongitude) {
         console.error('Validation Error: Location coordinates required');
-        Alert.alert('Error', 'Location coordinates are required');
+        showToast('Location coordinates are required', 'error');
         return;
       }
 
@@ -599,7 +601,7 @@ const EditSchedule = ({ route, navigation }) => {
         if (responseData.errors) {
           console.error('Server validation errors:', responseData.errors);
           const errorMessages = Object.values(responseData.errors).flat();
-          Alert.alert('Validation Error', errorMessages.join('\n'));
+          showToast(errorMessages.join('\n'), 'error');
           return;
         }
         console.error('Update failed:', responseData.message);
@@ -610,7 +612,7 @@ const EditSchedule = ({ route, navigation }) => {
       await updateAllDayDescriptions(accessToken);
 
       console.log('Schedule updated successfully');
-      Alert.alert('Success', 'Schedule updated successfully');
+      showToast('Schedule updated successfully', 'success');
       navigation.goBack();
     } catch (error) {
       console.error('Update error:', error);
@@ -619,7 +621,7 @@ const EditSchedule = ({ route, navigation }) => {
         stack: error.stack,
         name: error.name
       });
-      Alert.alert('Error', error.message || 'Failed to update schedule. Please try again.');
+      showToast(error.message || 'Failed to update schedule. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -686,7 +688,7 @@ const EditSchedule = ({ route, navigation }) => {
         }));
       } catch (error) {
         console.error('Error setting from date:', error);
-        Alert.alert('Error', 'Invalid date selected');
+        showToast('Invalid date selected', 'error');
       }
     }
   };
@@ -707,7 +709,7 @@ const EditSchedule = ({ route, navigation }) => {
         }));
       } catch (error) {
         console.error('Error setting to date:', error);
-        Alert.alert('Error', 'Invalid date selected');
+        showToast('Invalid date selected', 'error');
       }
     }
   };
@@ -723,7 +725,7 @@ const EditSchedule = ({ route, navigation }) => {
         }));
       } catch (error) {
         console.error('Error setting from time:', error);
-        Alert.alert('Error', 'Invalid time selected');
+        showToast('Invalid time selected', 'error');
       }
     }
   };
@@ -739,7 +741,7 @@ const EditSchedule = ({ route, navigation }) => {
         }));
       } catch (error) {
         console.error('Error setting to time:', error);
-        Alert.alert('Error', 'Invalid time selected');
+        showToast('Invalid time selected', 'error');
       }
     }
   };

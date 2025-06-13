@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
-  Alert,
   TouchableOpacity,
   Image,
   TextInput,
@@ -19,10 +18,12 @@ import { styles } from './styles'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../components/Auth/AuthContext'
+import { useToast } from '../../context/ToastContext'
 
 const ProfilePage = () => {
   const navigation = useNavigation();
   const { user, login } = useAuth();
+  const { showToast } = useToast();
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
   const [website, setWebsite] = useState('')
@@ -72,7 +73,7 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('Error fetching profile data:', error);
-      Alert.alert('Error', 'Failed to load profile data. Please try again.');
+      showToast('Failed to load profile data. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -92,7 +93,7 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      showToast('Failed to pick image', 'error');
     }
   };
 
@@ -158,14 +159,14 @@ const ProfilePage = () => {
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
         await login(updatedUser);
         
-        Alert.alert('Success', 'Profile updated successfully');
+        showToast('Profile updated successfully', 'success');
         navigation.goBack();
       } else {
         throw new Error(data.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', `Failed to update profile: ${error.message}`);
+      showToast(`Failed to update profile: ${error.message}`, 'error');
     } finally {
       setSaving(false);
     }

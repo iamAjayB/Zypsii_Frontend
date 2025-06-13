@@ -8,13 +8,14 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils';
 import SelectPayerModal from './SelectPayerModal';
+import { useToast } from '../../context/ToastContext';
 
 const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId }) => {
+  const { showToast } = useToast();
   const [step, setStep] = useState(1);
   const [totalAmount, setTotalAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -192,7 +193,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
       handleClose();
     } catch (error) {
       console.error('Error submitting expense:', error);
-      Alert.alert('Error', error.message || 'Failed to add expense');
+      showToast(error.message || 'Failed to add expense', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -209,7 +210,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
     const totalAmountNum = parseFloat(totalAmount);
 
     if (newAmountNum > totalAmountNum) {
-      Alert.alert('Invalid Amount', 'Amount cannot be greater than total expense');
+      showToast('Amount cannot be greater than total expense', 'error');
       return;
     }
 

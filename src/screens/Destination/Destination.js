@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, Alert, Text, FlatList, TextInput, Image, ScrollView, TouchableOpacity, Linking } from 'react-native'
+import { View, StyleSheet, Text, FlatList, TextInput, Image, ScrollView, TouchableOpacity, Linking } from 'react-native'
 import styles from './styles'
 import BottomTab from '../../components/BottomTab/BottomTab'
 import { BackHeader } from '../../components'
@@ -12,9 +12,10 @@ import DiscoverByNearest from '../../components/DiscoverByNearest/DiscoverByNear
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../utils/base_url'
 import { TextDefault } from '../../components';
-
+import { useToast } from '../../context/ToastContext';
 
 function Destination({ route, navigation }) {
+  const { showToast } = useToast();
   // Add default values and safe access
   const params = route?.params || {};
   const { image, cardTitle, subtitle } = params;
@@ -100,7 +101,7 @@ function Destination({ route, navigation }) {
       setNextPageToken(result.nextPageToken || null);
     } catch (error) {
       console.error("Error fetching data:", error);
-      Alert.alert('Error', 'Failed to load nearby places. Please try again later.');
+      showToast('Failed to load nearby places. Please try again later', 'error');
     } finally {
       setLoading(false);
     }
@@ -229,17 +230,17 @@ function Destination({ route, navigation }) {
         const data = await response.json(); // Parse JSON response
 
         if (!data.error) {
-          Alert.alert('Success', isSaved ? 'Product liked' : 'Product unliked');
+          showToast(isSaved ? 'Product liked' : 'Product unliked', 'success');
           setIsSaved(!isSaved); // Update liked state
         } else {
-          Alert.alert('Error', data.message || 'Failed to update like status');
+          showToast(data.message || 'Failed to update like status', 'error');
         }
       } else {
-        Alert.alert('Error', 'Failed to update like status, please try again.');
+        showToast('Failed to update like status, please try again', 'error');
       }
     } catch (error) {
       console.error('Network or fetch error:', error);
-      Alert.alert('Error', 'Failed to update like status due to a network error');
+      showToast('Failed to update like status due to a network error', 'error');
     } finally {
       setLoading(false);
     }
@@ -452,10 +453,11 @@ function Destination({ route, navigation }) {
       if (data.success) {
         setIsLiked(!isLiked);
         setLikesCount(prevCount => isLiked ? prevCount - 1 : prevCount + 1);
+        showToast(isLiked ? 'Post unliked' : 'Post liked', 'success');
       }
     } catch (error) {
       console.error('Error handling like/unlike:', error);
-      Alert.alert('Error', 'Failed to update like status. Please try again.');
+      showToast('Failed to update like status. Please try again', 'error');
     } finally {
       setLikeLoading(false);
     }
