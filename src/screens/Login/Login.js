@@ -233,7 +233,7 @@ const SignInScreen = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone: parseInt(phoneNumber),
+          phone: phoneNumber,
           countryCode: countryCode
         }),
       });
@@ -367,7 +367,7 @@ const SignInScreen = () => {
         },
         body: JSON.stringify({
           password: newPassword,
-          otp: parseInt(otp),
+          otp: otp,
           email: forgotPasswordEmail
         }),
       });
