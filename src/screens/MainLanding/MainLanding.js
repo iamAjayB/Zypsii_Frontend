@@ -1230,7 +1230,7 @@ function MainLanding(props) {
         <TextDefault textColor={colors.fontMainColor} H5 bold>
           {'Discover by Nearest'}
         </TextDefault>
-        <TouchableOpacity onPress={() => navigation.navigate('DiscoverPlace')}>
+        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'nearest' })}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
@@ -1271,7 +1271,7 @@ function MainLanding(props) {
         <TextDefault textColor={colors.fontMainColor} H5 bold>
           {'Best Destination'}
         </TextDefault>
-        <TouchableOpacity onPress={() => navigation.navigate('WhereToGo')}>
+        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'best' })}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
@@ -1347,7 +1347,7 @@ function MainLanding(props) {
         <TextDefault textColor={colors.fontMainColor} H5 bold>
           {'All Destination'}
         </TextDefault>
-        <TouchableOpacity onPress={() => navigation.navigate('WhereToGo')}>
+        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'all' })}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>

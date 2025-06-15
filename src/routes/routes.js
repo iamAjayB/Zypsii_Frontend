@@ -10,6 +10,7 @@ import PostDetail from '../screens/Zipsiprofile/PostDetail';
 import EditSchedule from '../screens/MySchedule/EditSchedule';
 import EditMapScreen from '../screens/MySchedule/EditMapScreen';
 import { useAuth } from '../components/Auth/AuthContext';
+import CombinedDestinations from '../screens/CombinedDestinations/CombinedDestinations';
 
 const NavigationStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -19,6 +20,7 @@ function Drawer() {
   return (
     <NavigationStack.Navigator screenOptions={{ headerShown: false }}>
       <NavigationStack.Screen name="MainLanding" component={Screen.MainLanding} />
+      <NavigationStack.Screen name="CombinedDestinations" component={CombinedDestinations} />
       <NavigationStack.Screen name="ExpenseCalculator" component={Screen.ExpenseCalculator} />
       <NavigationStack.Screen name="DeleteButton" component={Screen.DeleteButton} />
       <NavigationStack.Screen name="Logout" component={Screen.LogoutButton} />
