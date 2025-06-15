@@ -68,7 +68,7 @@ const Notification = ({ navigation }) => {
     setNotifications(prevNotifications =>
       prevNotifications.map(notification =>
         notification.id === id
-          ? { ...notification, read: !notification.read }
+          ? { ...notification, read: true }
           : notification
       )
     );
