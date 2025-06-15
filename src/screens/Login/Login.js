@@ -243,8 +243,10 @@ const SignInScreen = () => {
       const data = await response.json();
       console.log('Send OTP response:', data);
 
-      if (response.ok) {
-        setRequestId(data.requestId);
+      if (response.ok && data.status) {
+        // Handle nested requestId structure
+        const requestId = data.requestId?.requestId || data.requestId;
+        setRequestId(requestId);
         setOtpLoginStep('verify');
         showToast('OTP sent successfully to your phone', 'success');
       } else {
@@ -275,14 +277,19 @@ const SignInScreen = () => {
           phone: parseInt(phoneNumber),
           countryCode: countryCode,
           code: parseInt(otpCode),
-          requestId: requestId
+          requestId: requestId.requestId
         }),
       });
-
+console.log({
+  phone: parseInt(phoneNumber),
+  countryCode: countryCode,
+  code: parseInt(otpCode),
+  requestId: requestId
+});
       const data = await response.json();
       console.log('Verify OTP response:', data);
 
-      if (response.ok && !data.error) {
+      if (response.ok && data.status) {
         const { token, userDetails } = data;
         await AsyncStorage.setItem('accessToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(userDetails));

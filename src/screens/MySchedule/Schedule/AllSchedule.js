@@ -174,7 +174,9 @@ const AllSchedule = ({item, isFromProfile}) => {
         )}
         <Image source={{ uri: item.imageUrl }} style={[styles.image, { height: 150 }]} />
         <View style={[styles.cardContent, { padding: 10 }]}>
-          <Text style={[styles.title, { fontSize: 16, marginBottom: 6 }]}>{item.title}</Text>
+          <Text style={[styles.title, { fontSize: 16, marginBottom: 6 }]}>
+            {item.title.length > 30 ? item.title.slice(0, 23) + '..' : item.title}
+          </Text>
           <View style={styles.routeRow}>
             <View style={styles.routeItem}>
               <Text style={[styles.routeLabel, { fontSize: 12 }]}>From</Text>

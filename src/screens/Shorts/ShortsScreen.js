@@ -672,7 +672,7 @@ function ShortsScreen() {
           />
           <View style={styles.userDetails}>
             <Text style={styles.username}>
-              {item.createdBy?.userName || item.createdBy?.username || 'Unknown User'}
+              {item.createdBy?.userName || item.createdBy?.username || 'User'}
             </Text>
           </View>
           <View style={styles.followButtonContainer}>

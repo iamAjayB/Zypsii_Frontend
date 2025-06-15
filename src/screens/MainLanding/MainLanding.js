@@ -485,12 +485,12 @@ function MainLanding(props) {
           joined: false,
           rawLocation: {
             from: {
-              latitude: item.location.from.latitude,
-              longitude: item.location.from.longitude
+              latitude: item.location?.from?.latitude || 0,
+              longitude: item.location?.from?.longitude || 0
             },
             to: {
-              latitude: item.location.to.latitude,
-              longitude: item.location.to.longitude
+              latitude: item.location?.to?.latitude || 0,
+              longitude: item.location?.to?.longitude || 0
             }
           }
         })));
@@ -1094,6 +1094,16 @@ function MainLanding(props) {
                 <View style={[styles.videoInfoOverlay, { bottom: 20, left: 15, right: 15 }]}>
                   <View style={[styles.userInfoContainer, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }]}>
                     <View style={[styles.userInfo, { flex: 1, marginRight: 10 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Image
+                          source={{ uri: item.createdBy?.profilePicture || 'https://via.placeholder.com/40' }}
+                          style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: '#ccc' }}
+                          resizeMode="cover"
+                        />
+                        <TextDefault textColor={colors.white} H6 numberOfLines={1}>
+                          {item.createdBy?.userName || item.createdBy?.username || 'User'}
+                        </TextDefault>
+                      </View>
                       <TextDefault textColor={colors.white} H5 bold numberOfLines={2} style={[styles.videoTitle, { marginBottom: 8 }]}>
                         {item.title}
                       </TextDefault>
