@@ -13,7 +13,7 @@ import {
   Alert
 } from 'react-native';
 import SwiperFlatList from 'react-native-swiper-flatlist';
-import { WebView } from 'react-native-webview';
+import Video from 'react-native-video';
 import { MaterialIcons } from '@expo/vector-icons';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -49,6 +49,9 @@ function ShortsScreen() {
   const isRoomJoined = useRef({});
   const isCommentRoomJoined = useRef({});
   const isShareRoomJoined = useRef({});
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const videoRefs = useRef({});
 
   const fetchShorts = async () => {
     try {
@@ -143,6 +146,7 @@ function ShortsScreen() {
     }
 
     return () => {
+      cleanupVideoRefs();
       if (socketRef.current) {
         // Leave all rooms
         Object.keys(isRoomJoined.current).forEach(shortId => {
@@ -754,6 +758,35 @@ function ShortsScreen() {
     );
   };
 
+  const handleChangeIndex = ({ index }) => {
+    // Stop all videos first
+    Object.values(videoRefs.current).forEach(ref => {
+      if (ref && typeof ref.setNativeProps === 'function') {
+        ref.setNativeProps({ paused: true });
+      }
+    });
+    
+    // Set the new index
+    setCurrentIndex(index);
+  };
+
+  // Add cleanup function for video refs
+  const cleanupVideoRefs = () => {
+    Object.values(videoRefs.current).forEach(ref => {
+      if (ref && typeof ref.setNativeProps === 'function') {
+        ref.setNativeProps({ paused: true });
+      }
+    });
+    videoRefs.current = {};
+  };
+
+  // Add a function to handle video playback
+  const handleVideoPlayback = (ref, shouldPlay) => {
+    if (ref && typeof ref.setNativeProps === 'function') {
+      ref.setNativeProps({ paused: !shouldPlay });
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -783,77 +816,53 @@ function ShortsScreen() {
         showsVerticalScrollIndicator={false}
         snapToInterval={height}
         decelerationRate="fast"
-        onChangeIndex={({ index }) => {
-          const stopVideoScript = `
-            var videos = document.getElementsByTagName('video');
-            for(var i = 0; i < videos.length; i++) {
-              videos[i].pause();
-              videos[i].currentTime = 0;
-            }
-          `;
-          if (this.webview) {
-            this.webview.injectJavaScript(stopVideoScript);
-          }
-        }}
-        renderItem={({ item }) => {
+        onChangeIndex={handleChangeIndex}
+        renderItem={({ item, index }) => {
           const videoSource = getVideoSource(item.videoUrl);
           const isValidVideo = isValidVideoUrl(item.videoUrl);
+          const isCurrentVideo = currentIndex === index;
           
           return (
             <View style={styles.shortItemContainer}>
               <View style={styles.videoContainer}>
                 {isValidVideo && videoSource ? (
                   <View style={styles.videoWrapper}>
-                    <WebView
-                      ref={(ref) => (this.webview = ref)}
-                      source={videoSource}
-                      style={[styles.videoPlayer, { width: width, height: height }]}
-                      allowsFullscreenVideo={true}
-                      javaScriptEnabled={true}
-                      domStorageEnabled={true}
-                      startInLoadingState={true}
-                      mediaPlaybackRequiresUserAction={false}
-                      allowsInlineMediaPlayback={true}
-                      onLoad={() => {
-                        const autoPlayScript = `
-                          var video = document.createElement('video');
-                          video.src = '${videoSource.uri}';
-                          video.style.width = '100%';
-                          video.style.height = '100%';
-                          video.style.objectFit = 'cover';
-                          video.loop = true;
-                          video.muted = false;
-                          video.playsInline = true;
-                          video.autoplay = true;
-                          video.setAttribute('loop', true);
-                          video.setAttribute('playsinline', true);
-                          video.setAttribute('webkit-playsinline', true);
-                          video.setAttribute('x5-playsinline', true);
-                          video.setAttribute('x5-video-player-type', 'h5');
-                          video.setAttribute('x5-video-player-fullscreen', true);
-                          video.setAttribute('x5-video-orientation', 'portraint');
-                          video.removeAttribute('controls');
-                          
-                          document.body.style.margin = '0';
-                          document.body.style.padding = '0';
-                          document.body.style.overflow = 'hidden';
-                          document.body.style.backgroundColor = 'black';
-                          document.body.appendChild(video);
-                          
-                          video.play().catch(function(error) {
-                            console.log("Initial playback failed:", error);
-                          });
-                          
-                          video.addEventListener('ended', function() {
-                            video.currentTime = 0;
-                            video.play().catch(function(error) {
-                              console.log("Playback failed:", error);
-                            });
-                          });
-                        `;
-                        this.webview.injectJavaScript(autoPlayScript);
-                      }}
-                    />
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => setMuted(!muted)}
+                      style={styles.videoTouchable}
+                    >
+                      <Video
+                        ref={(ref) => {
+                          if (ref) {
+                            videoRefs.current[item._id] = ref;
+                            handleVideoPlayback(ref, isCurrentVideo);
+                          }
+                        }}
+                        source={videoSource}
+                        style={styles.videoPlayer}
+                        resizeMode="contain"
+                        repeat={true}
+                        paused={!isCurrentVideo}
+                        muted={muted}
+                        onBuffer={(buffer) => console.log('buffering', buffer)}
+                        onError={(error) => console.log('error', error)}
+                        onLoad={() => {
+                          const ref = videoRefs.current[item._id];
+                          if (ref) {
+                            handleVideoPlayback(ref, isCurrentVideo);
+                          }
+                        }}
+                      />
+                    </TouchableOpacity>
+                    {muted && (
+                      <Icon
+                        name="volume-mute"
+                        style={styles.muteIcon}
+                        size={20}
+                        color="white"
+                      />
+                    )}
                   </View>
                 ) : (
                   <View style={styles.errorContainer}>
@@ -1018,13 +1027,21 @@ const styles = StyleSheet.create({
   videoContainer: {
     flex: 1,
     backgroundColor: colors.black,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   videoWrapper: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: colors.black,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   videoPlayer: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: colors.black,
   },
   errorContainer: {
@@ -1249,6 +1266,21 @@ const styles = StyleSheet.create({
     top: 5,
     right: 5,
     padding: 5,
+  },
+  videoTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  muteIcon: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    padding: 10,
+    zIndex: 1,
   },
 });
 
