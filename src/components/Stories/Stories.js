@@ -121,14 +121,15 @@ const Stories = () => {
             user_name: userStory.userName,
             stories: userStory.stories.map(story => ({
               story_id: story._id || Date.now(),
-              story_image: story.videoUrl,
+              story_image: story.videoUrl || story.thumbnailUrl,
+              thumbnail_image: story.thumbnailUrl || story.videoUrl,
+              mediaType: story.videoUrl?.includes('.mp4') ? 'video' : 'image',
               swipeText: story.description,
               onPress: () => console.log('story swiped'),
               viewsCount: story.viewsCount,
               likesCount: story.likesCount,
               commentsCount: story.commentsCount,
-              createdAt: story.createdAt,
-              mediaType: story.mediaType || 'image'
+              createdAt: story.createdAt
             }))
           };
 
@@ -296,11 +297,53 @@ const Stories = () => {
       // Create form data
       const uploadFormData = new FormData();
       let fileUri = mediaAsset.uri;
+      let thumbnailUri = fileUri;
       
       // Get file extension and set appropriate MIME type
       const fileExtension = fileUri.split('.').pop().toLowerCase();
       const isVideo = mediaAsset.type?.includes('video');
       const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+
+      // If it's a video, extract thumbnail
+      if (isVideo) {
+        try {
+          // Create a temporary file for the thumbnail
+          const thumbnailPath = `${FileSystem.cacheDirectory}thumbnail_${Date.now()}.jpg`;
+          
+          // Load the video
+          const { status } = await Video.createForAsync({
+            uri: fileUri,
+            shouldPlay: false,
+          });
+
+          if (status.isLoaded) {
+            // Get the first frame as a thumbnail
+            const { uri } = await Video.getThumbnailAsync(fileUri, {
+              time: 0,
+              quality: 0.5,
+            });
+
+            // Copy the thumbnail to our cache directory
+            await FileSystem.copyAsync({
+              from: uri,
+              to: thumbnailPath
+            });
+
+            // Add thumbnail to form data
+            uploadFormData.append('thumbnailFile', {
+              uri: thumbnailPath,
+              type: 'image/jpeg',
+              name: `thumbnail_${Date.now()}.jpg`
+            });
+
+            thumbnailUri = thumbnailPath;
+          }
+        } catch (error) {
+          console.error('Error extracting video thumbnail:', error);
+          // If thumbnail extraction fails, use the video URI as fallback
+          thumbnailUri = fileUri;
+        }
+      }
 
       // Create file object for upload
       uploadFormData.append('mediaFile', {
@@ -334,7 +377,7 @@ const Stories = () => {
         title: "My Story",
         description: "Check out my story!",
         videoUrl: uploadResponseData.urls[0],
-        thumbnailUrl: uploadResponseData.urls[0],
+        thumbnailUrl: isVideo ? uploadResponseData.urls[1] || uploadResponseData.urls[0] : uploadResponseData.urls[0],
         mediaType: isVideo ? 'video' : 'image',
         duration: isVideo ? 30 : 0,
         tags: []
@@ -376,36 +419,37 @@ const Stories = () => {
   const markStoryAsSeen = async (userId, storyId) => {
     if (!isStorySeen(userId, storyId)) {
       try {
-        // Update Redux state
-        dispatch(markStorySeen({ userId, storyId }));
-
-        // Get current seen stories from Redux
+        // Create a new object for seen stories
         const currentSeenStories = { ...seenStories };
         
-        // Update the seen stories for this user
-        if (!currentSeenStories[userId]) {
-          currentSeenStories[userId] = [];
-        }
-        if (!currentSeenStories[userId].includes(storyId)) {
-          currentSeenStories[userId].push(storyId);
-        }
+        // Create a new array for the user's seen stories
+        const userSeenStories = currentSeenStories[userId] ? [...currentSeenStories[userId]] : [];
+        
+        // Add the new story ID if it doesn't exist
+        if (!userSeenStories.includes(storyId)) {
+          userSeenStories.push(storyId);
+          currentSeenStories[userId] = userSeenStories;
+          
+          // Update Redux state with the entire new object
+          dispatch(setSeenStories(currentSeenStories));
 
-        // Save to AsyncStorage
-        await AsyncStorage.setItem('seenStories', JSON.stringify(currentSeenStories));
+          // Save to AsyncStorage
+          await AsyncStorage.setItem('seenStories', JSON.stringify(currentSeenStories));
 
-        // Update backend
-        const accessToken = await AsyncStorage.getItem('accessToken');
-        await fetch(`${base_url}/story/mark-seen`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            storyIds: [storyId],
-            userId: userId 
-          }),
-        });
+          // Update backend
+          const accessToken = await AsyncStorage.getItem('accessToken');
+          await fetch(`${base_url}/story/mark-seen`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              storyIds: [storyId],
+              userId: userId 
+            }),
+          });
+        }
       } catch (error) {
         console.error('Error marking story as seen:', error);
       }
@@ -415,49 +459,65 @@ const Stories = () => {
   const handleStoryPress = (user) => {
     if (!user || !user.stories || user.stories.length === 0) return;
     
-    setSelectedUser(user);
-    setCurrentStoryIndex(0);
-    setProgress(0);
-    setShowStories(true);
-    startStoryTimer(); // Start timer immediately when story is opened
+    // Use setTimeout to avoid state updates during render
+    setTimeout(() => {
+      setSelectedUser(user);
+      setCurrentStoryIndex(0);
+      setProgress(0);
+      setShowStories(true);
+      
+      // Clear any existing timer
+      if (storyTimer) {
+        clearInterval(storyTimer);
+      }
+    }, 0);
   };
 
   const handleNextStory = () => {
     if (selectedUser && selectedUser.stories) {
       if (currentStoryIndex < selectedUser.stories.length - 1) {
         const currentStory = selectedUser.stories[currentStoryIndex];
-        markStoryAsSeen(selectedUser.user_id, currentStory.story_id);
-        setCurrentStoryIndex(currentStoryIndex + 1);
-        setProgress(0);
+        // Use setTimeout to avoid state updates during render
+        setTimeout(() => {
+          markStoryAsSeen(selectedUser.user_id, currentStory.story_id);
+          setCurrentStoryIndex(currentStoryIndex + 1);
+          setProgress(0);
+        }, 0);
       } else {
         // Current user's stories are complete, move to next user
         const currentStory = selectedUser.stories[currentStoryIndex];
-        markStoryAsSeen(selectedUser.user_id, currentStory.story_id);
-        
-        // Find the index of current user in stories array
-        const currentUserIndex = stories.findIndex(user => user.user_id === selectedUser.user_id);
-        
-        if (currentUserIndex < stories.length - 1) {
-          // Move to next user's stories
-          const nextUser = stories[currentUserIndex + 1];
-          setSelectedUser(nextUser);
-          setCurrentStoryIndex(0);
-          setProgress(0);
-        } else {
-          // No more users, close the story view
-          setShowStories(false);
-          setSelectedUser(null);
-          setCurrentStoryIndex(0);
-          setProgress(0);
-        }
+        // Use setTimeout to avoid state updates during render
+        setTimeout(() => {
+          markStoryAsSeen(selectedUser.user_id, currentStory.story_id);
+          
+          // Find the index of current user in stories array
+          const currentUserIndex = stories.findIndex(user => user.user_id === selectedUser.user_id);
+          
+          if (currentUserIndex < stories.length - 1) {
+            // Move to next user's stories
+            const nextUser = stories[currentUserIndex + 1];
+            setSelectedUser(nextUser);
+            setCurrentStoryIndex(0);
+            setProgress(0);
+          } else {
+            // No more users, close the story view
+            setShowStories(false);
+            setSelectedUser(null);
+            setCurrentStoryIndex(0);
+            setProgress(0);
+          }
+        }, 0);
       }
     }
   };
 
   const handlePreviousStory = () => {
     if (currentStoryIndex > 0) {
-      setCurrentStoryIndex(currentStoryIndex - 1);
-      setProgress(0);
+      // Use setTimeout to avoid state updates during render
+      setTimeout(() => {
+        setCurrentStoryIndex(currentStoryIndex - 1);
+        setProgress(0);
+      }, 0);
     } else {
       // Find the index of current user in stories array
       const currentUserIndex = stories.findIndex(user => user.user_id === selectedUser.user_id);
@@ -465,9 +525,12 @@ const Stories = () => {
       if (currentUserIndex > 0) {
         // Move to previous user's last story
         const previousUser = stories[currentUserIndex - 1];
-        setSelectedUser(previousUser);
-        setCurrentStoryIndex(previousUser.stories.length - 1);
-        setProgress(0);
+        // Use setTimeout to avoid state updates during render
+        setTimeout(() => {
+          setSelectedUser(previousUser);
+          setCurrentStoryIndex(previousUser.stories.length - 1);
+          setProgress(0);
+        }, 0);
       }
     }
   };
@@ -533,7 +596,7 @@ const Stories = () => {
 
     return (
       <View style={styles.storyContentContainer}>
-        {isVideo ? (
+        {currentStory.mediaType === 'video' ? (
           <Video
             source={{ uri: currentStory.story_image }}
             style={styles.storyMedia}
@@ -544,12 +607,54 @@ const Stories = () => {
               if (status.didJustFinish) {
                 handleNextStory();
               }
+              if (status.positionMillis && status.durationMillis) {
+                const videoProgress = (status.positionMillis / status.durationMillis) * 100;
+                setProgress(Math.min(videoProgress, 100));
+              }
             }}
             onLoad={(data) => {
-              setTimeout(() => {
-                handleNextStory();
-              }, VIDEO_DURATION);
+              console.log('Video loaded:', data);
+              if (data.durationMillis) {
+                const duration = Math.min(data.durationMillis, VIDEO_DURATION);
+                if (storyTimer) {
+                  clearInterval(storyTimer);
+                }
+                const timer = setInterval(() => {
+                  setProgress(prev => {
+                    const newProgress = prev + (100 / (duration / PROGRESS_INTERVAL));
+                    if (newProgress >= 100) {
+                      clearInterval(timer);
+                      handleNextStory();
+                      return 100;
+                    }
+                    return newProgress;
+                  });
+                }, PROGRESS_INTERVAL);
+                setStoryTimer(timer);
+              }
             }}
+            onError={(error) => {
+              console.error('Video playback error:', error);
+              showToast('Error playing video', 'error');
+              handleNextStory();
+            }}
+            onLoadStart={() => {
+              console.log('Video loading started');
+              setProgress(0);
+            }}
+            onReadyForDisplay={() => {
+              console.log('Video ready for display');
+              if (storyTimer) {
+                clearInterval(storyTimer);
+              }
+            }}
+            isMuted={false}
+            volume={1.0}
+            rate={1.0}
+            progressUpdateIntervalMillis={100}
+            posterSource={{ uri: currentStory.thumbnail_image }}
+            posterStyle={styles.storyMedia}
+            usePoster={true}
           />
         ) : (
           <Image
@@ -558,6 +663,21 @@ const Stories = () => {
             resizeMode="cover"
             onLoadStart={() => {
               setProgress(0);
+              if (storyTimer) {
+                clearInterval(storyTimer);
+              }
+              const timer = setInterval(() => {
+                setProgress(prev => {
+                  const newProgress = prev + (100 / (STORY_DURATION / PROGRESS_INTERVAL));
+                  if (newProgress >= 100) {
+                    clearInterval(timer);
+                    handleNextStory();
+                    return 100;
+                  }
+                  return newProgress;
+                });
+              }, PROGRESS_INTERVAL);
+              setStoryTimer(timer);
             }}
           />
         )}
