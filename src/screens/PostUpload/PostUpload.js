@@ -18,12 +18,14 @@ import * as ImagePicker from 'expo-image-picker';
 import styles from "./Styles";
 import { base_url } from "../../utils/base_url";
 import { useToast } from '../../context/ToastContext';
+import { Picker } from '@react-native-picker/picker';
 
 function PostUpload() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [postType, setPostType] = useState("Public");
   const navigation = useNavigation();
   const { showToast } = useToast();
 
@@ -92,6 +94,11 @@ function PostUpload() {
   const handleSubmit = async () => {
     if (!image) {
       showToast("Please select an image to upload.", "error");
+      return;
+    }
+
+    if (!title.trim()) {
+      showToast("Please add a title for your post.", "error");
       return;
     }
   
@@ -165,11 +172,14 @@ function PostUpload() {
         }
 
         const postFormData = new FormData();
-        postFormData.append('postTitle', title);
-        postFormData.append('postType', 'Public');
+        postFormData.append('postTitle', title.trim());
+        postFormData.append('postType', postType);
         postFormData.append('mediaType', 'image');
         postFormData.append('mediaUrl[]', uploadResponseData.urls[0]);
         postFormData.append('tags[]', 'new');
+        if (description.trim()) {
+          postFormData.append('postDescription', description.trim());
+        }
 
         const response = await fetch(`${base_url}/post/create`, {
           method: 'POST',
@@ -183,7 +193,7 @@ function PostUpload() {
         const responseData = await response.json();
 
         if (response.ok) {
-          showToast("Your post was successfully created!", "success");
+          showToast(`Your ${postType.toLowerCase()} post was successfully created!`, "success");
           navigation.goBack();
         } else {
           console.error("Error creating post. Status:", response.status);
@@ -260,6 +270,21 @@ function PostUpload() {
             multiline
             numberOfLines={4}
           />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Post Type:</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={postType}
+              style={styles.picker}
+              onValueChange={(itemValue) => setPostType(itemValue)}
+            >
+              <Picker.Item label="Public" value="Public" />
+              <Picker.Item label="Followers Only" value="FollowersOnly" />
+              <Picker.Item label="My Posts" value="my" />
+            </Picker>
+          </View>
         </View>
 
         <TouchableOpacity 

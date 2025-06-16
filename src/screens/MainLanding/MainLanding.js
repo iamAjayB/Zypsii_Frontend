@@ -333,12 +333,7 @@ function MainLanding(props) {
         throw new Error('No access token found');
       }
 
-      // Create a timeout promise
-      const timeoutPromise = (ms) => new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), ms)
-      );
-
-      // Make all API requests in parallel with timeout
+      // Make all API requests in parallel
       const [
         discoverByInterestResponse,
         bestDestinationResponse,
@@ -347,60 +342,42 @@ function MainLanding(props) {
         allPostsResponse,
         discoverByNearestResponse
       ] = await Promise.all([
-        Promise.race([
-          fetch(`${base_url}/schedule/places/getNearest?type=interest`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          timeoutPromise(10000)
-        ]),
-        Promise.race([
-          fetch(`${base_url}/schedule/places/getNearest?bestDestination=true`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          timeoutPromise(10000)
-        ]),
-        Promise.race([
-          fetch(`${base_url}/schedule/places/getNearest`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          timeoutPromise(10000)
-        ]),
-        Promise.race([
-          fetch(`${base_url}/schedule/listing/filter`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          timeoutPromise(10000)
-        ]),
-        Promise.race([
-          fetch(`${base_url}/post/listing/filter`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          timeoutPromise(10000)
-        ]),
-        Promise.race([
-          fetch(`${base_url}/schedule/places/getNearest?type=nearest`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          timeoutPromise(10000)
-        ])
+        fetch(`${base_url}/schedule/places/getNearest?type=interest`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }),
+        fetch(`${base_url}/schedule/places/getNearest?bestDestination=true`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }),
+        fetch(`${base_url}/schedule/places/getNearest`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }),
+        fetch(`${base_url}/schedule/listing/filter?filter=Public`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }),
+        fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }),
+        fetch(`${base_url}/schedule/places/getNearest?type=nearest`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        })
       ]);
 
       // Process all responses
@@ -562,7 +539,11 @@ function MainLanding(props) {
           title: item.name,
           subtitle: item.address || 'No address',
           rating: parseFloat(item.rating) || 0,
-          distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null
+          distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null,
+          location: {
+            latitude: item.location?.lat || item.latitude || 0,
+            longitude: item.location?.lng || item.longitude || 0
+          }
         }));
         setDiscoverbyNearest(formattedData);
         setDiscoverByNearestPagination({

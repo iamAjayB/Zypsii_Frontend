@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Animated } from "react-native";
 import styles from "../../utils/styles";
 import { BackHeader, BottomTab } from '../../components';
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,6 +10,123 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 //const baseUrl = 'https://admin.zypsii.com'; // Update the base URL if necessary
 
+// Card-based Skeleton loader component with animation
+const ScheduleSkeleton = () => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const opacity = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  const backgroundColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#F0F0F0', '#E0E0E0'],
+  });
+
+  return (
+    <Animated.View style={{ 
+      opacity,
+      padding: 15, 
+      backgroundColor: '#fff', 
+      marginHorizontal: 15,
+      marginBottom: 15, 
+      borderRadius: 12,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 5,
+    }}>
+      <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+        <Animated.View style={{ 
+          height: 80, 
+          width: 80, 
+          backgroundColor: '#E8E8E8', 
+          borderRadius: 8,
+          marginRight: 10,
+          opacity,
+        }} />
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Animated.View style={{ 
+            height: 18, 
+            backgroundColor: '#F5F5F5', 
+            width: '80%', 
+            borderRadius: 4, 
+            marginBottom: 8,
+            opacity,
+          }} />
+          <Animated.View style={{ 
+            height: 16, 
+            backgroundColor: '#F0F0F0', 
+            width: '60%', 
+            borderRadius: 4,
+            opacity,
+          }} />
+        </View>
+      </View>
+      <Animated.View style={{ 
+        height: 1, 
+        backgroundColor: ' #f4f4f4 ', 
+        marginBottom: 15,
+        opacity,
+      }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+        <Animated.View style={{ 
+          height: 16, 
+          backgroundColor: '#F5F5F5', 
+          width: '35%', 
+          borderRadius: 4,
+          opacity,
+        }} />
+        <Animated.View style={{ 
+          height: 16, 
+          backgroundColor: '#F0F0F0', 
+          width: '35%', 
+          borderRadius: 4,
+          opacity,
+        }} />
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Animated.View style={{ 
+          height: 16, 
+          backgroundColor: '#F5F5F5', 
+          width: '45%', 
+          borderRadius: 4,
+          opacity,
+        }} />
+        <Animated.View style={{ 
+          height: 16, 
+          backgroundColor: '#F0F0F0', 
+          width: '30%', 
+          borderRadius: 4,
+          opacity,
+        }} />
+      </View>
+    </Animated.View>
+  );
+};
+
 function MySchedule({ navigation }) {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(null);
@@ -18,10 +135,11 @@ function MySchedule({ navigation }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const limit = 20;
+  const [limit, setLimit] = useState(10);
+  const [loadedIds, setLoadedIds] = useState(new Set());
 
   // Fetch schedule data with pagination
-  const fetch_all_schedule = async (pageNum = 1, isLoadMore = false) => {
+  const fetch_all_schedule = async (pageNum = 1, isLoadMore = false, currentLimit = limit) => {
     if (isLoadMore) {
       setIsLoadingMore(true);
     } else {
@@ -30,7 +148,7 @@ function MySchedule({ navigation }) {
     
     const accessToken = await AsyncStorage.getItem('accessToken');
     try {
-      const response = await fetch(`${base_url}/schedule/listing/filter?page=${pageNum}&limit=${limit}`, {
+      const response = await fetch(`${base_url}/schedule/listing/filter?page=${pageNum}&limit=${currentLimit}`, {
         method: 'get',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -38,36 +156,41 @@ function MySchedule({ navigation }) {
       }); 
       const data = await response.json();
       if (data.success && data.data) {
-        const formattedData = data.data.map((item) => {
-          const fromDate = new Date(item.Dates.from);
-          const endDate = new Date(item.Dates.end);
-          const createdAt = new Date(item.createdAt);
-          
-          return {
-            id: item._id,
-            title: item.tripName,
-            from: item.locationDetails?.[0]?.address || 'Unknown location',
-            to: item.locationDetails?.[1]?.address || 'Unknown location',
-            date: fromDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0],
-            travelMode: item.travelMode,
-            visible: item.visible,
-            numberOfDays: item.numberOfDays.toString(),
-            imageUrl: item.bannerImage,
-            locationDetails: item.locationDetails,
-            createdAt: createdAt.toISOString().split('T')[0],
-            rawLocation: {
-              from: {
-                latitude: item.location.from.latitude,
-                longitude: item.location.from.longitude
-              },
-              to: {
-                latitude: item.location.to.latitude,
-                longitude: item.location.to.longitude
+        const formattedData = data.data
+          .filter(item => !loadedIds.has(item._id)) // Filter out already loaded items
+          .map((item) => {
+            const fromDate = new Date(item.Dates.from);
+            const endDate = new Date(item.Dates.end);
+            const createdAt = new Date(item.createdAt);
+            
+            // Add ID to loadedIds set
+            setLoadedIds(prev => new Set([...prev, item._id]));
+            
+            return {
+              id: item._id,
+              title: item.tripName,
+              from: item.locationDetails?.[0]?.address || 'Unknown location',
+              to: item.locationDetails?.[1]?.address || 'Unknown location',
+              date: fromDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0],
+              travelMode: item.travelMode,
+              visible: item.visible,
+              numberOfDays: item.numberOfDays.toString(),
+              imageUrl: item.bannerImage,
+              locationDetails: item.locationDetails,
+              createdAt: createdAt.toISOString().split('T')[0],
+              rawLocation: {
+                from: {
+                  latitude: item.location?.from?.latitude || 0,
+                  longitude: item.location?.from?.longitude || 0
+                },
+                to: {
+                  latitude: item.location?.to?.latitude || 0,
+                  longitude: item.location?.to?.longitude || 0
+                }
               }
-            }
-          };
-        });
+            };
+          });
 
         if (isLoadMore) {
           setAll_schedule(prev => [...prev, ...formattedData]);
@@ -75,7 +198,7 @@ function MySchedule({ navigation }) {
           setAll_schedule(formattedData);
         }
 
-        setHasMore(formattedData.length === limit);
+        setHasMore(formattedData.length === currentLimit);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -85,15 +208,36 @@ function MySchedule({ navigation }) {
     }
   };
 
+  // Function to update limit and refresh data
+  const updateLimit = (newLimit) => {
+    setLimit(newLimit);
+    setPage(1);
+    setAll_schedule([]);
+    fetch_all_schedule(1, false, newLimit);
+  };
+
+  // Initial data load
   useEffect(() => {
-    fetch_all_schedule(1);
+    fetch_all_schedule(1, false, limit);
   }, []);
+
+  // Reset and reload data when date changes
+  useEffect(() => {
+    if (selectedDate) {
+      setLoadedIds(new Set());
+      setAll_schedule([]);
+      setPage(1);
+      fetch_all_schedule(1, false, limit);
+    }
+  }, [selectedDate]);
 
   const loadMore = () => {
     if (!isLoadingMore && hasMore) {
       const nextPage = page + 1;
+      const newLimit = limit * 2;
       setPage(nextPage);
-      fetch_all_schedule(nextPage, true);
+      setLimit(newLimit);
+      fetch_all_schedule(nextPage, true, newLimit);
     }
   };
 
@@ -124,7 +268,7 @@ function MySchedule({ navigation }) {
     const selectedDateString = selectedDate.toISOString().split('T')[0];
     const scheduleDateString = scheduleDate.toISOString().split('T')[0];
     return scheduleDateString === selectedDateString;
-  }) : all_schedule; // Show all schedules when no date is selected
+  }) : all_schedule;
 
   // Handle navigation between months
   const handlePrevMonth = () => {
@@ -144,6 +288,13 @@ function MySchedule({ navigation }) {
   // Back button pressed
   const backPressed = () => {
     navigation.goBack();
+  };
+
+  // Render skeleton loaders with proper count
+  const renderSkeletonLoaders = (count = 3) => {
+    return Array(count).fill(0).map((_, index) => (
+      <ScheduleSkeleton key={`skeleton-${index}`} />
+    ));
   };
 
   return (
@@ -167,7 +318,7 @@ function MySchedule({ navigation }) {
           <FlatList
             data={dates}
             horizontal
-            keyExtractor={(item) => item.dateString}
+            keyExtractor={(item, index) => `${item.dateString}-${index}`}
             contentContainerStyle={{ paddingHorizontal: 10 }}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -203,9 +354,8 @@ function MySchedule({ navigation }) {
         </View>
         <View style={{ flex: 1, width: '100%' }}>
           {isLoading ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#0000ff" />
-              <Text style={{ marginTop: 10, color: '#666' }}>Loading schedules...</Text>
+            <View style={{ flex: 1, width: '100%', paddingTop: 10 }}>
+              {renderSkeletonLoaders(5)}
             </View>
           ) : (
             <FlatList
@@ -217,7 +367,7 @@ function MySchedule({ navigation }) {
               }}
               vertical
               showsVerticalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()} 
+              keyExtractor={(item, index) => `${item.id}-${index}`}
               data={filteredSchedules}
               renderItem={({ item }) => <Schedule item={item} />}
               onEndReached={loadMore}
@@ -232,7 +382,7 @@ function MySchedule({ navigation }) {
               ListFooterComponent={() => (
                 isLoadingMore ? (
                   <View style={{ paddingVertical: 20 }}>
-                    <ActivityIndicator size="small" color="#0000ff" />
+                    {renderSkeletonLoaders(2)}
                   </View>
                 ) : null
               )}

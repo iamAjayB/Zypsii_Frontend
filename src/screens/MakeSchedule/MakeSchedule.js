@@ -622,6 +622,52 @@ function MakeSchedule() {
             </View>
           </View>
 
+          {/* Visibility Section */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>VISIBILITY</Text>
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  visible === 'Public' && styles.visibilityButtonActive
+                ]}
+                onPress={() => updateScheduleState({ visible: 'Public' })}
+              >
+                <Icon 
+                  name="globe-outline" 
+                  size={24} 
+                  color={visible === 'Public' ? '#fff' : '#666'} 
+                />
+                <Text style={[
+                  styles.visibilityButtonText,
+                  visible === 'Public' && styles.visibilityButtonTextActive
+                ]}>
+                  Public
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  visible === 'Private' && styles.visibilityButtonActive
+                ]}
+                onPress={() => updateScheduleState({ visible: 'Private' })}
+              >
+                <Icon 
+                  name="lock-closed-outline" 
+                  size={24} 
+                  color={visible === 'Private' ? '#fff' : '#666'} 
+                />
+                <Text style={[
+                  styles.visibilityButtonText,
+                  visible === 'Private' && styles.visibilityButtonTextActive
+                ]}>
+                  Private
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Location Section */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>LOCATION</Text>

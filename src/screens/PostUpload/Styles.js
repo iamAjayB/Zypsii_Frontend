@@ -81,6 +81,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  label: {
+    fontSize: 16,
+    color: colors.fontMainColor,
+    marginBottom: 8,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginBottom: 16,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+  },
 });
 
 export default styles; 

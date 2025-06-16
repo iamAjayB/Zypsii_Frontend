@@ -264,4 +264,37 @@ export default StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  visibilityButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  visibilityButtonActive: {
+    backgroundColor: '#A60F93',
+    borderColor: '#A60F93',
+  },
+  visibilityButtonText: {
+    fontSize: 16,
+    color: '#666',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  visibilityButtonTextActive: {
+    color: '#fff',
+  },
 });
