@@ -16,6 +16,43 @@ function ProductCard(props) {
 
   // Fetch user data from AsyncStorage on component mount
 
+  // Function to search for place coordinates by name
+  const searchPlaceCoordinates = async (placeName) => {
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken || !placeName) return null;
+
+      const response = await fetch(`${base_url}/schedule/places/getNearest?searchPlaceName=${encodeURIComponent(placeName)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Place search failed:', response.status);
+        return null;
+      }
+
+      const result = await response.json();
+      
+      if (result.data && result.data.length > 0) {
+        const place = result.data[0];
+        const latitude = place.location?.latitude ?? place.location?.lat;
+        const longitude = place.location?.longitude ?? place.location?.lng;
+        
+        if (latitude && longitude) {
+          return { latitude, longitude };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error searching place coordinates:', error);
+      return null;
+    }
+  };
+
   const handleLikeToggle = async () => {
     setLoading(true);
 
@@ -134,8 +171,26 @@ function ProductCard(props) {
     }
   };
 
-  const handlePlaceClick = (place) => {
-    if (place.location && place.location.latitude && place.location.longitude) {
+  const handlePlaceClick = async (place) => {
+    // Fallback logic for coordinates
+    let latitude = place.location?.latitude ?? place.location?.lat;
+    let longitude = place.location?.longitude ?? place.location?.lng;
+    
+    // If coordinates are missing, try to search by place name
+    if ((latitude === undefined || longitude === undefined) && place.name) {
+      console.log('Auto-searching coordinates for:', place.name);
+      const coordinates = await searchPlaceCoordinates(place.name);
+      if (coordinates) {
+        console.log('Found coordinates for', place.name, ':', coordinates);
+        latitude = coordinates.latitude;
+        longitude = coordinates.longitude;
+      }
+    }
+    
+    // If still no coordinates, proceed without them (no alert)
+    if (latitude === undefined || longitude === undefined) {
+      console.log('No coordinates available for:', place.name);
+      // Navigate without coordinates - let the destination screen handle it
       navigation.navigate('Destination', {
         id: place._id,
         image: place.image,
@@ -143,12 +198,22 @@ function ProductCard(props) {
         subtitle: place.address,
         rating: place.rating,
         distance: place.distanceInKilometer,
-        latitude: place.location.latitude,
-        longitude: place.location.longitude
+        tolatitude: null,
+        tolongitude: null
       });
-    } else {
-      showToast('Location information not available for this place.', 'error');
+      return;
     }
+    
+    navigation.navigate('Destination', {
+      id: place._id,
+      image: place.image,
+      cardTitle: place.name,
+      subtitle: place.address,
+      rating: place.rating,
+      distance: place.distanceInKilometer,
+      tolatitude: latitude,
+      tolongitude: longitude
+    });
   };
 
   // Format distance to show one decimal place
@@ -160,7 +225,7 @@ function ProductCard(props) {
   return (
     <TouchableOpacity
       activeOpacity={1}
-      onPress={() => navigation.navigate('Destination', { product: props })}
+      onPress={() => handlePlaceClick(props)}
       style={[styles.cardContainer, props.styles]}>
       
       {/* Product Image */}

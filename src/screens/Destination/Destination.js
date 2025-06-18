@@ -29,8 +29,8 @@ function Destination({ route, navigation }) {
   // Safe access to nested properties with optional chaining and nullish coalescing
   const item_id = params?.product?.id ?? params?.id ?? null;
   const image1 = params?.product?.image ?? params?.image ?? null;
-  const tolatitude = params?.tolatitude ?? params?.product?.tolatitude;
-  const tolongitude = params?.tolongitude ?? params?.product?.tolongitude;
+  const tolatitude = params?.tolatitude ?? params?.product?.tolatitude ?? params?.latitude ?? params?.lat;
+  const tolongitude = params?.tolongitude ?? params?.product?.tolongitude ?? params?.longitude ?? params?.lng;
 
   const [nextPageToken, setNextPageToken] = useState(null);
   // Fetch data from an open-source API (JSONPlaceholder API for demonstration)
@@ -623,7 +623,7 @@ function Destination({ route, navigation }) {
               {/* Discover Row */}
               <View style={styles.discoverRow}>
                 <TextDefault style={styles.discoverText}>Discover by Nearest</TextDefault>
-                <TouchableOpacity onPress={() => navigation.navigate('DiscoverPlace')}>
+                <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'nearest' })}>
                   <TextDefault style={styles.viewAllText}>View All</TextDefault>
                 </TouchableOpacity>
               </View>

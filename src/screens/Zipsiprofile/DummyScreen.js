@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image,Alert , TouchableOpacity, FlatList, ScrollView, Modal, Dimensions, StatusBar, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
+import Video from 'react-native-video';
 import styles from './styles';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { colors } from '../../utils';
@@ -39,8 +39,6 @@ const DummyScreen = ({ navigation }) => {
   const [all_schedule, setAll_schedule] = useState([]);
   const [all_posts, setAllPosts] = useState([]);
   const [all_shorts, setAllShorts] = useState([]);
-  const [selectedVideo, setSelectedVideo] = useState(null);
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const [placeNames, setPlaceNames] = useState({});
 
   // Add new loading states
@@ -495,98 +493,37 @@ const DummyScreen = ({ navigation }) => {
   };
 
   const handleVideoPress = (item) => {
-    setSelectedVideo(item);
-    setIsFullScreen(true);
-    StatusBar.setHidden(true);
+    // Navigate to Shorts screen with the video data
+    navigation.navigate('Shorts', { 
+      initialVideo: item,
+      userShorts: all_shorts,
+      currentIndex: all_shorts.findIndex(short => short.id === item.id)
+    });
   };
 
-  const handleCloseFullScreen = () => {
-    setIsFullScreen(false);
-    setSelectedVideo(null);
-    StatusBar.setHidden(false);
+  // Add video validation functions
+  const isValidVideoUrl = (url) => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.mov', '.webm', '.m4v'];
+    const isSupportedFormat = videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+    const isHttpUrl = url.startsWith('http');
+    const isHttpsUrl = url.startsWith('https');
+    
+    return (isSupportedFormat || isHttpUrl || isHttpsUrl) && !url.toLowerCase().endsWith('.3gp');
   };
 
-  const renderFullScreenVideo = () => {
-    if (!selectedVideo) return null;
-
-    return (
-      <Modal
-        visible={isFullScreen}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCloseFullScreen}
-      >
-        <View style={fullScreenStyles.container}>
-          <TouchableOpacity 
-            style={fullScreenStyles.closeButton}
-            onPress={handleCloseFullScreen}
-          >
-            <Ionicons name="close" size={30} color="white" />
-          </TouchableOpacity>
-          
-          <WebView
-            source={{ uri: selectedVideo.video }}
-            style={fullScreenStyles.video}
-            allowsFullscreenVideo
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            mediaPlaybackRequiresUserAction={false}
-          />
-
-          <View style={fullScreenStyles.videoInfo}>
-            <Text style={fullScreenStyles.videoTitle}>{selectedVideo.videoTitle || 'Untitled'}</Text>
-            <Text style={fullScreenStyles.videoDescription}>{selectedVideo.description || 'No description'}</Text>
-            <View style={fullScreenStyles.videoStats}>
-              <Text style={fullScreenStyles.statText}>{selectedVideo.views || '0'} views</Text>
-              <Text style={fullScreenStyles.statText}>{selectedVideo.likes || '0'} likes</Text>
-              <Text style={fullScreenStyles.statText}>{selectedVideo.comments || '0'} comments</Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
-
-  // Modify the renderItem in the FlatList
-  const renderShortItem = ({ item }) => {
-    if (!item) return null;
-
-    return (
-      <TouchableOpacity 
-        style={videoStyles.videoContainer}
-        onPress={() => handleVideoPress(item)}
-      >
-        {item.video ? (
-          <WebView
-            source={{ uri: item.video }}
-            style={videoStyles.webviewVideo}
-            allowsFullscreenVideo
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            mediaPlaybackRequiresUserAction={false}
-          />
-        ) : (
-          <Image 
-            source={{ uri: item.videoImage }}
-            style={videoStyles.webviewVideo}
-            resizeMode="cover"
-          />
-        )}
-        <View style={videoStyles.videoInfo}>
-          <Text style={videoStyles.videoTitle}>{item.videoTitle || 'Untitled'}</Text>
-          <Text style={videoStyles.videoDescription}>{item.description || 'No description'}</Text>
-          <View style={videoStyles.videoStats}>
-            <Text style={videoStyles.statText}>{item.views || '0'} views</Text>
-            <Text style={videoStyles.statText}>{item.likes || '0'} likes</Text>
-            <Text style={videoStyles.statText}>{item.comments || '0'} comments</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
+  const getVideoSource = (videoUrl) => {
+    if (!videoUrl) return null;
+    if (videoUrl.toLowerCase().endsWith('.3gp')) return null;
+    
+    if (videoUrl.startsWith('http') || videoUrl.startsWith('https')) {
+      return { uri: videoUrl };
+    } else if (videoUrl.startsWith('file://')) {
+      return { uri: videoUrl };
+    } else if (videoUrl.startsWith('data:')) {
+      return { uri: videoUrl };
+    }
+    return null;
   };
 
   // Modify the renderContent function to use skeleton loaders
@@ -746,12 +683,26 @@ const DummyScreen = ({ navigation }) => {
               renderItem={({ item }) => {
                 if (!item) return null;
                 
+                const videoSource = getVideoSource(item.video);
+                const isValidVideo = isValidVideoUrl(item.video);
+                
                 return (
                   <TouchableOpacity 
                     style={gridStyles.gridItem}
                     onPress={() => handleVideoPress(item)}
                   >
-                    {item.videoImage ? (
+                    {isValidVideo && videoSource ? (
+                      <Video
+                        source={videoSource}
+                        style={gridStyles.gridImage}
+                        resizeMode="cover"
+                        repeat={true}
+                        paused={true}
+                        muted={true}
+                        onBuffer={(buffer) => console.log('buffering', buffer)}
+                        onError={(error) => console.log('error', error)}
+                      />
+                    ) : item.videoImage ? (
                       <Image
                         source={{ uri: item.videoImage }}
                         style={gridStyles.gridImage}
@@ -767,10 +718,6 @@ const DummyScreen = ({ navigation }) => {
                         {item.videoTitle || 'Untitled'}
                       </Text>
                       <View style={gridStyles.gridItemStats}>
-                        <View style={gridStyles.statItem}>
-                          <MaterialIcons name="favorite" size={14} color="#870E6B" />
-                          <Text style={gridStyles.statText}>{item.likes || '0'}</Text>
-                        </View>
                         <View style={gridStyles.statItem}>
                           <MaterialIcons name="visibility" size={14} color="#870E6B" />
                           <Text style={gridStyles.statText}>{item.views || '0'}</Text>
@@ -797,7 +744,6 @@ const DummyScreen = ({ navigation }) => {
                 </View>
               )}
             />
-            {renderFullScreenVideo()}
           </>
         );
       default:
@@ -1071,7 +1017,7 @@ const videoStyles = {
     shadowRadius: 5,
     elevation: 3,
   },
-  webviewVideo: {
+  video: {
     width: '100%',
     height: 300,
     backgroundColor: '#000',
@@ -1090,71 +1036,9 @@ const videoStyles = {
     color: '#666',
     marginBottom: 12,
   },
-  videoStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    paddingTop: 8,
-  },
   statText: {
     fontSize: 12,
     color: '#666',
-  }
-};
-
-// Add new styles for full-screen view
-const fullScreenStyles = {
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  video: {
-    width: screenWidth,
-    height: screenHeight * 0.7,
-    backgroundColor: 'black',
-  },
-  closeButton: {
-    display: 'none',
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 1000,
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-  },
-  videoInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  videoTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  videoDescription: {
-    fontSize: 14,
-    color: 'white',
-    marginBottom: 12,
-  },
-  videoStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-    paddingTop: 8,
-  },
-  statText: {
-    fontSize: 12,
-    color: 'white',
   }
 };
 

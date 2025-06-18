@@ -4,6 +4,8 @@ import { TextDefault } from '../../components';
 import { colors } from "../../utils";
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { base_url } from '../../utils/base_url';
 
 const DiscoverByNearest = (props) => {
   const navigation = useNavigation();
@@ -11,7 +13,77 @@ const DiscoverByNearest = (props) => {
 
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-  const handlePress = () => {
+  
+  // Function to search for place coordinates by name
+  const searchPlaceCoordinates = async (placeName) => {
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken || !placeName) return null;
+
+      const response = await fetch(`${base_url}/schedule/places/getNearest?searchPlaceName=${encodeURIComponent(placeName)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Place search failed:', response.status);
+        return null;
+      }
+
+      const result = await response.json();
+      
+      if (result.data && result.data.length > 0) {
+        const place = result.data[0];
+        const latitude = place.location?.latitude ?? place.location?.lat;
+        const longitude = place.location?.longitude ?? place.location?.lng;
+        
+        if (latitude && longitude) {
+          return { latitude, longitude };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error searching place coordinates:', error);
+      return null;
+    }
+  };
+
+  const handlePress = async () => {
+    // Fallback logic for coordinates
+    let latitude = props.location?.latitude ?? props.location?.lat;
+    let longitude = props.location?.longitude ?? props.location?.lng;
+    
+    // If coordinates are missing, try to search by place name
+    if ((latitude === undefined || longitude === undefined) && props.title) {
+      console.log('Auto-searching coordinates for:', props.title);
+      const coordinates = await searchPlaceCoordinates(props.title);
+      if (coordinates) {
+        console.log('Found coordinates for', props.title, ':', coordinates);
+        latitude = coordinates.latitude;
+        longitude = coordinates.longitude;
+      }
+    }
+    
+    // If still no coordinates, proceed without them (no alert)
+    if (latitude === undefined || longitude === undefined) {
+      console.log('No coordinates available for:', props.title);
+      // Navigate without coordinates - let the destination screen handle it
+      navigation.navigate('Destination', {
+        id: props.id,
+        image: props.image,
+        cardTitle: props.title,
+        subtitle: props.subtitle,
+        rating: props.rating,
+        distance: props.distance,
+        tolatitude: null,
+        tolongitude: null
+      });
+      return;
+    }
+    
     navigation.navigate('Destination', {
       id: props.id,
       image: props.image,
@@ -19,8 +91,8 @@ const DiscoverByNearest = (props) => {
       subtitle: props.subtitle,
       rating: props.rating,
       distance: props.distance,
-      tolatitude: props.location?.latitude,
-      tolongitude: props.location?.longitude
+      tolatitude: latitude,
+      tolongitude: longitude
     });
   };
  

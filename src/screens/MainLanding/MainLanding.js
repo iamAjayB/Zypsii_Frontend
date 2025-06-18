@@ -333,229 +333,261 @@ function MainLanding(props) {
         throw new Error('No access token found');
       }
 
-      // Make all API requests in parallel
-      const [
-        discoverByInterestResponse,
-        bestDestinationResponse,
-        allDestinationResponse,
-        allScheduleResponse,
-        allPostsResponse,
-        discoverByNearestResponse
-      ] = await Promise.all([
-        fetch(`${base_url}/schedule/places/getNearest?type=interest`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }),
-        fetch(`${base_url}/schedule/places/getNearest?bestDestination=true`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }),
-        fetch(`${base_url}/schedule/places/getNearest`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }),
-        fetch(`${base_url}/schedule/listing/filter?filter=Public`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }),
-        fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }),
-        fetch(`${base_url}/schedule/places/getNearest?type=nearest`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        })
-      ]);
-
-      // Process all responses
-      const [
-        discoverByInterestData,
-        bestDestinationData,
-        allDestinationData,
-        allScheduleData,
-        allPostsData,
-        discoverByNearestData
-      ] = await Promise.all([
-        discoverByInterestResponse.json(),
-        bestDestinationResponse.json(),
-        allDestinationResponse.json(),
-        allScheduleResponse.json(),
-        allPostsResponse.json(),
-        discoverByNearestResponse.json()
-      ]);
-
-      // Set data for each response with proper empty state handling
-      if (Array.isArray(discoverByInterestData?.data)) {
-        setDiscover_by_intrest(discoverByInterestData.data.map(item => ({
-          id: item._id || item.name,
-          image: item.image,
-          name: item.name
-        })));
-        setDiscoverByInterestPagination({
-          nextPageToken: discoverByInterestData.nextPageToken || null,
-          hasMore: !!discoverByInterestData.nextPageToken
-        });
-      } else {
+      // Make API requests and set data immediately when each response comes back
+      // Discover by Interest
+      fetch(`${base_url}/schedule/places/getNearest?type=interest`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data?.data)) {
+          setDiscover_by_intrest(data.data.map(item => ({
+            id: item._id || item.name,
+            image: item.image,
+            name: item.name
+          })));
+          setDiscoverByInterestPagination({
+            nextPageToken: data.nextPageToken || null,
+            hasMore: !!data.nextPageToken
+          });
+        } else {
+          setDiscover_by_intrest([]);
+        }
+        setIsDiscoverByInterestLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching discover by interest:', error);
         setDiscover_by_intrest([]);
-      }
+        setIsDiscoverByInterestLoading(false);
+      });
 
-      if (Array.isArray(bestDestinationData?.data)) {
-        setBest_destination(bestDestinationData.data.slice(0, 100).map(item => ({
-          id: item._id || item.name,
-          image: item.image,
-          name: item.name,
-          rating: item.rating,
-          distanceInKilometer: item.distanceInKilometer
-        })));
-        setBestDestinationPagination({
-          nextPageToken: bestDestinationData.nextPageToken || null,
-          hasMore: !!bestDestinationData.nextPageToken
-        });
-      }
+      // Best Destination
+      fetch(`${base_url}/schedule/places/getNearest?bestDestination=true`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data?.data)) {
+          setBest_destination(data.data.slice(0, 100).map(item => ({
+            id: item._id || item.name,
+            image: item.image,
+            name: item.name,
+            rating: item.rating,
+            distanceInKilometer: item.distanceInKilometer
+          })));
+          setBestDestinationPagination({
+            nextPageToken: data.nextPageToken || null,
+            hasMore: !!data.nextPageToken
+          });
+        }
+        setIsBestDestinationLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching best destination:', error);
+        setBest_destination([]);
+        setIsBestDestinationLoading(false);
+      });
 
-      if (Array.isArray(allDestinationData?.data)) {
-        setAll_destination(allDestinationData.data.slice(0, 100).map(item => ({
-          id: item._id || item.name,
-          image: item.image,
-          name: item.name,
-          rating: item.rating,
-          distanceInKilometer: item.distanceInKilometer
-        })));
-        setAllDestinationPagination({
-          nextPageToken: allDestinationData.nextPageToken || null,
-          hasMore: !!allDestinationData.nextPageToken
-        });
-      }
+      // All Destination
+      fetch(`${base_url}/schedule/places/getNearest`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data?.data)) {
+          setAll_destination(data.data.slice(0, 100).map(item => ({
+            id: item._id || item.name,
+            image: item.image,
+            name: item.name,
+            rating: item.rating,
+            distanceInKilometer: item.distanceInKilometer
+          })));
+          setAllDestinationPagination({
+            nextPageToken: data.nextPageToken || null,
+            hasMore: !!data.nextPageToken
+          });
+        }
+        setIsAllDestinationLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching all destination:', error);
+        setAll_destination([]);
+        setIsAllDestinationLoading(false);
+      });
 
-      if (Array.isArray(allScheduleData?.data)) {
-        setAll_schedule(allScheduleData.data.map(item => ({
-          id: item._id,
-          title: item.tripName,
-          from: (item.locationDetails?.[0]?.address 
-            ? item.locationDetails[0].address.slice(0, 5) + '...'
+      // All Schedule
+      fetch(`${base_url}/schedule/listing/filter?filter=Public`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data?.data)) {
+          setAll_schedule(data.data.map(item => ({
+            id: item._id,
+            title: item.tripName,
+            from: (item.locationDetails?.[0]?.address 
+              ? item.locationDetails[0].address.slice(0, 5) + '...'
+              : 'Unknown'),
+            to: (item.locationDetails?.[1]?.address 
+            ? item.locationDetails[1].address.slice(0, 5) + '...'
             : 'Unknown'),
-          to: (item.locationDetails?.[1]?.address 
-          ? item.locationDetails[1].address.slice(0, 5) + '...'
-          : 'Unknown'),
-          date: new Date(item.Dates.from).toLocaleDateString(),
-          endDate: new Date(item.Dates.end).toLocaleDateString(),
-          travelMode: item.travelMode,
-          visible: item.visible,
-          numberOfDays: item.numberOfDays.toString(),
-          imageUrl: item.bannerImage,
-          locationDetails: item.locationDetails,
-          createdAt: new Date(item.createdAt).toLocaleDateString(),
-          riders: '0 riders',
-          joined: false,
-          rawLocation: {
-            from: {
-              latitude: item.location?.from?.latitude || 0,
-              longitude: item.location?.from?.longitude || 0
-            },
-            to: {
-              latitude: item.location?.to?.latitude || 0,
-              longitude: item.location?.to?.longitude || 0
+            date: new Date(item.Dates.from).toLocaleDateString(),
+            endDate: new Date(item.Dates.end).toLocaleDateString(),
+            travelMode: item.travelMode,
+            visible: item.visible,
+            numberOfDays: item.numberOfDays.toString(),
+            imageUrl: item.bannerImage,
+            locationDetails: item.locationDetails,
+            createdAt: new Date(item.createdAt).toLocaleDateString(),
+            riders: '0 riders',
+            joined: false,
+            rawLocation: {
+              from: {
+                latitude: item.location?.from?.latitude || 0,
+                longitude: item.location?.from?.longitude || 0
+              },
+              to: {
+                latitude: item.location?.to?.latitude || 0,
+                longitude: item.location?.to?.longitude || 0
+              }
             }
-          }
-        })));
-      } else {
+          })));
+        } else {
+          setAll_schedule([]);
+        }
+        setIsScheduleLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching all schedule:', error);
         setAll_schedule([]);
-      }
+        setIsScheduleLoading(false);
+      });
 
-      if (Array.isArray(allPostsData?.data)) {
-        setAllPosts(allPostsData.data.map(item => {
-          // Process mediaUrl array
-          let mediaUrls = item.mediaUrl;
-          
-          // Handle string URLs
-          if (typeof mediaUrls === 'string') {
-            try {
-              // Try to parse if it's a JSON string
-              if (mediaUrls.startsWith('[')) {
-                mediaUrls = JSON.parse(mediaUrls);
-              } else {
-                // Single URL string
+      // All Posts
+      fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data?.data)) {
+          setAllPosts(data.data.map(item => {
+            // Process mediaUrl array
+            let mediaUrls = item.mediaUrl;
+            
+            // Handle string URLs
+            if (typeof mediaUrls === 'string') {
+              try {
+                // Try to parse if it's a JSON string
+                if (mediaUrls.startsWith('[')) {
+                  mediaUrls = JSON.parse(mediaUrls);
+                } else {
+                  // Single URL string
+                  mediaUrls = [mediaUrls];
+                }
+              } catch (e) {
+                console.log('Error parsing mediaUrl:', e);
                 mediaUrls = [mediaUrls];
               }
-            } catch (e) {
-              console.log('Error parsing mediaUrl:', e);
+            }
+
+            // Ensure mediaUrls is always an array
+            if (!Array.isArray(mediaUrls)) {
               mediaUrls = [mediaUrls];
             }
-          }
 
-          // Ensure mediaUrls is always an array
-          if (!Array.isArray(mediaUrls)) {
-            mediaUrls = [mediaUrls];
-          }
+            // Filter out null or undefined URLs
+            mediaUrls = mediaUrls.filter(url => url != null);
 
-          // Filter out null or undefined URLs
-          mediaUrls = mediaUrls.filter(url => url != null);
+            // Clean up URLs if needed
+            mediaUrls = mediaUrls.map(url => {
+              if (typeof url === 'string') {
+                return url.replace(/\\/g, '').replace(/"/g, '');
+              }
+              return url;
+            });
 
-          // Clean up URLs if needed
-          mediaUrls = mediaUrls.map(url => {
-            if (typeof url === 'string') {
-              return url.replace(/\\/g, '').replace(/"/g, '');
-            }
-            return url;
-          });
-
-          return {
-            _id: item._id,
-            postTitle: item.postTitle,
-            postType: item.postType,
-            mediaType: item.mediaType,
-            mediaUrl: mediaUrls,
-            imageUrl: mediaUrls,
-            createdBy: item.createdBy,
-            tags: Array.isArray(item.tags) ? item.tags : [],
-            likesCount: item.likesCount || 0,
-            commentsCount: item.commentsCount || 0,
-            shareCount: item.shareCount || 0,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt
-          };
-        }));
-      } else {
+            return {
+              _id: item._id,
+              postTitle: item.postTitle,
+              postType: item.postType,
+              mediaType: item.mediaType,
+              mediaUrl: mediaUrls,
+              imageUrl: mediaUrls,
+              createdBy: item.createdBy,
+              tags: Array.isArray(item.tags) ? item.tags : [],
+              likesCount: item.likesCount || 0,
+              commentsCount: item.commentsCount || 0,
+              shareCount: item.shareCount || 0,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt
+            };
+          }));
+        } else {
+          setAllPosts([]);
+        }
+        setIsPostsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching all posts:', error);
         setAllPosts([]);
-      }
+        setIsPostsLoading(false);
+      });
 
-      if (Array.isArray(discoverByNearestData?.data)) {
-        const formattedData = discoverByNearestData.data.slice(0, 100).map(item => ({
-          id: item._id || item.image,
-          image: item.image,
-          title: item.name,
-          subtitle: item.address || 'No address',
-          rating: parseFloat(item.rating) || 0,
-          distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null,
-          location: {
-            latitude: item.location?.lat || 0,
-            longitude: item.location?.lng || 0
-          }
-        }));
-        setDiscoverbyNearest(formattedData);
-        setDiscoverByNearestPagination({
-          nextPageToken: discoverByNearestData.nextPageToken || null,
-          hasMore: !!discoverByNearestData.nextPageToken
-        });
-      } else {
+      // Discover by Nearest
+      fetch(`${base_url}/schedule/places/getNearest?type=nearest`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data?.data)) {
+          const formattedData = data.data.slice(0, 100).map(item => ({
+            id: item._id || item.image,
+            image: item.image,
+            title: item.name,
+            subtitle: item.address || 'No address',
+            rating: parseFloat(item.rating) || 0,
+            distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null,
+            location: {
+              latitude: item.location?.lat || 0,
+              longitude: item.location?.lng || 0
+            }
+          }));
+          setDiscoverbyNearest(formattedData);
+          setDiscoverByNearestPagination({
+            nextPageToken: data.nextPageToken || null,
+            hasMore: !!data.nextPageToken
+          });
+        } else {
+          setDiscoverbyNearest([]);
+        }
+        setIsNearestLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching discover by nearest:', error);
         setDiscoverbyNearest([]);
-      }
+        setIsNearestLoading(false);
+      });
 
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error in fetchAllData:', error);
       // Set empty arrays on error
       setDiscover_by_intrest([]);
       setBest_destination([]);
@@ -564,16 +596,7 @@ function MainLanding(props) {
       setAllPosts([]);
       setDiscoverbyNearest([]);
       
-      // Log specific error details
-      if (error.message === 'Request timeout') {
-        console.error('One or more API requests timed out');
-      } else if (error.message === 'No access token found') {
-        console.error('Authentication error: No access token found');
-      } else {
-        console.error('Network or server error:', error);
-      }
-    } finally {
-      // Set all loading states to false after all data is processed
+      // Set all loading states to false
       setIsDiscoverByInterestLoading(false);
       setIsBestDestinationLoading(false);
       setIsAllDestinationLoading(false);
@@ -581,6 +604,13 @@ function MainLanding(props) {
       setIsPostsLoading(false);
       setIsShortsLoading(false);
       setIsNearestLoading(false);
+      
+      // Log specific error details
+      if (error.message === 'No access token found') {
+        console.error('Authentication error: No access token found');
+      } else {
+        console.error('Network or server error:', error);
+      }
     }
   };
 

@@ -29,7 +29,7 @@ import { useToast } from '../../context/ToastContext';
 
 const { height, width } = Dimensions.get('window');
 
-function ShortsScreen() {
+function ShortsScreen({ route, navigation }) {
   const { showToast } = useToast();
   const [all_shorts, setAllShorts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +52,9 @@ function ShortsScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [muted, setMuted] = useState(false);
   const videoRefs = useRef({});
+
+  // Get navigation parameters
+  const { initialVideo, userShorts, currentIndex: initialIndex } = route?.params || {};
 
   const fetchShorts = async () => {
     try {
@@ -116,7 +119,17 @@ function ShortsScreen() {
   };
   
   useEffect(() => {
-    fetchShorts();
+    // If we have user shorts from navigation, use them
+    if (userShorts && userShorts.length > 0) {
+      setAllShorts(userShorts);
+      setIsLoading(false);
+      if (initialIndex !== undefined) {
+        setCurrentIndex(initialIndex);
+      }
+    } else {
+      // Otherwise fetch all shorts
+      fetchShorts();
+    }
 
     const getCurrentUserId = async () => {
       try {
@@ -161,7 +174,7 @@ function ShortsScreen() {
         socketRef.current.removeAllListeners();
       }
     };
-  }, []);
+  }, [userShorts, initialIndex]);
 
   const setupSocketListeners = () => {
     if (!socketRef.current) return;
@@ -817,9 +830,21 @@ function ShortsScreen() {
         snapToInterval={height}
         decelerationRate="fast"
         onChangeIndex={handleChangeIndex}
+        index={currentIndex}
         renderItem={({ item, index }) => {
-          const videoSource = getVideoSource(item.videoUrl);
-          const isValidVideo = isValidVideoUrl(item.videoUrl);
+          // Handle different data structures
+          const videoUrl = item.videoUrl || item.video;
+          const title = item.title || item.videoTitle;
+          const description = item.description;
+          const thumbnailUrl = item.thumbnailUrl || item.videoImage;
+          const viewsCount = item.viewsCount || item.views || 0;
+          const likesCount = item.likesCount || item.likes || 0;
+          const commentsCount = item.commentsCount || item.comments || 0;
+          const createdBy = item.createdBy;
+          const shortId = item._id || item.id;
+          
+          const videoSource = getVideoSource(videoUrl);
+          const isValidVideo = isValidVideoUrl(videoUrl);
           const isCurrentVideo = currentIndex === index;
           
           return (
@@ -835,7 +860,7 @@ function ShortsScreen() {
                       <Video
                         ref={(ref) => {
                           if (ref) {
-                            videoRefs.current[item._id] = ref;
+                            videoRefs.current[shortId] = ref;
                             handleVideoPlayback(ref, isCurrentVideo);
                           }
                         }}
@@ -848,7 +873,7 @@ function ShortsScreen() {
                         onBuffer={(buffer) => console.log('buffering', buffer)}
                         onError={(error) => console.log('error', error)}
                         onLoad={() => {
-                          const ref = videoRefs.current[item._id];
+                          const ref = videoRefs.current[shortId];
                           if (ref) {
                             handleVideoPlayback(ref, isCurrentVideo);
                           }
@@ -873,8 +898,8 @@ function ShortsScreen() {
                   </View>
                 )}
 
-                {renderShortInfo(item)}
-                {renderInteractionButtons(item)}
+                {renderShortInfo({ ...item, title, description, viewsCount, likesCount, commentsCount, createdBy, _id: shortId })}
+                {renderInteractionButtons({ ...item, title, description, viewsCount, likesCount, commentsCount, createdBy, _id: shortId })}
               </View>
             </View>
           );

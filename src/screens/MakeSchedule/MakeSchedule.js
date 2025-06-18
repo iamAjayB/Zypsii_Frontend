@@ -670,7 +670,12 @@ function MakeSchedule() {
         updateScheduleState({ 
           locationFrom: `${latitude},${longitude}`,
           locationTo: route.params?.destinationData ? 
-            `${route.params.destinationData.tolatitude},${route.params.destinationData.tolongitude}` : 
+            (() => {
+              const destData = route.params.destinationData;
+              const destLat = destData.tolatitude ?? destData.latitude ?? destData.lat;
+              const destLng = destData.tolongitude ?? destData.longitude ?? destData.lng;
+              return (destLat && destLng) ? `${destLat},${destLng}` : '';
+            })() : 
             ''
         });
       } catch (error) {
@@ -681,6 +686,66 @@ function MakeSchedule() {
 
     getCurrentLocation();
   }, []);
+
+  // Auto-search for place coordinates when locationTo is empty
+  useEffect(() => {
+    const autoSearchPlaceCoordinates = async () => {
+      if (route.params?.destinationData && !locationTo) {
+        const destData = route.params.destinationData;
+        const placeName = destData.name || destData.cardTitle || destData.title;
+        
+        if (placeName) {
+          console.log('Auto-searching coordinates for:', placeName);
+          const coordinates = await searchPlaceCoordinates(placeName);
+          if (coordinates) {
+            console.log('Found coordinates for', placeName, ':', coordinates);
+            updateScheduleState({ 
+              locationTo: `${coordinates.latitude},${coordinates.longitude}` 
+            });
+          }
+        }
+      }
+    };
+
+    autoSearchPlaceCoordinates();
+  }, [route.params?.destinationData, locationTo]);
+
+  // Function to search for place coordinates by name
+  const searchPlaceCoordinates = async (placeName) => {
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken || !placeName) return null;
+
+      const response = await fetch(`${base_url}/schedule/places/getNearest?searchPlaceName=${encodeURIComponent(placeName)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Place search failed:', response.status);
+        return null;
+      }
+
+      const result = await response.json();
+      
+      if (result.data && result.data.length > 0) {
+        const place = result.data[0];
+        const latitude = place.location?.latitude ?? place.location?.lat;
+        const longitude = place.location?.longitude ?? place.location?.lng;
+        
+        if (latitude && longitude) {
+          return { latitude, longitude };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error searching place coordinates:', error);
+      return null;
+    }
+  };
 
   return (
     <KeyboardAvoidingView 

@@ -122,8 +122,8 @@ function FavoritesPage({ navigation }) {
             rating: item.rating,
             distance: item.distanceInKilometer,
             address: item.address,
-            latitude: item.location?.latitude,
-            longitude: item.location?.longitude
+            tolatitude: item.location?.latitude ?? item.location?.lat,
+            tolongitude: item.location?.longitude ?? item.location?.lng
           }
         })}
       >
