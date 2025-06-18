@@ -27,6 +27,7 @@ function Drawer() {
       <NavigationStack.Screen name="ProfileDashboard" component={Screen.ProfileDashboard} />
       <NavigationStack.Screen name="Review" component={Screen.Review} />
       <NavigationStack.Screen name="DummyScreen" component={Screen.DummyScreen} />
+      <NavigationStack.Screen name="UserProfile" component={Screen.UserProfile} />
       <NavigationStack.Screen name="PostDetail" component={PostDetail} />
       <NavigationStack.Screen name="WhereToGo" component={Screen.DiscoverPlace} />
       <NavigationStack.Screen name="MySchedule" component={Screen.MySchedule}/>

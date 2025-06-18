@@ -35,6 +35,7 @@ import CreateSplit from './Split/CreateSplit'
 import SplitDetail from './Split/SplitDetail'
 import ShortsUpload from './ShortsUpload/ShortsUpload'
 import PostUpload from './PostUpload/PostUpload'
+import UserProfile from './UserProfile/UserProfile.js'
 
 
 export {
@@ -74,5 +75,6 @@ export {
   SplitDetail,
   ShortsUpload,
   PostUpload,
-  ShortsScreen
+  ShortsScreen,
+  UserProfile
 }

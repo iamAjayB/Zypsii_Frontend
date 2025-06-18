@@ -46,11 +46,11 @@ export const FollowProvider = ({ children }) => {
       console.log('Following user with data:', {
         followerId,
         followingId,
-        url: `${base_url}/follow/followUser/${followerId}/${followingId}`
+        url: `${base_url}/follow/followUser/${followingId}/${followerId}`
       });
 
       const response = await fetch(
-        `${base_url}/follow/followUser/${followerId}/${followingId}`,
+        `${base_url}/follow/followUser/${followingId}/${followerId}`,
         {
           method: 'POST',
           headers: {
@@ -101,11 +101,11 @@ export const FollowProvider = ({ children }) => {
       console.log('Unfollowing user with data:', {
         followerId,
         followingId,
-        url: `${base_url}/follow/unfollowUser/${followerId}/${followingId}`
+        url: `${base_url}/follow/unfollowUser/${followingId}/${followerId}`
       });
 
       const response = await fetch(
-        `${base_url}/follow/unfollowUser/${followerId}/${followingId}`,
+        `${base_url}/follow/unfollowUser/${followingId}/${followerId}`,
         {
           method: 'POST',
           headers: {

@@ -1197,10 +1197,8 @@ function MainLanding(props) {
           keyExtractor={(item) => item.id}
           data={all_schedule}
          
-          renderItem={({ item }) => (
-           
+          renderItem={({ item }) => (  
               <AllSchedule item={item} />
-         
           )}
         />
       </View>

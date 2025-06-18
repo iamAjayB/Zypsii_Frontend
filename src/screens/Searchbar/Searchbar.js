@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import FollowButton from "../../components/Follow/FollowButton";
 import {
   View,
@@ -31,6 +31,16 @@ function SearchPage() {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [showViewMoreModal, setShowViewMoreModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
 
   const fetchSearchResults = async (text) => {
     if (text.trim() === "") {
@@ -40,13 +50,17 @@ function SearchPage() {
     
     setIsLoading(true);
     const accessToken = await AsyncStorage.getItem('accessToken');
-    //console.log('Access Token:', accessToken);
+    
+    if (!accessToken) {
+      console.error('No access token found');
+      showToast('Authentication required', 'error');
+      setIsLoading(false);
+      return;
+    }
 
     const url = activeTab === "People"
-      ? `${base_url}/user/getProfile?search=${encodeURIComponent(text)}`
+      ? `${base_url}/user/getProfile?search=${encodeURIComponent(text)}&filter=users`
       : `${base_url}/schedule/places/searchWithItinerary?searchPlaceName=${encodeURIComponent(text)}`;
-
-    
 
     try {
       const response = await fetch(url, {
@@ -56,6 +70,10 @@ function SearchPage() {
           'Content-Type': 'application/json'
         }
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
 
       const data = await response.json();
       console.log('API Response:', data);
@@ -81,31 +99,40 @@ function SearchPage() {
             }]
           }));
           
-          console.log('Formatted Data:', formattedData);
+          console.log('Formatted Places Data:', formattedData);
           setSearchResults(formattedData);
         } else {
+          // Handle people search results
           const usersArray = Array.isArray(data.data) ? data.data : [data.data];
-          const formattedData = usersArray.map(user => ({
-            id: user._id,
-            image: user.profilePicture || 'https://via.placeholder.com/50',
-            name: user.fullName,
-            tagline: user.userName,
-            email: user.email,
-            website: user.website,
-            bio: user.bio,
-            location: user.location,
-            placeDetails: user.placeDetails
-          }));
+          const formattedData = usersArray
+            .filter(user => user && user._id) // Filter out invalid users
+            .map(user => ({
+              id: user._id,
+              image: user.profilePicture || 'https://via.placeholder.com/50',
+              name: user.fullName || 'Unknown User',
+              tagline: user.userName || '',
+              email: user.email || '',
+              website: user.website || '',
+              bio: user.bio || '',
+              location: user.location || '',
+              placeDetails: user.placeDetails || {}
+            }));
+          
+          console.log('Formatted People Data:', formattedData);
           setSearchResults(formattedData);
         }
       } else {
-        console.log('Invalid response structure:', data);
+        console.log('API returned success: false:', data);
         setSearchResults([]);
+        if (data.message) {
+          showToast(data.message, 'error');
+        }
       }
     } catch (error) {
       console.error('Error fetching search results:', error);
       console.error('Error details:', error.message);
       setSearchResults([]);
+      showToast('Failed to search. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +140,13 @@ function SearchPage() {
 
   const handleSearch = (text) => {
     setSearchText(text);
-    fetchSearchResults(text);
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    const timeout = setTimeout(() => {
+      fetchSearchResults(text);
+    }, 500);
+    setSearchTimeout(timeout);
   };
 
   const getVehicleIcon = (vehicle) => {
@@ -151,7 +184,20 @@ function SearchPage() {
               }
             });
           } else {
-            navigation.navigate('UserProfile', { userId: item.id });
+            navigation.navigate('UserProfile', { 
+              targetUserId: item.id,
+              userData: {
+                id: item.id,
+                fullName: item.name,
+                userName: item.tagline,
+                email: item.email,
+                website: item.website,
+                bio: item.bio,
+                location: item.location,
+                placeDetails: item.placeDetails,
+                profilePicture: item.image
+              }
+            });
           }
         }}
         activeOpacity={0.7}
@@ -309,6 +355,11 @@ function SearchPage() {
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           )}
+          {isLoading && (
+            <View style={styles.searchLoadingContainer}>
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.Zypsii_color} />
+            </View>
+          )}
         </View>
       </View>
 
@@ -323,10 +374,8 @@ function SearchPage() {
             ]}
             onPress={() => {
               setActiveTab(tab);
+              setSearchText("");
               setSearchResults([]);
-              if (searchText.trim() !== "") {
-                fetchSearchResults(searchText);
-              }
             }}
             activeOpacity={0.7}
           >
@@ -650,6 +699,10 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     lineHeight: 20,
+  },
+  searchLoadingContainer: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
 

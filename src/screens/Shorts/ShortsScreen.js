@@ -660,7 +660,7 @@ function ShortsScreen() {
   );
 
   const renderShortInfo = (item) => {
-  
+    console.log(item,"all_shorts");
     return (
       <View style={styles.shortInfoContainer}>
         <View style={styles.userInfoContainer}>
