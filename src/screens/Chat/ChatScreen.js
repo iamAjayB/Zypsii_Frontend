@@ -13,7 +13,8 @@ import {
   Dimensions,
   StatusBar,
   Animated,
-  Easing
+  Easing,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,7 +25,7 @@ import { colors } from '../../utils';
 const { width, height } = Dimensions.get('window');
 
 const ChatScreen = ({ route, navigation }) => {
-  const { userId, userName } = route.params;
+  const { userId, userName, userProfilePicture } = route.params;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,7 @@ const ChatScreen = ({ route, navigation }) => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [socket, setSocket] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const flatListRef = useRef(null);
   const sendButtonScale = useRef(new Animated.Value(1)).current;
   const typingOpacity = useRef(new Animated.Value(0)).current;
@@ -40,6 +42,13 @@ const ChatScreen = ({ route, navigation }) => {
     initializeChat();
     return () => {
       if (socket) {
+        // Leave chat room before disconnecting
+        if (currentUserId) {
+          socket.emit('leave-chat-room', {
+            senderId: currentUserId,
+            receiverId: userId
+          });
+        }
         socket.disconnect();
       }
     };
@@ -140,6 +149,7 @@ const ChatScreen = ({ route, navigation }) => {
       // Socket event listeners
       socketInstance.on('connect', () => {
         console.log('Connected to socket server');
+        setIsConnected(true);
 
         // Join chat room
         socketInstance.emit('join-chat-room', {
@@ -147,47 +157,29 @@ const ChatScreen = ({ route, navigation }) => {
           receiverId: userId
         });
 
-        // Fetch chat history with error handling
-        try {
-          console.log('Fetching chat history for:', {
+        // Mark messages as read when entering chat
+        socketInstance.emit('mark-as-read', {
             senderId: userIdFromStorage,
             receiverId: userId
           });
 
-          // Add a timeout for chat history request
-          // const timeoutId = setTimeout(() => {
-          //   console.log('Chat history request timed out');
-          //   setLoading(false);
-          //   Alert.alert('Error', 'Chat history request timed out. Please try again.');
-          // }, 10000);
-
+        // Fetch chat history
           socketInstance.emit('chat-history', {
             senderId: userIdFromStorage,
             receiverId: userId
-          }, (response) => {
-            console.log('Chat history response:', response);
-            // clearTimeout(timeoutId);
-            if (response && response.error) {
-              console.error('Chat history error response:', response.error);
-              setLoading(false);
-              Alert.alert('Error', response.error.message || 'Failed to load chat history');
-            }
-          });
-        } catch (error) {
-          console.error('Error emitting chat history request:', error);
-          setLoading(false);
-          Alert.alert('Error', 'Failed to request chat history');
-        }
+        });
       });
 
       socketInstance.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
+        setIsConnected(false);
         setLoading(false);
         Alert.alert('Connection Error', 'Failed to connect to chat server. Please check your internet connection.');
       });
 
       socketInstance.on('disconnect', (reason) => {
         console.log('Disconnected from socket server:', reason);
+        setIsConnected(false);
         if (reason === 'io server disconnect') {
           socketInstance.connect();
         }
@@ -199,6 +191,7 @@ const ChatScreen = ({ route, navigation }) => {
 
       socketInstance.on('reconnect', (attemptNumber) => {
         console.log('Reconnected after', attemptNumber, 'attempts');
+        setIsConnected(true);
         socketInstance.emit('join-chat-room', {
           senderId: userIdFromStorage,
           receiverId: userId
@@ -222,14 +215,23 @@ const ChatScreen = ({ route, navigation }) => {
         console.log('Chat room joined:', message);
       });
 
+      socketInstance.on('is-leave-chat-room', (message) => {
+        console.log('Chat room left:', message);
+      });
+
       socketInstance.on('receive-message', (message) => {
         console.log('Received message:', message);
         if (message && message.senderId && message.message) {
           setMessages(prevMessages => [...prevMessages, message]);
           scrollToBottom();
-          // Show typing indicator briefly for received messages
-          showTypingIndicator();
-          setTimeout(() => hideTypingIndicator(), 1000);
+          
+          // Mark message as read if it's from the other user
+          if (message.senderId._id === userId || message.senderId === userId) {
+            socketInstance.emit('mark-as-read', {
+              senderId: userIdFromStorage,
+              receiverId: userId
+            });
+          }
         } else {
           console.warn('Received invalid message format:', message);
         }
@@ -241,6 +243,14 @@ const ChatScreen = ({ route, navigation }) => {
           setMessages(chatHistory);
           setLoading(false);
           setTimeout(() => scrollToBottom(), 100);
+          
+          // Mark messages as read after loading history
+          if (chatHistory.length > 0) {
+            socketInstance.emit('mark-as-read', {
+              senderId: userIdFromStorage,
+              receiverId: userId
+            });
+          }
         } else {
           console.warn('Invalid chat history format:', chatHistory);
           setMessages([]);
@@ -276,7 +286,18 @@ const ChatScreen = ({ route, navigation }) => {
       socketInstance.on('chat-error', (error) => {
         console.error('Chat error:', error);
         setSending(false);
-        Alert.alert('Error', 'Failed to send message');
+        Alert.alert('Error', error.message || 'Failed to send message');
+      });
+
+      socketInstance.on('messages-marked-read', (data) => {
+        console.log('Messages marked as read:', data);
+        // Update local messages to mark them as read
+        setMessages(prevMessages => 
+          prevMessages.map(msg => ({
+            ...msg,
+            read: true
+          }))
+        );
       });
 
     } catch (error) {
@@ -287,7 +308,7 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !socket || sending) return;
+    if (!newMessage.trim() || !socket || sending || !isConnected) return;
 
     setSending(true);
     animateSendButton();
@@ -333,20 +354,19 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const renderMessage = ({ item, index }) => {
-    // Fix the sender ID comparison to handle both string and object formats
-    const isMyMessage = typeof item.senderId === 'string' 
-      ? item.senderId === currentUserId 
-      : item.senderId._id === currentUserId;
+    // Handle both populated and non-populated senderId
+    const senderId = typeof item.senderId === 'string' ? item.senderId : item.senderId._id;
+    const isMyMessage = senderId === currentUserId;
     
     const isFirstInGroup = index === 0 || 
       (typeof messages[index - 1].senderId === 'string' 
-        ? messages[index - 1].senderId !== item.senderId 
-        : messages[index - 1].senderId._id !== item.senderId._id);
+        ? messages[index - 1].senderId !== senderId 
+        : messages[index - 1].senderId._id !== senderId);
     
     const isLastInGroup = index === messages.length - 1 || 
       (typeof messages[index + 1].senderId === 'string'
-        ? messages[index + 1].senderId !== item.senderId
-        : messages[index + 1].senderId._id !== item.senderId._id);
+        ? messages[index + 1].senderId !== senderId
+        : messages[index + 1].senderId._id !== senderId);
     
     return (
       <Animated.View style={[
@@ -376,9 +396,9 @@ const ChatScreen = ({ route, navigation }) => {
             </Text>
             {isMyMessage && (
               <Ionicons 
-                name="checkmark-done" 
+                name={item.read ? "checkmark-done" : "checkmark"} 
                 size={14} 
-                color="rgba(255, 255, 255, 0.7)" 
+                color={item.read ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.7)"} 
                 style={styles.readIndicator}
               />
             )}
@@ -387,22 +407,6 @@ const ChatScreen = ({ route, navigation }) => {
       </Animated.View>
     );
   };
-
-  // const renderTypingIndicator = () => {
-  //   if (!isTyping) return null;
-
-  //   return (
-  //     <Animated.View style={[styles.typingContainer, { opacity: typingOpacity }]}>
-  //       <View style={styles.typingBubble}>
-  //         <View style={styles.typingDots}>
-  //           <View style={[styles.typingDot, styles.dot1]} />
-  //           <View style={[styles.typingDot, styles.dot2]} />
-  //           <View style={[styles.typingDot, styles.dot3]} />
-  //         </View>
-  //       </View>
-  //     </Animated.View>
-  //   );
-  // };
 
   const renderSeparator = () => <View style={styles.messageSeparator} />;
 
@@ -425,6 +429,13 @@ const ChatScreen = ({ route, navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
+        {/* Connection Status */}
+        {!isConnected && (
+          <View style={styles.connectionStatus}>
+            <Text style={styles.connectionText}>Connecting...</Text>
+          </View>
+        )}
+
         {/* Messages List */}
         <FlatList
           ref={flatListRef}
@@ -442,7 +453,6 @@ const ChatScreen = ({ route, navigation }) => {
               </View>
             </View>
           }
-          // ListFooterComponent={renderTypingIndicator}
           onContentSizeChange={() => scrollToBottom()}
           onLayout={() => scrollToBottom()}
           showsVerticalScrollIndicator={false}
@@ -459,16 +469,16 @@ const ChatScreen = ({ route, navigation }) => {
               onChangeText={setNewMessage}
               multiline
               maxLength={1000}
-              editable={!sending}
+              editable={!sending && isConnected}
             />
             <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  (!newMessage.trim() || sending) && styles.sendButtonDisabled
+                  (!newMessage.trim() || sending || !isConnected) && styles.sendButtonDisabled
                 ]}
                 onPress={sendMessage}
-                disabled={!newMessage.trim() || sending}
+                disabled={!newMessage.trim() || sending || !isConnected}
                 activeOpacity={0.8}
               >
                 {sending ? (
@@ -705,6 +715,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#cbd5e0',
     shadowOpacity: 0,
     elevation: 0,
+  },
+  connectionStatus: {
+    backgroundColor: '#f56565',
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  connectionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

@@ -75,6 +75,9 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
         if (isCommentRoomJoined.current) {
           leaveCommentRoom();
         }
+        if (isShareRoomJoined.current) {
+          leaveShareRoom();
+        }
         // Remove all listeners
         socketRef.current.removeAllListeners();
       }
@@ -210,6 +213,13 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     socketRef.current.on('share-count', (data) => {
       if (data.moduleId === item._id) {
         console.log(`Post ${item._id} - Share count updated:`, data.count);
+        setShareCount(data.count);
+      }
+    });
+
+    socketRef.current.on('share-count-status', (data) => {
+      if (data.moduleId === item._id) {
+        console.log(`Post ${item._id} - Share count status updated:`, data.count);
         setShareCount(data.count);
       }
     });
@@ -605,6 +615,43 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
     joinShareRoom();
   };
 
+  // Add joinShareRoom function
+  const joinShareRoom = () => {
+    if (socketRef.current && !isShareRoomJoined.current) {
+      console.log(`Post ${item._id} - Joining share room`);
+      socketRef.current.emit('join-share-room', {
+        moduleId: item._id,
+        moduleType: 'post',
+        senderId: currentUserId,
+        receiverId: item.createdBy
+      });
+    }
+  };
+
+  // Add leaveShareRoom function
+  const leaveShareRoom = () => {
+    if (socketRef.current && isShareRoomJoined.current) {
+      console.log(`Post ${item._id} - Leaving share room`);
+      socketRef.current.emit('leave-share-room', {
+        moduleId: item._id,
+        moduleType: 'post',
+        senderId: currentUserId,
+        receiverId: item.createdBy
+      });
+    }
+  };
+
+  // Add requestShareCount function
+  const requestShareCount = () => {
+    if (socketRef.current) {
+      console.log(`Post ${item._id} - Requesting share count`);
+      socketRef.current.emit('share-count', {
+        moduleId: item._id,
+        moduleType: 'post'
+      });
+    }
+  };
+
   // Add handleShareWithFollower function
   const handleShareWithFollower = (follower) => {
     if (!currentUserId) {
@@ -616,7 +663,8 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       moduleId: item._id,
       moduleType: 'post',
       moduleCreatedBy: item.createdBy,
-      sharedBy: currentUserId
+      senderId: currentUserId,
+      receiverId: follower._id
     });
 
     setShowShareModal(false);
@@ -864,13 +912,19 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
         visible={showShareModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowShareModal(false)}
+        onRequestClose={() => {
+          setShowShareModal(false);
+          leaveShareRoom();
+        }}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
-            onPress={() => setShowShareModal(false)}
+            onPress={() => {
+              setShowShareModal(false);
+              leaveShareRoom();
+            }}
           />
           <View style={styles.shareModalContainer}>
             <View style={styles.modalHandle} />
