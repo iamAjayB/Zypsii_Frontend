@@ -433,15 +433,14 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
   };
 
   // Render image directly if only one image, else use FlatList
-  const hasImages = item.mediaType === 'image' && item.imageUrl && item.imageUrl.length > 0;
+  const hasImages = (item.mediaType === 'image' || item.imageUrl) && item.imageUrl && item.imageUrl.length > 0;
   const isSingleImage = hasImages && item.imageUrl.length === 1;
-  console.log(currentUserId)
 
   // Defensive check for first image URL (now using imageUrl)
   const firstImageUrl =
     Array.isArray(item.imageUrl) && item.imageUrl.length > 0 && typeof item.imageUrl[0] === 'string' && item.imageUrl[0].trim() !== ''
       ? item.imageUrl[0]
-      : 'https://via.placeholder.com/150';
+      : null;
 
   // Handle comment modal visibility
   useEffect(() => {
@@ -751,7 +750,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       </View>
 
       {/* Only render the image if the URL is a non-empty string */}
-      {hasImages && firstImageUrl && firstImageUrl !== '' && (
+      {hasImages && firstImageUrl && (
         <TouchableOpacity
           style={styles.postImageContainer}
           onPress={() => setShowFullImage(true)}

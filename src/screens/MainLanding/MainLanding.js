@@ -140,7 +140,6 @@ function MainLanding(props) {
       }
 
       const data = await response.json();
-      console.log('Live location updated successfully:', data);
     } catch (error) {
       console.error('Error updating live location:', error);
     }
@@ -475,8 +474,8 @@ function MainLanding(props) {
         setIsScheduleLoading(false);
       });
 
-      // All Posts
-      fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
+      // All Posts - Try without filter first
+      fetch(`${base_url}/post/listing`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -484,7 +483,7 @@ function MainLanding(props) {
       })
       .then(response => response.json())
       .then(data => {
-        if (Array.isArray(data?.data)) {
+        if (Array.isArray(data?.data) && data.data.length > 0) {
           setAllPosts(data.data.map(item => {
             // Process mediaUrl array
             let mediaUrls = item.mediaUrl;
@@ -500,7 +499,6 @@ function MainLanding(props) {
                   mediaUrls = [mediaUrls];
                 }
               } catch (e) {
-                console.log('Error parsing mediaUrl:', e);
                 mediaUrls = [mediaUrls];
               }
             }
@@ -521,7 +519,7 @@ function MainLanding(props) {
               return url;
             });
 
-            return {
+            const processedItem = {
               _id: item._id,
               postTitle: item.postTitle,
               postType: item.postType,
@@ -536,9 +534,157 @@ function MainLanding(props) {
               createdAt: item.createdAt,
               updatedAt: item.updatedAt
             };
+            return processedItem;
           }));
+          setIsPostsLoading(false);
         } else {
-          setAllPosts([]);
+          // Try fetching with FollowersOnly filter
+          return fetch(`${base_url}/post/listing/filter?filter=FollowersOnly`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+        }
+      })
+      .then(response => {
+        if (response && response.json) {
+          return response.json();
+        }
+        return null;
+      })
+      .then(data => {
+        if (data) {
+          if (Array.isArray(data?.data) && data.data.length > 0) {
+            setAllPosts(data.data.map(item => {
+              // Process mediaUrl array
+              let mediaUrls = item.mediaUrl;
+              
+              // Handle string URLs
+              if (typeof mediaUrls === 'string') {
+                try {
+                  // Try to parse if it's a JSON string
+                  if (mediaUrls.startsWith('[')) {
+                    mediaUrls = JSON.parse(mediaUrls);
+                  } else {
+                    // Single URL string
+                    mediaUrls = [mediaUrls];
+                  }
+                } catch (e) {
+                  mediaUrls = [mediaUrls];
+                }
+              }
+
+              // Ensure mediaUrls is always an array
+              if (!Array.isArray(mediaUrls)) {
+                mediaUrls = [mediaUrls];
+              }
+
+              // Filter out null or undefined URLs
+              mediaUrls = mediaUrls.filter(url => url != null);
+
+              // Clean up URLs if needed
+              mediaUrls = mediaUrls.map(url => {
+                if (typeof url === 'string') {
+                  return url.replace(/\\/g, '').replace(/"/g, '');
+                }
+                return url;
+              });
+
+              const processedItem = {
+                _id: item._id,
+                postTitle: item.postTitle,
+                postType: item.postType,
+                mediaType: item.mediaType,
+                mediaUrl: mediaUrls,
+                imageUrl: mediaUrls,
+                createdBy: item.createdBy,
+                tags: Array.isArray(item.tags) ? item.tags : [],
+                likesCount: item.likesCount || 0,
+                commentsCount: item.commentsCount || 0,
+                shareCount: item.shareCount || 0,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt
+              };
+              return processedItem;
+            }));
+            setIsPostsLoading(false);
+          } else {
+            // Try fetching public posts if followers only returns empty
+            return fetch(`${base_url}/post/listing/filter?filter=Public`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`
+              }
+            });
+          }
+        }
+        return null;
+      })
+      .then(response => {
+        if (response && response.json) {
+          return response.json();
+        }
+        return null;
+      })
+      .then(data => {
+        if (data) {
+          if (Array.isArray(data?.data) && data.data.length > 0) {
+            setAllPosts(data.data.map(item => {
+              // Process mediaUrl array
+              let mediaUrls = item.mediaUrl;
+              
+              // Handle string URLs
+              if (typeof mediaUrls === 'string') {
+                try {
+                  // Try to parse if it's a JSON string
+                  if (mediaUrls.startsWith('[')) {
+                    mediaUrls = JSON.parse(mediaUrls);
+                  } else {
+                    // Single URL string
+                    mediaUrls = [mediaUrls];
+                  }
+                } catch (e) {
+                  mediaUrls = [mediaUrls];
+                }
+              }
+
+              // Ensure mediaUrls is always an array
+              if (!Array.isArray(mediaUrls)) {
+                mediaUrls = [mediaUrls];
+              }
+
+              // Filter out null or undefined URLs
+              mediaUrls = mediaUrls.filter(url => url != null);
+
+              // Clean up URLs if needed
+              mediaUrls = mediaUrls.map(url => {
+                if (typeof url === 'string') {
+                  return url.replace(/\\/g, '').replace(/"/g, '');
+                }
+                return url;
+              });
+
+              const processedItem = {
+                _id: item._id,
+                postTitle: item.postTitle,
+                postType: item.postType,
+                mediaType: item.mediaType,
+                mediaUrl: mediaUrls,
+                imageUrl: mediaUrls,
+                createdBy: item.createdBy,
+                tags: Array.isArray(item.tags) ? item.tags : [],
+                likesCount: item.likesCount || 0,
+                commentsCount: item.commentsCount || 0,
+                shareCount: item.shareCount || 0,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt
+              };
+              return processedItem;
+            }));
+          } else {
+            setAllPosts([]);
+          }
         }
         setIsPostsLoading(false);
       })
@@ -1407,23 +1553,31 @@ function MainLanding(props) {
     );
   };
 
-  const renderPosts = () => (
-    <View>
-      {/* <TextDefault textColor={colors.fontMainColor} style={styles.titleSpacer}H4>
-        {'Posts'}
-      </TextDefault> */}
-      {isPostsLoading ? (
-        <VerticalListLoader count={5} />
-      ) : (
-        <FlatList
-          data={all_posts}
-          renderItem={renderItem}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}
-        />
-      )}
-    </View>
-  );
+  const renderPosts = () => {
+    return (
+      <View>
+        {/* <TextDefault textColor={colors.fontMainColor} style={styles.titleSpacer}H4>
+          {'Posts'}
+        </TextDefault> */}
+        {isPostsLoading ? (
+          <VerticalListLoader count={5} />
+        ) : all_posts.length > 0 ? (
+          <FlatList
+            data={all_posts}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}
+          />
+        ) : (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <TextDefault textColor={colors.fontSecondColor} H5>
+              No posts available
+            </TextDefault>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const renderContent = () => {
     switch (selectedButton) {
