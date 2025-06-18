@@ -86,10 +86,10 @@ function ShortsScreen() {
             videoUrl: short.videoUrl,
             thumbnailUrl: short.thumbnailUrl,
             createdBy: {
-              _id: short.createdBy?._id,
-              username: short.createdBy?.userName || short.createdBy?.username,
-              fullName: short.createdBy?.fullName || short.createdBy?.name,
-              profilePicture: short.createdBy?.profilePicture || short.createdBy?.profileImage
+              _id: short.createdBy?._id || short.createdBy,
+              username: short.createdBy?.userName || short.createdBy?.username || 'User',
+              fullName: short.createdBy?.fullName || short.createdBy?.name || 'User',
+              profilePicture: short.createdBy?.profilePicture || short.createdBy?.profileImage || 'https://via.placeholder.com/40'
             },
             viewsCount: short.viewsCount || 0,
             likesCount: short.likesCount || 0,
@@ -114,7 +114,7 @@ function ShortsScreen() {
       setIsLoading(false);
     }
   };
-
+  
   useEffect(() => {
     fetchShorts();
 
@@ -660,7 +660,7 @@ function ShortsScreen() {
   );
 
   const renderShortInfo = (item) => {
-    console.log('Rendering short info for item:', item); // Debug log
+  
     return (
       <View style={styles.shortInfoContainer}>
         <View style={styles.userInfoContainer}>

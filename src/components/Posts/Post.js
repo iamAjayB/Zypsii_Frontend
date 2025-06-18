@@ -50,6 +50,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       }
     };
     getCurrentUserId();
+    console.log(item)
 
     // Initialize socket connection if not already connected
     if (!socketRef.current) {

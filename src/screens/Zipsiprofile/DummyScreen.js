@@ -338,7 +338,7 @@ const DummyScreen = ({ navigation }) => {
           }
 
           const response = await shortsResponse.json();
-          console.log('Shorts response:', response);
+         // console.log('Shorts response:', response);
 
           if (response.status && response.data) {
             const shortsData = response.data
