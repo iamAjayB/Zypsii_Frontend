@@ -541,8 +541,8 @@ function MainLanding(props) {
           rating: parseFloat(item.rating) || 0,
           distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null,
           location: {
-            latitude: item.location?.lat || item.latitude || 0,
-            longitude: item.location?.lng || item.longitude || 0
+            latitude: item.location?.lat || 0,
+            longitude: item.location?.lng || 0
           }
         }));
         setDiscoverbyNearest(formattedData);
@@ -655,9 +655,12 @@ function MainLanding(props) {
           title: item.name,
           subtitle: item.address || 'No address',
           rating: parseFloat(item.rating) || 0,
-          distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null
-        }));
-        
+          distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null,
+          location: {
+            latitude: item.location?.lat || 0,
+            longitude: item.location?.lng || 0
+          }
+        }));        
         // Add new data at the beginning of the list
         setDiscoverbyNearest(prev => [...newData, ...prev]);
         

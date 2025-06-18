@@ -29,6 +29,8 @@ function Destination({ route, navigation }) {
   // Safe access to nested properties with optional chaining and nullish coalescing
   const item_id = params?.product?.id ?? params?.id ?? null;
   const image1 = params?.product?.image ?? params?.image ?? null;
+  const tolatitude = params?.tolatitude ?? params?.product?.tolatitude;
+  const tolongitude = params?.tolongitude ?? params?.product?.tolongitude;
 
   const [nextPageToken, setNextPageToken] = useState(null);
   // Fetch data from an open-source API (JSONPlaceholder API for demonstration)
@@ -680,7 +682,24 @@ function Destination({ route, navigation }) {
                 ))}
               </View>
 
-              <MainBtn text="Make a schedule" onPress={() => navigation.navigate('MakeSchedule')} style={{ marginTop: 20 }} />
+              <MainBtn 
+                text="Make a schedule" 
+                onPress={() => navigation.navigate('MakeSchedule', {
+                  destinationData: {
+                    id: item_id,
+                    name: params?.product?.name || cardTitle,
+                    image: image1,
+                    subtitle: params?.product?.subtitle || subtitle,
+                    rating: params?.product?.rating || '0',
+                    distance: params?.product?.distance,
+                    description: getActiveTabDescription(),
+                    tolatitude: tolatitude,
+                    tolongitude: tolongitude,
+                    nearbyPlaces: discoverbynearest
+                  }
+                })} 
+                style={{ marginTop: 20 }} 
+              />
             </View>
           </ScrollView>
         )}

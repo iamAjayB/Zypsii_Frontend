@@ -297,4 +297,11 @@ export default StyleSheet.create({
   visibilityButtonTextActive: {
     color: '#fff',
   },
+  locationMap: {
+    height: 150,
+    width: '100%',
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
 });

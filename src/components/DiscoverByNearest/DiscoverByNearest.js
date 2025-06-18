@@ -7,9 +7,10 @@ import { useNavigation } from '@react-navigation/native';
 
 const DiscoverByNearest = (props) => {
   const navigation = useNavigation();
+    console.log(props)
+
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-
   const handlePress = () => {
     navigation.navigate('Destination', {
       id: props.id,
@@ -17,10 +18,12 @@ const DiscoverByNearest = (props) => {
       cardTitle: props.title,
       subtitle: props.subtitle,
       rating: props.rating,
-      distance: props.distance
+      distance: props.distance,
+      tolatitude: props.location?.latitude,
+      tolongitude: props.location?.longitude
     });
   };
-
+ 
   return (
     <TouchableOpacity onPress={handlePress} style={styles.discoverCard}>
       <View style={styles.imageContainer}>
