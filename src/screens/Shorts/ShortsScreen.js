@@ -48,7 +48,7 @@ function ShortsScreen({ route, navigation }) {
   const socketRef = useRef(null);
   const isRoomJoined = useRef({});
   const isCommentRoomJoined = useRef({});
-  const isShareRoomJoined = useRef({});
+  const isShareRoomJoined = useRef(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [muted, setMuted] = useState(false);
   const videoRefs = useRef({});
@@ -168,9 +168,9 @@ function ShortsScreen({ route, navigation }) {
         Object.keys(isCommentRoomJoined.current).forEach(shortId => {
           leaveCommentRoom(shortId);
         });
-        Object.keys(isShareRoomJoined.current).forEach(shortId => {
-          leaveShareRoom(shortId);
-        });
+        if (isShareRoomJoined.current) {
+          leaveShareRoom();
+        }
         socketRef.current.removeAllListeners();
       }
     };
@@ -304,19 +304,40 @@ function ShortsScreen({ route, navigation }) {
 
     // Share-related listeners
     socketRef.current.on('join-share-room-status', (data) => {
-      if (data.moduleId) {
-        isShareRoomJoined.current[data.moduleId] = true;
-        requestShareCount(data.moduleId);
+      console.log('Join share room status:', data);
+      isShareRoomJoined.current = true;
+      if (selectedShort) {
+        requestShareCount();
       }
     });
 
+    socketRef.current.on('leave-share-room-status', (data) => {
+      console.log('Leave share room status:', data);
+      isShareRoomJoined.current = false;
+    });
+
     socketRef.current.on('share-count', (data) => {
-      if (data.moduleId) {
+      console.log('Share count updated:', data);
+      if (data.moduleId && data.count !== undefined) {
         setShareCounts(prev => ({
           ...prev,
           [data.moduleId]: data.count
         }));
       }
+    });
+
+    socketRef.current.on('share-count-status', (data) => {
+      if (data.moduleId && data.count !== undefined) {
+        setShareCounts(prev => ({
+          ...prev,
+          [data.moduleId]: data.count
+        }));
+      }
+    });
+
+    socketRef.current.on('share-error', (error) => {
+      console.error('Share error:', error);
+      showToast('Failed to share short');
     });
   };
 
@@ -360,20 +381,26 @@ function ShortsScreen({ route, navigation }) {
     }
   };
 
-  const joinShareRoom = (shortId) => {
-    if (socketRef.current && !isShareRoomJoined.current[shortId]) {
+  const joinShareRoom = () => {
+    if (socketRef.current && !isShareRoomJoined.current && selectedShort) {
+      console.log('Joining share room for short:', selectedShort._id);
       socketRef.current.emit('join-share-room', {
-        moduleId: shortId,
-        moduleType: 'short'
+        moduleId: selectedShort._id,
+        moduleType: 'shorts',
+        senderId: currentUserId,
+        receiverId: selectedShort.createdBy._id
       });
     }
   };
 
-  const leaveShareRoom = (shortId) => {
-    if (socketRef.current && isShareRoomJoined.current[shortId]) {
+  const leaveShareRoom = () => {
+    if (socketRef.current && isShareRoomJoined.current && selectedShort) {
+      console.log('Leaving share room for short:', selectedShort._id);
       socketRef.current.emit('leave-share-room', {
-        moduleId: shortId,
-        moduleType: 'short'
+        moduleId: selectedShort._id,
+        moduleType: 'shorts',
+        senderId: currentUserId,
+        receiverId: selectedShort.createdBy._id
       });
     }
   };
@@ -388,11 +415,12 @@ function ShortsScreen({ route, navigation }) {
     }
   };
 
-  const requestShareCount = (shortId) => {
-    if (socketRef.current) {
+  const requestShareCount = () => {
+    if (socketRef.current && selectedShort) {
+      console.log('Requesting share count for short:', selectedShort._id);
       socketRef.current.emit('share-count', {
-        moduleType: 'short',
-        moduleId: shortId
+        moduleId: selectedShort._id,
+        moduleType: 'shorts'
       });
     }
   };
@@ -513,13 +541,13 @@ function ShortsScreen({ route, navigation }) {
 
   const handleShare = async (short) => {
     if (!currentUserId) {
-      showToast('Please login to share shorts', 'error');
+      showToast('Please login to share shorts');
       return;
     }
     setSelectedShort(short);
     setShowShareModal(true);
     await fetchFollowers();
-    joinShareRoom(short._id);
+    joinShareRoom();
   };
 
   const fetchFollowers = async () => {
@@ -556,20 +584,21 @@ function ShortsScreen({ route, navigation }) {
   };
 
   const handleShareWithFollower = (follower) => {
-    if (!currentUserId) {
-      showToast('Please login to share shorts', 'error');
+    if (!currentUserId || !selectedShort) {
+      showToast('Unable to share at this moment');
       return;
     }
 
     socketRef.current.emit('share', {
       moduleId: selectedShort._id,
-      moduleType: 'short',
-      moduleCreatedBy: selectedShort.createdBy,
-      sharedBy: currentUserId
+      moduleType: 'shorts',
+      moduleCreatedBy: selectedShort.createdBy._id,
+      senderId: currentUserId,
+      receiverId: follower._id
     });
 
     setShowShareModal(false);
-    showToast('Short shared successfully', 'success');
+    showToast('Short shared successfully');
   };
 
   const renderCommentItem = ({ item: comment }) => (
@@ -996,20 +1025,26 @@ function ShortsScreen({ route, navigation }) {
         visible={showShareModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowShareModal(false)}
+        onRequestClose={() => {
+          setShowShareModal(false);
+          leaveShareRoom();
+        }}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
-            onPress={() => setShowShareModal(false)}
+            onPress={() => {
+              setShowShareModal(false);
+              leaveShareRoom();
+            }}
           />
           <View style={styles.shareModalContainer}>
             <View style={styles.modalHandle} />
             <Text style={styles.shareModalTitle}>Share with followers</Text>
             {isLoadingFollowers ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.btncolor} />
+                <ActivityIndicator size="large" color="#A60F93" />
               </View>
             ) : (
               <FlatList
@@ -1197,6 +1232,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
     height: '60%',
     maxHeight: '80%',
   },
