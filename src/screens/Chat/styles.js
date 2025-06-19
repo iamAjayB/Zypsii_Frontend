@@ -29,4 +29,5 @@ const styles = StyleSheet.create({
         height:30,
         marginHorizontal:20
       },
+      
 });

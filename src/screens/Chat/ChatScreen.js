@@ -221,16 +221,21 @@ const ChatScreen = ({ route, navigation }) => {
 
       socketInstance.on('receive-message', (message) => {
         console.log('Received message:', message);
-        if (message && message.senderId && message.message) {
-          setMessages(prevMessages => [...prevMessages, message]);
-          scrollToBottom();
+        if (message && message.message) {
+          // Handle both old and new message formats
+          const senderId = message.sender ? message.sender._id : (message.senderId ? (typeof message.senderId === 'string' ? message.senderId : message.senderId._id) : null);
           
-          // Mark message as read if it's from the other user
-          if (message.senderId._id === userId || message.senderId === userId) {
-            socketInstance.emit('mark-as-read', {
-              senderId: userIdFromStorage,
-              receiverId: userId
-            });
+          if (senderId) {
+            setMessages(prevMessages => [...prevMessages, message]);
+            scrollToBottom();
+            
+            // Mark message as read if it's from the other user
+            if (senderId === userId) {
+              socketInstance.emit('mark-as-read', {
+                senderId: userIdFromStorage,
+                receiverId: userId
+              });
+            }
           }
         } else {
           console.warn('Received invalid message format:', message);
@@ -354,19 +359,23 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const renderMessage = ({ item, index }) => {
-    // Handle both populated and non-populated senderId
-    const senderId = typeof item.senderId === 'string' ? item.senderId : item.senderId._id;
+    // Handle the new data structure where sender and receiver are objects
+    const senderId = item.sender ? item.sender._id : (item.senderId ? (typeof item.senderId === 'string' ? item.senderId : item.senderId._id) : null);
     const isMyMessage = senderId === currentUserId;
     
     const isFirstInGroup = index === 0 || 
-      (typeof messages[index - 1].senderId === 'string' 
-        ? messages[index - 1].senderId !== senderId 
-        : messages[index - 1].senderId._id !== senderId);
+      (() => {
+        const prevItem = messages[index - 1];
+        const prevSenderId = prevItem.sender ? prevItem.sender._id : (prevItem.senderId ? (typeof prevItem.senderId === 'string' ? prevItem.senderId : prevItem.senderId._id) : null);
+        return prevSenderId !== senderId;
+      })();
     
     const isLastInGroup = index === messages.length - 1 || 
-      (typeof messages[index + 1].senderId === 'string'
-        ? messages[index + 1].senderId !== senderId
-        : messages[index + 1].senderId._id !== senderId);
+      (() => {
+        const nextItem = messages[index + 1];
+        const nextSenderId = nextItem.sender ? nextItem.sender._id : (nextItem.senderId ? (typeof nextItem.senderId === 'string' ? nextItem.senderId : nextItem.senderId._id) : null);
+        return nextSenderId !== senderId;
+      })();
     
     return (
       <Animated.View style={[
@@ -441,7 +450,12 @@ const ChatScreen = ({ route, navigation }) => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item, index) => item._id || index.toString()}
+          keyExtractor={(item, index) => {
+            // Handle both old and new data structures
+            if (item._id) return item._id.toString();
+            // Fallback to index if no _id
+            return index.toString();
+          }}
           contentContainerStyle={styles.messagesContainer}
           ItemSeparatorComponent={renderSeparator}
           ListEmptyComponent={
