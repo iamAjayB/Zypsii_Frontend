@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image, TouchableOpacity, FlatList, Modal, ActivityIndicator } from 'react-native';
 import { styles } from './styles';
 import { useNavigation } from '@react-navigation/native'; // Import useNavigation
@@ -8,6 +8,8 @@ import { colors } from '../../../utils';// Import colors
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { base_url } from '../../../utils/base_url';
 import { useToast } from '../../../context/ToastContext';
+import io from 'socket.io-client';
+import { SOCKET_URL } from '../../../config';
 
 const AllSchedule = ({item, isFromProfile}) => {
   const navigation = useNavigation(); // Access navigation object
@@ -19,6 +21,12 @@ const AllSchedule = ({item, isFromProfile}) => {
   const [fromPlace, setFromPlace] = useState('');
   const [toPlace, setToPlace] = useState('');
   const [isJoined, setIsJoined] = useState(item.joined || false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
+  const [shareCount, setShareCount] = useState(item.shareCount || 0);
+  const socketRef = useRef(null);
+  const isShareRoomJoined = useRef(false);
 
   useEffect(() => {
     const loadUserId = async () => {
@@ -40,6 +48,183 @@ const AllSchedule = ({item, isFromProfile}) => {
       setToPlace(item.locationDetails[item.locationDetails.length - 1].address || 'Unknown location');
     }
   }, [item]);
+
+  useEffect(() => {
+    // Initialize socket connection if not already connected
+    if (!socketRef.current) {
+      socketRef.current = io(SOCKET_URL);
+
+      // Wait for socket to connect before setting up listeners
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected:', socketRef.current.id);
+        setupSocketListeners();
+      });
+
+      socketRef.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        if (isShareRoomJoined.current) {
+          leaveShareRoom();
+        }
+        // Remove all listeners
+        socketRef.current.removeAllListeners();
+      }
+    };
+  }, []);
+
+  const setupSocketListeners = () => {
+    // Share-related listeners
+    socketRef.current.on('join-share-room-status', (data) => {
+      console.log(`Schedule ${item.id} - Join share room status:`, data);
+      if (data.moduleId === item.id) {
+        isShareRoomJoined.current = true;
+        requestShareCount();
+      }
+    });
+
+    socketRef.current.on('leave-share-room-status', (data) => {
+      console.log(`Schedule ${item.id} - Leave share room status:`, data);
+      if (data.moduleId === item.id) {
+        isShareRoomJoined.current = false;
+      }
+    });
+
+    socketRef.current.on('share-count', (data) => {
+      if (data.moduleId === item.id) {
+        console.log(`Schedule ${item.id} - Share count updated:`, data.count);
+        setShareCount(data.count);
+      }
+    });
+
+    socketRef.current.on('share-count-status', (data) => {
+      if (data.moduleId === item.id) {
+        console.log(`Schedule ${item.id} - Share count status updated:`, data.count);
+        setShareCount(data.count);
+      }
+    });
+
+    socketRef.current.on('share-error', (error) => {
+      console.error('Share error:', error);
+      showToast('Failed to share schedule', 'error');
+    });
+  };
+
+  const joinShareRoom = () => {
+    if (socketRef.current && !isShareRoomJoined.current) {
+      console.log(`Schedule ${item._id} - Joining share room`);
+      socketRef.current.emit('join-share-room', {
+        moduleId: item._id || item.id,
+        moduleType: 'schedules',
+        senderId: currentUserId,
+        receiverId: item.createdBy || item.creatorId
+      });
+    }
+  };
+
+  const leaveShareRoom = () => {
+    if (socketRef.current && isShareRoomJoined.current) {
+      console.log(`Schedule ${item._id} - Leaving share room`);
+      socketRef.current.emit('leave-share-room', {
+        moduleId: item._id || item.id,
+        moduleType: 'schedules',
+        senderId: currentUserId,
+        receiverId: item.createdBy || item.creatorId
+      });
+    }
+  };
+
+  const requestShareCount = () => {
+    if (socketRef.current) {
+      console.log(`Schedule ${item._id} - Requesting share count`);
+      socketRef.current.emit('share-count', {
+        moduleId: item._id || item.id,
+        moduleType: 'schedules'
+      });
+    }
+  };
+
+  const fetchFollowers = async () => {
+    try {
+      setIsLoadingFollowers(true);
+      const token = await AsyncStorage.getItem('accessToken');
+
+      if (!token) {
+        showToast('Authentication token not found', 'error');
+        return;
+      }
+
+      const response = await fetch(`${base_url}/follow/getFollowers/${currentUserId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.status) {
+        setFollowers(data.followers);
+      } else {
+        showToast(data.message || 'Failed to fetch followers', 'error');
+      }
+    } catch (error) {
+      console.error('Fetch Followers Error:', error);
+      showToast('Network error. Please check your connection and try again.', 'error');
+    } finally {
+      setIsLoadingFollowers(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!currentUserId) {
+      showToast('Please login to share schedules', 'error');
+      return;
+    }
+    setShowShareModal(true);
+    await fetchFollowers();
+    joinShareRoom();
+  };
+
+  const handleShareWithFollower = (follower) => {
+    if (!currentUserId) {
+      showToast('Please login to share schedules', 'error');
+      return;
+    }
+
+    socketRef.current.emit('share', {
+      moduleId: item._id || item.id,
+      moduleType: 'schedules',
+      moduleCreatedBy: item.createdBy || item.creatorId,
+      senderId: currentUserId,
+      receiverId: follower._id
+    });
+
+    setShowShareModal(false);
+    showToast('Schedule shared successfully', 'success');
+  };
+
+  const renderFollowerItem = ({ item: follower }) => (
+    <TouchableOpacity
+      style={styles.followerItem}
+      onPress={() => handleShareWithFollower(follower)}
+    >
+      <Image
+        source={{
+          uri: follower.profilePicture || 'https://via.placeholder.com/50'
+        }}
+        style={styles.followerImage}
+      />
+      <View style={styles.followerInfo}>
+        <Text style={styles.followerName}>{follower.fullName}</Text>
+        <Text style={styles.followerUsername}>{follower.userName}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   const handleDelete = async () => {
     try {
@@ -174,9 +359,17 @@ const AllSchedule = ({item, isFromProfile}) => {
         )}
         <Image source={{ uri: item.imageUrl }} style={[styles.image, { height: 150 }]} />
         <View style={[styles.cardContent, { padding: 10 }]}>
-          <Text style={[styles.title, { fontSize: 16, marginBottom: 6 }]}>
-            {item.title.length > 30 ? item.title.slice(0, 23) + '..' : item.title}
-          </Text>
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { fontSize: 16, marginBottom: 6, paddingRight: 35 }]}>
+              {item.title.length > 30 ? item.title.slice(0, 23) + '..' : item.title}
+            </Text>
+            <TouchableOpacity 
+              style={styles.shareButton} 
+              onPress={handleShare}
+            >
+              <Icon name="share-social-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
           <View style={styles.routeRow}>
             <View style={styles.routeItem}>
               <Text style={[styles.routeLabel, { fontSize: 12 }]}>From</Text>
@@ -255,6 +448,52 @@ const AllSchedule = ({item, isFromProfile}) => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Share Modal */}
+      <Modal
+        visible={showShareModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowShareModal(false);
+          leaveShareRoom();
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setShowShareModal(false);
+              leaveShareRoom();
+            }}
+          />
+          <View style={styles.shareModalContainer}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.shareModalTitle}>Share with Followers</Text>
+            {isLoadingFollowers ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : followers.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <Text style={[styles.followerUsername, { textAlign: 'center' }]}>
+                  No followers found
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={followers}
+                keyExtractor={(item) => item._id}
+                renderItem={renderFollowerItem}
+                style={styles.followersList}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              />
+            )}
+          </View>
+        </View>
       </Modal>
     </View>
   );

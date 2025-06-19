@@ -51,12 +51,20 @@ export const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    position: 'relative',
   },
   title: {
     fontSize: scale(16),
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: scale(5),
+    flex: 1,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: scale(6),
+    width: '100%',
   },
   routeRow: {
     flexDirection: 'colum',
@@ -200,5 +208,110 @@ export const styles = StyleSheet.create({
   },
   deleteMenuText: {
     color: '#FF3B30',
+  },
+  // Share Button
+  shareButton: {
+    padding: scale(5),
+    marginLeft: scale(8),
+    borderRadius: scale(20),
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+
+  // Share Modal
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+
+  shareModalContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    height: '50%',
+    maxHeight: '80%',
+  },
+
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+
+  shareModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+
+  // Followers List
+  followersList: {
+    flex: 1,
+  },
+
+  followerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: colors.white,
+  },
+
+  followerImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+    backgroundColor: '#f5f5f5',
+  },
+
+  followerInfo: {
+    flex: 1,
+  },
+
+  followerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 4,
+  },
+
+  followerUsername: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 30,
   },
 });
