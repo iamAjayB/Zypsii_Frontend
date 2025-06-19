@@ -511,22 +511,23 @@ function Destination({ route, navigation }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <SimpleLineIcons name="location-pin" size={18} color={colors.fontThirdColor} />
                   <Text style={styles.detailSubtitle}>
-                    {(params?.product?.subtitle || subtitle)?.substring(0, 17)}
-                    {(params?.product?.subtitle || subtitle)?.length > 17 ? '...' : ''}
+                    {((params?.product?.subtitle || subtitle) && (params?.product?.subtitle || subtitle).length > 0)
+                      ? (params?.product?.subtitle || subtitle).substring(0, 17) + ((params?.product?.subtitle || subtitle).length > 17 ? '...' : '')
+                      : 'No address available'}
                   </Text>
                 </View>
 
                 {/* Ratings */}
                 <View style={styles.ratingsContainer}>
                   <AntDesign name="star" size={18} color={colors.Zypsii_color} />
-                  <Text style={styles.ratingText}>{params?.product?.rating || '0'}</Text>
+                  <Text style={styles.ratingText}>{params.rating || params?.product?.rating || '0.0'}</Text>
                 </View>
 
                 {/* Distance */}
                 <View style={styles.distanceContainer}>
                   <Ionicons name="location-outline" size={18} color={colors.fontThirdColor} />
                   <Text style={styles.distanceText}>
-                    {params?.product?.distance ? `${params.product.distance} km` : 'N/A'}
+                    {params.distance || params?.product?.distance ? `${params.distance || params.product.distance} km` : 'N/A'}
                   </Text>
                 </View>
 

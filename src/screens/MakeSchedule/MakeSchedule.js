@@ -36,7 +36,6 @@ function MakeSchedule() {
   const route = useRoute();
   const dispatch = useDispatch();
   const schedule = useSelector(state => state.schedule);
-  console.log(route)
   
   const {
     bannerImage,
@@ -57,6 +56,8 @@ function MakeSchedule() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeType, setTimeType] = useState('start'); // 'start' or 'end'
+  const [locationFromName, setLocationFromName] = useState('');
+  const [locationToName, setLocationToName] = useState('');
 
   // Reset schedule data when component mounts
   useEffect(() => {
@@ -215,237 +216,237 @@ function MakeSchedule() {
         return;
       }
 
-      // Format location data using map coordinates
-      const locationData = {
-        from: {
-          latitude: parseFloat(firstDay.latitude),
-          longitude: parseFloat(firstDay.longitude)
-        },
-        to: {
-          latitude: parseFloat(lastDay.latitude),
-          longitude: parseFloat(lastDay.longitude)
-        }
-      };
-
-      // Format dates
-      const datesData = {
-        from: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0]
-      };
-
-      // Format plan description with validation
-      const planDescription = days.map((day, index) => {
-        const currentDate = new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000);
-        const formattedDate = currentDate.toISOString().split('T')[0];
-
-        // Set the from location as current day's location
-        const fromLocation = {
-          latitude: parseFloat(day.latitude),
-          longitude: parseFloat(day.longitude)
-        };
-
-        // Set the to location as next day's location (if it exists)
-        let toLocation;
-        if (index < days.length - 1) {
-          const nextDay = days[index + 1];
-          toLocation = {
-            latitude: parseFloat(nextDay.latitude),
-            longitude: parseFloat(nextDay.longitude)
-          };
-        } else {
-          // For the last day, use the same location as from
-          toLocation = fromLocation;
-        }
-
-        return {
-          Description: day.description.trim(),
-          date: formattedDate,
-          location: {
-            from: fromLocation,
-            to: toLocation
-          }
-        };
-      });
-
       // Calculate number of days between dates
       const diffTime = Math.abs(endDate - startDate);
       const numberOfDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-      // First API call to create schedule
-      try {
-        const apiUrl = `${base_url}/schedule/create`;
-
-        // Create the request body according to backend validation
-        const requestBody = {
-          tripName: tripName.trim(),
-          travelMode: "Bike", // Default to Bike as per backend validation
-          visible: visible || "Public", // Default to Public if not set
-          location: {
-            from: {
-              latitude: parseFloat(firstDay.latitude),
-              longitude: parseFloat(firstDay.longitude)
-            },
-            to: {
-              latitude: parseFloat(lastDay.latitude),
-              longitude: parseFloat(lastDay.longitude)
-            }
+      // Create the request body according to backend validation
+      const requestBody = {
+        tripName: tripName.trim(),
+        travelMode: "Bike", // Default to Bike as per backend validation
+        visible: visible || "Public", // Default to Public if not set
+        location: {
+          from: {
+            latitude: Number(parseFloat(firstDay.latitude)),
+            longitude: Number(parseFloat(firstDay.longitude))
           },
-          dates: {
-            from: startDate.toISOString().split('T')[0],
-            end: endDate.toISOString().split('T')[0]
-          },
-          numberOfDays: numberOfDays,
-          planDescription: days.map((day, index) => {
-            const currentDate = new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000);
-            return {
-              Description: day.description.trim(),
-              date: currentDate.toISOString().split('T')[0],
-              location: {
-                from: {
-                  latitude: parseFloat(day.latitude),
-                  longitude: parseFloat(day.longitude)
-                },
-                to: index < days.length - 1 ? {
-                  latitude: parseFloat(days[index + 1].latitude),
-                  longitude: parseFloat(days[index + 1].longitude)
-                } : {
-                  latitude: parseFloat(day.latitude),
-                  longitude: parseFloat(day.longitude)
-                }
+          to: {
+            latitude: Number(parseFloat(lastDay.latitude)),
+            longitude: Number(parseFloat(lastDay.longitude))
+          }
+        },
+        dates: {
+          from: startDate.toISOString().split('T')[0],
+          end: endDate.toISOString().split('T')[0]
+        },
+        numberOfDays: numberOfDays,
+        planDescription: days.map((day, index) => {
+          const currentDate = new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000);
+          return {
+            Description: day.description.trim(),
+            date: currentDate.toISOString().split('T')[0],
+            location: {
+              from: {
+                latitude: Number(parseFloat(day.latitude)),
+                longitude: Number(parseFloat(day.longitude))
+              },
+              to: index < days.length - 1 ? {
+                latitude: Number(parseFloat(days[index + 1].latitude)),
+                longitude: Number(parseFloat(days[index + 1].longitude))
+              } : {
+                latitude: Number(parseFloat(day.latitude)),
+                longitude: Number(parseFloat(day.longitude))
               }
-            };
-          })
-        };
+            }
+          };
+        })
+      };
 
-        // Create FormData for multipart/form-data
-        const formData = new FormData();
-        
-        // Add banner image
-        if (bannerImage) {
-          const imageUri = bannerImage.startsWith('file://') ? bannerImage : `file://${bannerImage}`;
+      // Create FormData for multipart/form-data
+      const formData = new FormData();
+
+      if (bannerImage) {
+        if (/^https?:\/\//.test(bannerImage)) {
+          // Remote URL, send as string
+          formData.append('bannerImage', bannerImage);
+        } else {
+          // Local file, send as file
           formData.append('bannerImage', {
-            uri: imageUri,
+            uri: bannerImage.startsWith('file://') ? bannerImage : `file://${bannerImage}`,
             type: 'image/jpeg',
             name: 'banner.jpg'
           });
         }
+      }
 
-        // Add all other fields as JSON string
-        formData.append('data', JSON.stringify(requestBody));
+      formData.append('tripName', tripName.trim());
+      formData.append('travelMode', "Bike");
+      formData.append('visible', visible || "Public");
+      formData.append('location[from][latitude]', requestBody.location.from.latitude.toString());
+      formData.append('location[from][longitude]', requestBody.location.from.longitude.toString());
+      formData.append('location[to][latitude]', requestBody.location.to.latitude.toString());
+      formData.append('location[to][longitude]', requestBody.location.to.longitude.toString());
+      formData.append('dates[from]', requestBody.dates.from);
+      formData.append('dates[end]', requestBody.dates.end);
+      formData.append('numberOfDays', numberOfDays.toString());
+      //formData.append('planDescription', JSON.stringify(requestBody.planDescription));
 
-        // Log FormData contents
-        console.log('FormData Contents:');
-        console.log('1. Banner Image:', bannerImage ? {
-          uri: bannerImage,
-          type: 'image/jpeg',
-          name: 'banner.jpg'
-        } : 'No image');
-        
-        console.log('2. Request Data:', requestBody);
-        
-        // Log the actual FormData entries
-        console.log('3. FormData Entries:');
-        for (let pair of formData._parts) {
-          console.log(pair[0], ':', pair[1]);
+      // Log FormData entries for debugging
+      if (formData._parts) {
+        console.log('FormData entries:');
+        for (let [key, value] of formData._parts) {
+          console.log(`${key}:`, value);
         }
+      }
 
-        console.log('4. Full FormData:', formData);
-
-        const accessToken = await AsyncStorage.getItem('accessToken');
-        console.log('Access Token:', accessToken ? 'Token exists' : 'No token found');
-        
-        if (!accessToken) {
-          Alert.alert('Error', 'Authentication required');
-          return;
-        }
-
-        const response = await fetch(apiUrl, {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      console.log(accessToken)
+      console.log('Access Token:', accessToken ? 'Token exists' : 'No token found');
+      if (!accessToken) {
+        Alert.alert('Error', 'Authentication required');
+        return;
+      }
+      console.log(formData)
+      try {
+        const response = await fetch(`${base_url}/schedule/create`, {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
+            // DO NOT set 'Content-Type' here!
           },
-          body: formData
+          body: formData,
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response headers:', JSON.stringify(response.headers));
-
         const responseText = await response.text();
-        console.log('Raw response:', responseText);
-
+        console.log(responseText)
         let data;
         try {
           if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-            console.error('Server returned HTML instead of JSON');
             throw new Error('Server returned HTML instead of JSON. Please check the endpoint URL.');
           }
           data = JSON.parse(responseText);
-          console.log('Parsed response data:', data);
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          if (response.status === 413) {
-            throw new Error('The data being sent is too large. Please reduce the size of your images or data.');
-          } else if (response.status === 404) {
-            throw new Error('Schedule creation endpoint not found. Please check the URL.');
-          } else if (response.status === 401) {
-            throw new Error('Authentication failed. Please log in again.');
-          } else if (response.status === 500) {
-            throw new Error('Server error. Please try again later.');
-          } else {
-            throw new Error(`Server returned an invalid response. Status: ${response.status}`);
-          }
+        } catch (e) {
+          throw new Error('Server returned invalid response: ' + responseText);
         }
 
         if (!response.ok) {
-          console.error('API Error Response:', data);
-          if (data.errors) {
-            const errorMessages = Object.values(data.errors).flat();
-            console.error('Validation Errors:', errorMessages);
-            Alert.alert('Validation Error', errorMessages.join('\n'));
-            return;
+          // If backend sends validation errors as an array
+          if (data.errors && Array.isArray(data.errors)) {
+            const errorMessages = data.errors.map(e => e.msg).join('\n');
+            Alert.alert('Validation Error', errorMessages);
           } else {
-            throw new Error(data.message || `Server error: ${response.status}`);
+            Alert.alert('Error', data.message || 'Failed to create schedule');
+          }
+          return;
+        }
+
+        // Get the scheduleId from the response
+        const scheduleId = data.schedule?._id || data.id;
+        if (!scheduleId) {
+          throw new Error('Schedule ID not received from server');
+        }
+
+        // Second API call to add descriptions for each day
+        for (let i = 0; i < days.length; i++) {
+          const day = days[i];
+          // Format date as DD-MM-YYYY
+          const currentDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+          const formattedDate = `${currentDate.getDate()}-${currentDate.getMonth() + 1}-${currentDate.getFullYear()}`;
+
+          // Set the from location as current day's location
+          if (!day.latitude || !day.longitude) {
+            throw new Error(`Missing location for Day ${i + 1}`);
+          }
+          const fromLocation = {
+            latitude: parseFloat(day.latitude),
+            longitude: parseFloat(day.longitude)
+          };
+
+          // Set the to location as next day's location (if it exists)
+          let toLocation;
+          if (i < days.length - 1) {
+            const nextDay = days[i + 1];
+            if (!nextDay.latitude || !nextDay.longitude) {
+              throw new Error(`Missing location for Day ${i + 2}`);
+            }
+            toLocation = {
+              latitude: parseFloat(nextDay.latitude),
+              longitude: parseFloat(nextDay.longitude)
+            };
+          } else {
+            // For the last day, use the same location as from
+            toLocation = fromLocation;
+          }
+
+          const descriptionData = {
+            Description: day.description.trim(),
+            date: formattedDate,
+            location: {
+              from: fromLocation,
+              to: toLocation
+            }
+          };
+
+          try {
+            const descriptionResponse = await fetch(`${base_url}/schedule/add/descriptions/${scheduleId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify(descriptionData),
+            });
+
+            const responseData = await descriptionResponse.json();
+
+            if (!descriptionResponse.ok) {
+              throw new Error(`Failed to add description for day ${i + 1}: ${responseData.message || 'Unknown error'}`);
+            }
+          } catch (error) {
+            Alert.alert('Error', `Failed to add description for Day ${i + 1}: ${error.message}`);
+            setIsLoading(false);
+            return;
           }
         }
 
+        // If all succeed
         dispatch(setSubmitted(true));
         Alert.alert('Success', 'Schedule created successfully!');
-        dispatch(resetSchedule()); // Reset schedule after successful submission
+        dispatch(resetSchedule());
         navigation.navigate('MySchedule');
       } catch (error) {
-        console.error('Error in schedule creation:', error);
-        
-        // Handle specific network errors
-        if (error.name === 'AbortError') {
-          Alert.alert(
-            'Error',
-            'Request timed out. Please check your internet connection and try again.',
-            [{ text: 'OK' }]
-          );
-        } else if (error.message === 'Network request failed') {
-          Alert.alert(
-            'Network Error',
-            'Please check your internet connection and try again.',
-            [{ text: 'OK' }]
-          );
+        if (error.message && error.message.includes('Network request failed')) {
+          Alert.alert('Network Error', 'Please check your internet connection and try again.');
         } else {
-          Alert.alert(
-            'Error',
-            error.message || 'Failed to save schedule. Please try again.',
-            [{ text: 'OK' }]
-          );
+          Alert.alert('Error', error.message || 'Failed to connect to server');
         }
+      } finally {
+        setIsLoading(false);
       }
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to save schedule. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsLoading(false);
+      console.error('Error in schedule creation:', error);
+      
+      // Handle specific network errors
+      if (error.name === 'AbortError') {
+        Alert.alert(
+          'Error',
+          'Request timed out. Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+      } else if (error.message === 'Network request failed') {
+        Alert.alert(
+          'Network Error',
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to save schedule. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 
@@ -674,10 +675,12 @@ function MakeSchedule() {
               const destData = route.params.destinationData;
               const destLat = destData.tolatitude ?? destData.latitude ?? destData.lat;
               const destLng = destData.tolongitude ?? destData.longitude ?? destData.lng;
+              if (destData.name) setLocationToName(destData.name);
               return (destLat && destLng) ? `${destLat},${destLng}` : '';
             })() : 
             ''
         });
+        setLocationFromName('Current Location');
       } catch (error) {
         console.error('Error getting current location:', error);
         Alert.alert('Error', 'Failed to get current location');
@@ -695,10 +698,9 @@ function MakeSchedule() {
         const placeName = destData.name || destData.cardTitle || destData.title;
         
         if (placeName) {
-          console.log('Auto-searching coordinates for:', placeName);
+          setLocationToName(placeName);
           const coordinates = await searchPlaceCoordinates(placeName);
           if (coordinates) {
-            console.log('Found coordinates for', placeName, ':', coordinates);
             updateScheduleState({ 
               locationTo: `${coordinates.latitude},${coordinates.longitude}` 
             });
@@ -854,8 +856,8 @@ function MakeSchedule() {
                   <Icon name="location" size={20} color="#666" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    value={locationFrom}
-                    onChangeText={(text) => updateScheduleState({ locationFrom: text })}
+                    value={locationFromName}
+                    onChangeText={setLocationFromName}
                     placeholder="From location"
                     placeholderTextColor="#999"
                   />
@@ -884,8 +886,8 @@ function MakeSchedule() {
                   <Icon name="location" size={20} color="#666" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    value={locationTo}
-                    onChangeText={(text) => updateScheduleState({ locationTo: text })}
+                    value={locationToName}
+                    onChangeText={setLocationToName}
                     placeholder="To location"
                     placeholderTextColor="#999"
                   />

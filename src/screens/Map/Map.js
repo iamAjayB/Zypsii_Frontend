@@ -550,10 +550,8 @@ const Map = ({ route }) => {
                 <MaterialCommunityIcons name="compass-outline" size={24} color={colors.btncolor} />
                 <TextDefault style={styles.discoverText}>Discover Nearby</TextDefault>
               </View>
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('DiscoverPlace')}
-                style={styles.viewAllButton}
-              >
+                <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'nearest' } ) } style={styles.viewAllButton}>
+
                 <TextDefault style={styles.viewAllText}>View All</TextDefault>
                 <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
               </TouchableOpacity>

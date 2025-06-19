@@ -195,9 +195,9 @@ function ProductCard(props) {
         id: place._id,
         image: place.image,
         cardTitle: place.name,
-        subtitle: place.address,
-        rating: place.rating,
-        distance: place.distanceInKilometer,
+        subtitle: place.address && place.address.length > 0 ? place.address : 'No address available',
+        rating: place.rating ? parseFloat(place.rating).toFixed(1) : '0.0',
+        distance: place.distanceInKilometer ? parseFloat(place.distanceInKilometer).toFixed(1) : (place.distance ? parseFloat(place.distance).toFixed(1) : 'N/A'),
         tolatitude: null,
         tolongitude: null
       });
@@ -208,9 +208,9 @@ function ProductCard(props) {
       id: place._id,
       image: place.image,
       cardTitle: place.name,
-      subtitle: place.address,
-      rating: place.rating,
-      distance: place.distanceInKilometer,
+      subtitle: place.address && place.address.length > 0 ? place.address : 'No address available',
+      rating: place.rating ? parseFloat(place.rating).toFixed(1) : '0.0',
+      distance: place.distanceInKilometer ? parseFloat(place.distanceInKilometer).toFixed(1) : (place.distance ? parseFloat(place.distance).toFixed(1) : 'N/A'),
       tolatitude: latitude,
       tolongitude: longitude
     });

@@ -9,7 +9,7 @@ import { base_url } from '../../utils/base_url';
 
 const DiscoverByNearest = (props) => {
   const navigation = useNavigation();
-    console.log(props)
+
 
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -71,26 +71,28 @@ const DiscoverByNearest = (props) => {
     if (latitude === undefined || longitude === undefined) {
       console.log('No coordinates available for:', props.title);
       // Navigate without coordinates - let the destination screen handle it
+
       navigation.navigate('Destination', {
         id: props.id,
         image: props.image,
         cardTitle: props.title,
-        subtitle: props.subtitle,
-        rating: props.rating,
-        distance: props.distance,
+        subtitle: props.subtitle && props.subtitle.length > 0 ? props.subtitle : 'No address available',
+        rating: props.rating ? parseFloat(props.rating).toFixed(1) : '0.0',
+        distance: props.distance ? parseFloat(props.distance).toFixed(1) : 'N/A',
         tolatitude: null,
         tolongitude: null
       });
       return;
     }
-    
+            console.log('checking_data12',params)
+
     navigation.navigate('Destination', {
       id: props.id,
       image: props.image,
       cardTitle: props.title,
-      subtitle: props.subtitle,
-      rating: props.rating,
-      distance: props.distance,
+      subtitle: props.subtitle && props.subtitle.length > 0 ? props.subtitle : 'No address available',
+      rating: props.rating ? parseFloat(props.rating).toFixed(1) : '0.0',
+      distance: props.distance ? parseFloat(props.distance).toFixed(1) : 'N/A',
       tolatitude: latitude,
       tolongitude: longitude
     });
@@ -125,7 +127,7 @@ const DiscoverByNearest = (props) => {
           {props.title}
         </TextDefault>
         <TextDefault numberOfLines={2} style={styles.discoverCardSubtitle}>
-          {props.subtitle}
+          {props.subtitle && props.subtitle.length > 0 ? props.subtitle : 'No address available'}
         </TextDefault>
         <View style={styles.discoverCardFooter}>
           <View style={styles.discoverCardDistance}>
