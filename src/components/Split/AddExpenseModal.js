@@ -175,21 +175,24 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
 
       setIsSubmitting(true);
       
-      // Get selected participant IDs
-      const selectedParticipantIds = Object.entries(selectedParticipants)
+      // Format members with their amounts
+      const membersInExpenseAndAmount = Object.entries(selectedParticipants)
         .filter(([_, isSelected]) => isSelected)
-        .map(([id]) => id);
+        .map(([memberId]) => ({
+          memberId,
+          amountNeedToPay: parseFloat(splitAmounts[memberId]?.value || '0'),
+          paid: false
+        }));
 
       const expenseData = {
         splitId,
         category: category.trim(),
         description: description.trim(),
         expenseTotalAmount: parseFloat(totalAmount),
-        membersInExpense: selectedParticipantIds
+        membersInExpenseAndAmount
       };
-      console.log(splitId,expenseData);
+
       await onAddExpense(expenseData);
-      
       handleClose();
     } catch (error) {
       console.error('Error submitting expense:', error);
@@ -414,11 +417,9 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
             </TouchableOpacity>
           </View>
 
-          {participants?.map((participant) => {
-            console.log('Individual participant:', participant);
-            return (
-            <View key={participant.memberId?._id || Math.random()} style={styles.splitListItem}>
-              <TouchableOpacity 
+          {participants?.map((participant) => (
+            <View key={participant.memberId?._id} style={styles.splitListItem}>
+              <TouchableOpacity
                 style={styles.participantCheckbox}
                 onPress={() => handleParticipantToggle(participant.memberId?._id)}
               >
@@ -438,8 +439,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
                   </View>
                   <Text style={styles.participantName}>
                     {participant.memberId?.fullName || participant.memberId?.email?.split('@')[0] || 'User'} 
-                    {'\n'}
-                    <Text style={styles.userIdText}>{participant.memberId?.email || 'No ID'}</Text>
+                    <Text style={styles.userIdText}>{'\n'}{participant.memberId?.email || 'No ID'}</Text>
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -456,8 +456,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
                 editable={selectedParticipants[participant.memberId?._id]}
               />
             </View>
-          );
-        })}
+          ))}
         </View>
 
         <SelectPayerModal
@@ -696,6 +695,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    backgroundColor: colors.white,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.grayLinesColor,
   },
   participantCheckbox: {
     flexDirection: 'row',
@@ -710,6 +714,7 @@ const styles = StyleSheet.create({
     borderColor: colors.grayLinesColor,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   checkboxSelected: {
     backgroundColor: colors.Zypsii_color,
