@@ -24,8 +24,53 @@ import { API_URL } from '../../config';
 import { colors } from '../../utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video } from 'expo-av';
+import AllSchedule from '../MySchedule/Schedule/AllSchedule';
 
 const { width, height } = Dimensions.get('window');
+
+// Function to get place name from coordinates using BigDataCloud API (free, no API key required)
+const getPlaceName = async (lat, lng) => {
+  try {
+    console.log('Making geocoding request for:', lat, lng);
+    
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Geocoding API response:', data);
+    
+    if (data.locality && data.city) {
+      const address = `${data.locality}, ${data.city}, ${data.countryName}`;
+      console.log('Successfully got address:', address);
+      return address;
+    } else if (data.city) {
+      const address = `${data.city}, ${data.countryName}`;
+      console.log('Successfully got address:', address);
+      return address;
+    } else if (data.countryName) {
+      const address = data.countryName;
+      console.log('Successfully got address:', address);
+      return address;
+    } else {
+      console.log('No results found for coordinates:', lat, lng);
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+  } catch (error) {
+    console.error('Error getting place name:', error);
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+};
 
 const ChatScreen = ({ route, navigation }) => {
   const { userId, userName, userProfilePicture } = route.params;
@@ -419,11 +464,278 @@ const ChatScreen = ({ route, navigation }) => {
     return null;
   };
 
+  // Helper function to safely extract location information
+  const getLocationString = (loc) => {
+    if (!loc) return 'Unknown location';
+    if (typeof loc === 'string') return loc;
+    if (loc.name) return loc.name;
+    if (loc.latitude && loc.longitude) {
+      return `${loc.latitude.toFixed(6)}, ${loc.longitude.toFixed(6)}`;
+    }
+    return 'Unknown location';
+  };
+
+  // Separate component for Schedule Content
+  const ScheduleContent = React.memo(({ sharedContent, onPress }) => {
+    const [fromAddress, setFromAddress] = useState('Loading...');
+    const [toAddress, setToAddress] = useState('Loading...');
+
+    const scheduleTitle = sharedContent.tripName || 'Untitled Schedule';
+    const scheduleImage = sharedContent.bannerImage || null;
+    const travelMode = sharedContent.travelMode || 'driving';
+    const visibility = sharedContent.visible || 'Private';
+    const numberOfDays = sharedContent.numberOfDays || 1;
+    const location = sharedContent.location || {};
+    const locationDetails = sharedContent.locationDetails || [];
+    const createdAt = sharedContent.createdAt ? new Date(sharedContent.createdAt) : new Date();
+
+    // Debug: Log the shared content structure
+    console.log('ScheduleContent - sharedContent:', JSON.stringify(sharedContent, null, 2));
+    console.log('ScheduleContent - location:', JSON.stringify(location, null, 2));
+    console.log('ScheduleContent - locationDetails:', JSON.stringify(locationDetails, null, 2));
+
+    useEffect(() => {
+      let isMounted = true;
+
+      const loadAddresses = async () => {
+        try {
+          console.log('Loading addresses for location:', location);
+          
+          let fromCoords = null;
+          let toCoords = null;
+
+          // Try to get coordinates from location field first
+          if (location.from && typeof location.from.latitude === 'number' && typeof location.from.longitude === 'number') {
+            fromCoords = { lat: location.from.latitude, lng: location.from.longitude };
+          }
+          if (location.to && typeof location.to.latitude === 'number' && typeof location.to.longitude === 'number') {
+            toCoords = { lat: location.to.latitude, lng: location.to.longitude };
+          }
+
+          // Fallback: Try to get coordinates from locationDetails
+          if (!fromCoords && locationDetails.length > 0) {
+            const firstLocation = locationDetails[0];
+            if (firstLocation.location && firstLocation.location.from) {
+              fromCoords = { 
+                lat: firstLocation.location.from.latitude, 
+                lng: firstLocation.location.from.longitude 
+              };
+            }
+          }
+          if (!toCoords && locationDetails.length > 1) {
+            const lastLocation = locationDetails[locationDetails.length - 1];
+            if (lastLocation.location && lastLocation.location.to) {
+              toCoords = { 
+                lat: lastLocation.location.to.latitude, 
+                lng: lastLocation.location.to.longitude 
+              };
+            }
+          }
+
+          // Get from address
+          if (fromCoords) {
+            console.log('Getting from address for:', fromCoords.lat, fromCoords.lng);
+            const fromResult = await getPlaceName(fromCoords.lat, fromCoords.lng);
+            console.log('From address result:', fromResult);
+            if (isMounted) {
+              setFromAddress(fromResult);
+            }
+          } else {
+            console.log('No valid from location found');
+            if (isMounted) {
+              setFromAddress('Location unavailable');
+            }
+          }
+
+          // Get to address
+          if (toCoords) {
+            console.log('Getting to address for:', toCoords.lat, toCoords.lng);
+            const toResult = await getPlaceName(toCoords.lat, toCoords.lng);
+            console.log('To address result:', toResult);
+            if (isMounted) {
+              setToAddress(toResult);
+            }
+          } else {
+            console.log('No valid to location found');
+            if (isMounted) {
+              setToAddress('Location unavailable');
+            }
+          }
+        } catch (error) {
+          console.error('Error loading addresses:', error);
+          if (isMounted) {
+            setFromAddress('Location unavailable');
+            setToAddress('Location unavailable');
+          }
+        }
+      };
+
+      loadAddresses();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [location.from, location.to, locationDetails]);
+
+    const handlePress = () => {
+      console.log('Schedule pressed, calling onPress with sharedContent:', sharedContent);
+      if (onPress) {
+        onPress();
+      }
+    };
+
+    return (
+      <TouchableOpacity 
+        style={styles.sharedScheduleContainer}
+        onPress={handlePress}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={[colors.Zypsii_color, colors.Zypsii_secondary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.scheduleGradient}
+        >
+          {/* Header with Title */}
+          <View style={styles.scheduleHeader}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="calendar" size={24} color="#fff" />
+              <Text style={styles.scheduleType}>Shared Schedule</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <Ionicons 
+                name={visibility.toLowerCase() === 'public' ? 'globe' : 'lock-closed'} 
+                size={18} 
+                color="#fff" 
+              />
+            </View>
+          </View>
+
+          {/* Schedule Image and Title */}
+          <View style={styles.scheduleImageContainer}>
+            {scheduleImage ? (
+              <Image 
+                source={{ uri: scheduleImage }} 
+                style={styles.scheduleImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Ionicons name="image" size={40} color="rgba(255,255,255,0.5)" />
+              </View>
+            )}
+            <View style={styles.scheduleTitleContainer}>
+              <Text style={styles.scheduleTitle} numberOfLines={2}>
+                {scheduleTitle}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.scheduleDetails}>
+            {/* Location Details */}
+            <View style={styles.locationContainer}>
+              <View style={styles.locationItem}>
+                <Ionicons name="location" size={18} color="#fff" />
+                <Text style={styles.locationText} numberOfLines={2}>
+                  From: {fromAddress}
+                </Text>
+              </View>
+              <View style={styles.locationItem}>
+                <Ionicons name="location" size={18} color="#fff" />
+                <Text style={styles.locationText} numberOfLines={2}>
+                  To: {toAddress}
+                </Text>
+              </View>
+            </View>
+
+            {/* Travel Mode & Duration */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Ionicons 
+                  name={
+                    travelMode.toLowerCase() === 'car' ? 'car' : 
+                    travelMode.toLowerCase() === 'walk' ? 'walk' : 
+                    travelMode.toLowerCase() === 'bike' ? 'bicycle' : 'bus'
+                  } 
+                  size={18} 
+                  color="#fff" 
+                />
+                <Text style={styles.infoText}>
+                  {travelMode}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="time" size={18} color="#fff" />
+                <Text style={styles.infoText}>
+                  {numberOfDays} {numberOfDays > 1 ? 'Days' : 'Day'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Created Date */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Ionicons name="calendar" size={18} color="#fff" />
+                <Text style={styles.infoText}>
+                  Created: {createdAt.toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  });
+
+  // Update the renderSharedContent function
   const renderSharedContent = ({ moduleType, sharedContent }) => {
+    if (!sharedContent) return null;
+
+    if (moduleType === 'schedules' && sharedContent) {
+      return (
+        <ScheduleContent 
+          sharedContent={sharedContent}
+          onPress={() => handleSharedContentPress(moduleType, sharedContent)}
+        />
+      );
+    }
     if (!sharedContent) return null;
 
     const renderPreview = () => {
       switch (moduleType) {
+        case 'schedules':
+          // Validate required fields for schedule
+          if (!sharedContent.locationDetails || !Array.isArray(sharedContent.locationDetails)) {
+            return (
+              <View style={styles.sharedContentPreview}>
+                <View style={styles.sharedContentTextContainer}>
+                  <Text style={styles.sharedContentTitle} numberOfLines={2}>
+                    {sharedContent.tripName || 'Shared schedule'}
+                  </Text>
+                  {sharedContent.bannerImage && (
+                    <Image 
+                      source={{ uri: sharedContent.bannerImage }} 
+                      style={styles.sharedContentImage}
+                      resizeMode="cover"
+                    />
+                  )}
+                </View>
+              </View>
+            );
+          }
+          return (
+            <View style={styles.sharedContentContainer}>
+              <AllSchedule 
+                item={{
+                  ...sharedContent,
+                  locationDetails: sharedContent.locationDetails || [],
+                  joined: false,
+                  shareCount: sharedContent.shareCount || 0
+                }} 
+                isFromProfile={false} 
+              />
+            </View>
+          );
         case 'post':
           return (
             <View style={styles.sharedContentPreview}>
@@ -487,30 +799,6 @@ const ChatScreen = ({ route, navigation }) => {
               <Text style={styles.sharedContentText} numberOfLines={2}>Story</Text>
             </View>
           );
-        case 'schedules':
-          return (
-            <View style={styles.sharedContentPreview}>
-              {sharedContent.bannerImage && (
-                <View style={styles.sharedImageContainer}>
-                  <Image 
-                    source={{ uri: sharedContent.bannerImage }} 
-                    style={styles.sharedContentImage}
-                    resizeMode="cover"
-                  />
-                </View>
-              )}
-              <View style={styles.sharedContentTextContainer}>
-                <Text style={styles.sharedContentTitle} numberOfLines={2}>
-                  {sharedContent.tripName || 'Shared schedule'}
-                </Text>
-                {sharedContent.bannerImage && (
-                  <Text style={styles.sharedContentSubtext} numberOfLines={1}>
-                    {sharedContent.bannerImage.split('/').pop()}
-                  </Text>
-                )}
-              </View>
-            </View>
-          );
         default:
           return null;
       }
@@ -527,11 +815,113 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const handleSharedContentPress = (moduleType, content) => {
-    setPreviewModal({
-      visible: true,
-      content,
-      type: moduleType
-    });
+    if (moduleType === 'schedules') {
+      console.log('Original schedule content:', JSON.stringify(content, null, 2));
+      
+      // Convert planDescription to locationDetails format that TripDetail expects
+      const locationDetails = content.planDescription?.map((day, index) => {
+        // Get location data from the day's planDescription
+        const dayLocation = day.location || {};
+        const fromLocation = dayLocation.from || {};
+        const toLocation = dayLocation.to || {};
+        
+        return {
+          id: day._id || `day_${index}`,
+          name: day.Description || `Day ${index + 1}`,
+          address: fromLocation.latitude && fromLocation.longitude 
+            ? `${fromLocation.latitude}, ${fromLocation.longitude}` 
+            : 'Location not specified',
+          location: {
+            lat: fromLocation.latitude || 0,
+            lng: fromLocation.longitude || 0
+          },
+          description: day.Description || `Day ${index + 1} description`,
+          date: day.date || content.Dates?.from,
+          distanceInKilometer: null, // Will be calculated by TripDetail if needed
+          // Add additional location data for compatibility
+          from: fromLocation,
+          to: toLocation
+        };
+      }) || [];
+
+      console.log('Converted locationDetails:', JSON.stringify(locationDetails, null, 2));
+
+      // Get from and to addresses if available
+      let fromAddress = 'Starting Point';
+      let toAddress = 'End Point';
+      
+      if (content.location?.from) {
+        fromAddress = `${content.location.from.latitude}, ${content.location.from.longitude}`;
+      }
+      if (content.location?.to) {
+        toAddress = `${content.location.to.latitude}, ${content.location.to.longitude}`;
+      }
+
+      // Create the complete tripData object with all schedule information
+      const tripData = {
+        // TripDetail expected format
+        id: content._id,
+        title: content.tripName,
+        from: fromAddress,
+        to: toAddress,
+        date: content.Dates?.from || new Date().toISOString().split('T')[0],
+        numberOfDays: content.numberOfDays?.toString() || '1',
+        imageUrl: content.bannerImage,
+        locationDetails: locationDetails,
+        riders: '1',
+        travelMode: content.travelMode || 'Bike',
+        visible: content.visible || 'Public',
+        
+        // Complete original schedule data
+        _id: content._id,
+        tripName: content.tripName,
+        bannerImage: content.bannerImage,
+        travelMode: content.travelMode,
+        visible: content.visible,
+        location: content.location,
+        Dates: content.Dates,
+        numberOfDays: content.numberOfDays,
+        planDescription: content.planDescription,
+        isDeleted: content.isDeleted,
+        createdAt: content.createdAt,
+        updatedAt: content.updatedAt,
+        createdBy: content.createdBy,
+        
+        // Additional metadata
+        __v: content.__v,
+        date: content.Dates?.from,
+        
+        // Ensure all fields are properly structured
+        scheduleData: content.planDescription?.map((day, index) => ({
+          day: index + 1,
+          description: day.Description,
+          date: day.date,
+          locations: day.location ? [{
+            id: day._id,
+            name: day.Description,
+            address: `${day.location.from?.latitude || 0}, ${day.location.from?.longitude || 0}`,
+            location: {
+              lat: day.location.from?.latitude || 0,
+              lng: day.location.from?.longitude || 0
+            }
+          }] : []
+        })) || []
+      };
+
+      console.log('Complete tripData being passed to TripDetail:', JSON.stringify(tripData, null, 2));
+
+      // Navigate to TripDetail screen with the complete schedule data
+      navigation.navigate('TripDetail', {
+        tripData: tripData
+      });
+    } else {
+      // For other content types, show the preview modal
+      setPreviewModal({
+        visible: true,
+        content,
+        type: moduleType
+      });
+    }
   };
 
   const renderPreviewModal = () => {
@@ -548,6 +938,34 @@ const ChatScreen = ({ route, navigation }) => {
 
     const renderPreviewContent = () => {
       switch (type) {
+        case 'schedules':
+          // Validate required fields for schedule
+          if (!content.locationDetails || !Array.isArray(content.locationDetails)) {
+            return (
+              <View style={styles.previewContent}>
+                <Text style={styles.previewTitle}>{content.tripName || 'Shared schedule'}</Text>
+                {content.bannerImage && (
+                  <Image 
+                    source={{ uri: content.bannerImage }}
+                    style={styles.previewImage}
+                  />
+                )}
+              </View>
+            );
+          }
+          return (
+            <View style={styles.previewContent}>
+              <AllSchedule 
+                item={{
+                  ...content,
+                  locationDetails: content.locationDetails || [],
+                  joined: false,
+                  shareCount: content.shareCount || 0
+                }} 
+                isFromProfile={false} 
+              />
+            </View>
+          );
         case 'post':
           return (
             <View style={styles.previewContent}>
@@ -596,15 +1014,6 @@ const ChatScreen = ({ route, navigation }) => {
                 />
               )}
               <Text style={styles.previewTitle}>Story</Text>
-            </View>
-          );
-        case 'schedules':
-          return (
-            <View style={styles.previewContent}>
-              <Text style={styles.previewTitle}>{content.title || 'Shared schedule'}</Text>
-              {content.description && (
-                <Text style={styles.previewDescription}>{content.description}</Text>
-              )}
             </View>
           );
         default:
@@ -1030,19 +1439,20 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   sharedContentPreview: {
-    width: '100%',
+    width: 170,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#fff',
   },
   sharedImageContainer: {
-    width: 150,
-    height: 120,
+    width: 80,
+    height: 80,
     position: 'relative',
   },
   sharedContentImage: {
-    width: '100%',
-    height: '100%',
+    width: 150,
+    height: 80, 
+    borderRadius: 8,
   },
   playIconOverlay: {
     position: 'absolute',
@@ -1162,12 +1572,12 @@ const styles = StyleSheet.create({
   },
   previewImage: {
     width: '100%',
-    height: '100%',
+    height: 200,
     resizeMode: 'contain',
   },
   previewVideo: {
     width: '100%',
-    height: '100%',
+    height: 200,
   },
   previewTitle: {
     position: 'absolute',
@@ -1206,6 +1616,142 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingVertical: 5,
     lineHeight: 20,
+  },
+  image: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    marginRight: 10,
+    marginTop: 4
+  },
+  sharedScheduleContainer: {
+    marginVertical: 10,
+    marginHorizontal: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    width: '90%',
+    maxWidth: 320,
+    alignSelf: 'center',
+  },
+  scheduleGradient: {
+    width: '100%',
+    minHeight: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    padding: 12,
+  },
+  scheduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerRight: {
+    padding: 4,
+  },
+  scheduleType: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8,
+    opacity: 0.9,
+  },
+  scheduleImageContainer: {
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  scheduleImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  placeholderImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scheduleTitleContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  scheduleTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  scheduleDetails: {
+    flex: 1,
+    paddingTop: 12,
+    gap: 12,
+  },
+  locationContainer: {
+    gap: 8,
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 8,
+    borderRadius: 8,
+    flex: 1,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#fff',
+    marginLeft: 6,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  locationDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 6,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#fff',
+    marginLeft: 6,
+    fontWeight: '500',
   },
 });
 

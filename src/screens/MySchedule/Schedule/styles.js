@@ -219,6 +219,25 @@ export const styles = StyleSheet.create({
     top: 0,
   },
 
+  // Share Button Top Right
+  shareButtonTopRight: {
+    position: 'absolute',
+    right: scale(8),
+    top: scale(10),
+    zIndex: 3,
+    padding: scale(8),
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: scale(20),
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
   // Share Modal
   modalBackdrop: {
     position: 'absolute',

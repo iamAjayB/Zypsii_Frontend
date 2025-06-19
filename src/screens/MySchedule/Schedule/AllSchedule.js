@@ -530,18 +530,13 @@ const AllSchedule = ({item, isFromProfile}) => {
             <Icon name="ellipsis-vertical" size={20} color="#333" />
           </TouchableOpacity>
         )}
-        <Image source={{ uri: item.imageUrl }} style={[styles.image, { height: 150 }]} />
-        <View style={[styles.cardContent, { padding: 10 }]}>
+        <Image source={{ uri: item.imageUrl }} style={[styles.image, { height: 160 }]} />
+        <View style={[styles.cardContent, { padding: 8}]}>
           <View style={styles.titleContainer}>
-            <Text style={[styles.title, { fontSize: 16, marginBottom: 6, paddingRight: 35 }]}>
-              {item.title.length > 30 ? item.title.slice(0, 23) + '..' : item.title}
+            <Text style={[styles.title, { fontSize: 14, marginBottom: 6 }]}>
+              {item.title.length > 30 ? item.title.slice(0, 28) + '..' : item.title}
             </Text>
-            <TouchableOpacity 
-              style={styles.shareButton} 
-              onPress={handleShare}
-            >
-              <Icon name="share-social-outline" size={20} color={colors.primary} />
-            </TouchableOpacity>
+            
           </View>
           <View style={styles.routeRow}>
             <View style={styles.routeItem}>
@@ -587,6 +582,14 @@ const AllSchedule = ({item, isFromProfile}) => {
             )}
           </TouchableOpacity>
         )}
+      </TouchableOpacity>
+
+      {/* Share Button - Positioned at top right */}
+      <TouchableOpacity 
+        style={styles.shareButtonTopRight} 
+        onPress={handleShare}
+      >
+        <Icon name="arrow-redo-outline" size={20} color={colors.primary} />
       </TouchableOpacity>
 
       {/* Menu Modal */}
