@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, FlatList, Modal, ActivityIndicator, StyleSheet } from 'react-native';
 import { styles } from './styles';
 import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 import Icon from 'react-native-vector-icons/Ionicons'; // Import vector icons
@@ -47,23 +47,6 @@ const AllSchedule = ({item, isFromProfile}) => {
       setFromPlace(item.locationDetails[0].address || 'Unknown location');
       setToPlace(item.locationDetails[item.locationDetails.length - 1].address || 'Unknown location');
     }
-  }, [item]);
-
-  useEffect(() => {
-    // Initialize socket connection if not already connected
-    if (!socketRef.current) {
-      socketRef.current = io(SOCKET_URL);
-
-      // Wait for socket to connect before setting up listeners
-      socketRef.current.on('connect', () => {
-        console.log('Socket connected:', socketRef.current.id);
-        setupSocketListeners();
-      });
-
-      socketRef.current.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-      });
-    }
 
     return () => {
       if (socketRef.current) {
@@ -74,72 +57,290 @@ const AllSchedule = ({item, isFromProfile}) => {
         socketRef.current.removeAllListeners();
       }
     };
+  }, [item]);
+
+  useEffect(() => {
+    // Initialize socket connection if not already connected
+    if (!socketRef.current) {
+      socketRef.current = io(SOCKET_URL, {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
+      });
+
+      // Wait for socket to connect before setting up listeners
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected:', socketRef.current.id);
+        setupSocketListeners();
+        // Join share room on connection if modal is open
+        if (showShareModal) {
+          joinShareRoom();
+        }
+      });
+
+      socketRef.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        showToast('Connection error. Please check your internet connection.', 'error');
+      });
+
+      socketRef.current.on('disconnect', () => {
+        console.log('Socket disconnected');
+        isShareRoomJoined.current = false;
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        if (isShareRoomJoined.current) {
+          leaveShareRoom();
+        }
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
+  // Monitor share modal state
+  useEffect(() => {
+    if (showShareModal && socketRef.current?.connected && !isShareRoomJoined.current) {
+      joinShareRoom();
+    }
+  }, [showShareModal]);
+
   const setupSocketListeners = () => {
+    if (!socketRef.current) return;
+
+    // Remove existing listeners before adding new ones
+    socketRef.current.removeAllListeners();
+
     // Share-related listeners
     socketRef.current.on('join-share-room-status', (data) => {
-      console.log(`Schedule ${item.id} - Join share room status:`, data);
-      if (data.moduleId === item.id) {
+      console.log(`Schedule ${item._id || item.id} - Join share room status:`, data);
+      if (data.moduleId === (item._id || item.id)) {
         isShareRoomJoined.current = true;
         requestShareCount();
       }
     });
 
     socketRef.current.on('leave-share-room-status', (data) => {
-      console.log(`Schedule ${item.id} - Leave share room status:`, data);
-      if (data.moduleId === item.id) {
+      console.log(`Schedule ${item._id || item.id} - Leave share room status:`, data);
+      if (data.moduleId === (item._id || item.id)) {
         isShareRoomJoined.current = false;
       }
     });
 
     socketRef.current.on('share-count', (data) => {
-      if (data.moduleId === item.id) {
-        console.log(`Schedule ${item.id} - Share count updated:`, data.count);
+      console.log('Received share-count:', data);
+      if (data.moduleId === (item._id || item.id)) {
+        console.log(`Schedule ${item._id || item.id} - Share count updated:`, data.count);
         setShareCount(data.count);
       }
     });
 
     socketRef.current.on('share-count-status', (data) => {
-      if (data.moduleId === item.id) {
-        console.log(`Schedule ${item.id} - Share count status updated:`, data.count);
+      console.log('Received share-count-status:', data);
+      if (data.moduleId === (item._id || item.id)) {
+        console.log(`Schedule ${item._id || item.id} - Share count status updated:`, data.count);
         setShareCount(data.count);
       }
     });
 
     socketRef.current.on('share-error', (error) => {
       console.error('Share error:', error);
-      showToast('Failed to share schedule', 'error');
+      showToast(error.message || 'Failed to share schedule', 'error');
+    });
+
+    // Add connection event listeners
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected:', socketRef.current.id);
+    });
+
+    socketRef.current.on('disconnect', () => {
+      console.log('Socket disconnected');
+      isShareRoomJoined.current = false;
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      showToast('Connection error. Please check your internet connection.', 'error');
     });
   };
 
+  const handleShare = async () => {
+    if (!currentUserId) {
+      showToast('Please login to share schedules', 'error');
+      return;
+    }
+
+    if (!socketRef.current?.connected) {
+      showToast('Not connected to server. Please try again.', 'error');
+      return;
+    }
+
+    try {
+      setShowShareModal(true);
+      await fetchFollowers();
+      
+      // Ensure we're in the share room
+      if (!isShareRoomJoined.current) {
+        joinShareRoom();
+      }
+    } catch (error) {
+      console.error('Share initialization error:', error);
+      showToast('Failed to initialize sharing. Please try again.', 'error');
+      setShowShareModal(false);
+    }
+  };
+
+  
+  const handleShareWithFollower = async (follower) => {
+    if (!currentUserId) {
+      showToast('Please login to share schedules', 'error');
+      return;
+    }
+
+    if (!socketRef.current?.connected) {
+      showToast('Not connected to server. Please try again.', 'error');
+      return;
+    }
+
+    try {
+      console.log('Schedule item:', item); // Debug log
+      
+      // First ensure we're in the share room
+      await new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error('Join room timed out'));
+        }, 5000);
+
+        const cleanup = () => {
+          clearTimeout(timeoutId);
+          socketRef.current.off('join-share-room-status');
+          socketRef.current.off('share-error');
+        };
+
+        socketRef.current.once('join-share-room-status', (data) => {
+          console.log('Join room status:', data);
+          cleanup();
+          resolve(data);
+        });
+
+        socketRef.current.once('share-error', (error) => {
+          console.log('Join room error:', error);
+          cleanup();
+          reject(new Error(error.message || 'Failed to join room'));
+        });
+
+        // Join the share room first
+        const roomData = {
+          moduleId: item._id || item.id,
+          moduleType: 'schedules',
+          senderId: currentUserId,
+          receiverId: follower._id
+        };
+        console.log('Joining share room with data:', roomData);
+        socketRef.current.emit('join-share-room', roomData);
+      });
+      
+      // Now proceed with sharing
+      const sharePromise = new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error('Share request timed out'));
+        }, 10000);
+
+        const cleanup = () => {
+          clearTimeout(timeoutId);
+          socketRef.current.off('share-count-status');
+          socketRef.current.off('share-error');
+        };
+
+        socketRef.current.once('share-count-status', (data) => {
+          console.log('Received share-count-status:', data);
+          if (data.moduleId === (item._id || item.id)) {
+            cleanup();
+            resolve(data);
+          }
+        });
+
+        socketRef.current.once('share-error', (error) => {
+          console.log('Received share-error:', error);
+          cleanup();
+          reject(new Error(error.message || 'Share failed'));
+        });
+
+        const shareData = {
+          moduleId: item._id || item.id,
+          moduleType: 'schedules',
+          moduleCreatedBy: currentUserId,
+          senderId: currentUserId,
+          receiverId: follower._id
+        };
+        console.log('Emitting share event with data:', shareData);
+        socketRef.current.emit('share', shareData);
+      });
+
+      // Wait for share response
+      const result = await sharePromise;
+      console.log('Share successful:', result);
+      setShareCount(result.count || 0);
+      setShowShareModal(false);
+      showToast('Schedule shared successfully', 'success');
+
+    } catch (error) {
+      console.error('Share Error:', error);
+      showToast(error.message || 'Failed to share schedule. Please try again.', 'error');
+    } finally {
+      // Always leave the room after sharing (whether successful or not)
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('leave-share-room', {
+          moduleId: item._id || item.id,
+          moduleType: 'schedules',
+          senderId: currentUserId,
+          receiverId: follower._id
+        });
+      }
+    }
+  };
+
   const joinShareRoom = () => {
-    if (socketRef.current && !isShareRoomJoined.current) {
-      console.log(`Schedule ${item._id} - Joining share room`);
-      socketRef.current.emit('join-share-room', {
+    if (!socketRef.current?.connected) {
+      console.log('Socket not connected. Cannot join room.');
+      return;
+    }
+
+    if (!isShareRoomJoined.current) {
+      const roomData = {
         moduleId: item._id || item.id,
         moduleType: 'schedules',
+        moduleCreatedBy: item.createdBy,
         senderId: currentUserId,
         receiverId: item.createdBy || item.creatorId
-      });
+      };
+      console.log('Joining share room with data:', roomData);
+      socketRef.current.emit('join-share-room', roomData);
     }
   };
 
   const leaveShareRoom = () => {
-    if (socketRef.current && isShareRoomJoined.current) {
-      console.log(`Schedule ${item._id} - Leaving share room`);
+    if (socketRef.current?.connected && isShareRoomJoined.current) {
+      console.log('Leaving share room for schedule:', item._id || item.id);
       socketRef.current.emit('leave-share-room', {
         moduleId: item._id || item.id,
         moduleType: 'schedules',
+        moduleCreatedBy: item.createdBy,
         senderId: currentUserId,
         receiverId: item.createdBy || item.creatorId
       });
+      isShareRoomJoined.current = false;
     }
   };
 
   const requestShareCount = () => {
-    if (socketRef.current) {
-      console.log(`Schedule ${item._id} - Requesting share count`);
+    if (socketRef.current?.connected) {
+      console.log('Requesting share count for schedule:', item._id || item.id);
       socketRef.current.emit('share-count', {
         moduleId: item._id || item.id,
         moduleType: 'schedules'
@@ -178,34 +379,6 @@ const AllSchedule = ({item, isFromProfile}) => {
     } finally {
       setIsLoadingFollowers(false);
     }
-  };
-
-  const handleShare = async () => {
-    if (!currentUserId) {
-      showToast('Please login to share schedules', 'error');
-      return;
-    }
-    setShowShareModal(true);
-    await fetchFollowers();
-    joinShareRoom();
-  };
-
-  const handleShareWithFollower = (follower) => {
-    if (!currentUserId) {
-      showToast('Please login to share schedules', 'error');
-      return;
-    }
-
-    socketRef.current.emit('share', {
-      moduleId: item._id || item.id,
-      moduleType: 'schedules',
-      moduleCreatedBy: item.createdBy || item.creatorId,
-      senderId: currentUserId,
-      receiverId: follower._id
-    });
-
-    setShowShareModal(false);
-    showToast('Schedule shared successfully', 'success');
   };
 
   const renderFollowerItem = ({ item: follower }) => (
@@ -474,7 +647,7 @@ const AllSchedule = ({item, isFromProfile}) => {
             <Text style={styles.shareModalTitle}>Share with Followers</Text>
             {isLoadingFollowers ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color="#A60F93" />
               </View>
             ) : followers.length === 0 ? (
               <View style={styles.loadingContainer}>
@@ -500,3 +673,4 @@ const AllSchedule = ({item, isFromProfile}) => {
 };
 
 export default AllSchedule;
+

@@ -490,14 +490,25 @@ const ChatScreen = ({ route, navigation }) => {
         case 'schedules':
           return (
             <View style={styles.sharedContentPreview}>
-              <Text style={styles.sharedContentText} numberOfLines={2}>
-                {sharedContent.title || 'Shared schedule'}
-              </Text>
-              {sharedContent.description && (
-                <Text style={styles.sharedContentDescription} numberOfLines={1}>
-                  {sharedContent.description}
-                </Text>
+              {sharedContent.bannerImage && (
+                <View style={styles.sharedImageContainer}>
+                  <Image 
+                    source={{ uri: sharedContent.bannerImage }} 
+                    style={styles.sharedContentImage}
+                    resizeMode="cover"
+                  />
+                </View>
               )}
+              <View style={styles.sharedContentTextContainer}>
+                <Text style={styles.sharedContentTitle} numberOfLines={2}>
+                  {sharedContent.tripName || 'Shared schedule'}
+                </Text>
+                {sharedContent.bannerImage && (
+                  <Text style={styles.sharedContentSubtext} numberOfLines={1}>
+                    {sharedContent.bannerImage.split('/').pop()}
+                  </Text>
+                )}
+              </View>
             </View>
           );
         default:
