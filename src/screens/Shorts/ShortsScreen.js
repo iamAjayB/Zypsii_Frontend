@@ -768,9 +768,11 @@ function ShortsScreen({ route, navigation }) {
               {item.createdBy?.userName || item.createdBy?.username || 'User'}
             </Text>
           </View>
-          <View style={styles.followButtonContainer}>
-            <FollowButton userId={item.createdBy?._id} style={styles.followButton} />
-          </View>
+          {currentUserId && item.createdBy?._id !== currentUserId && (
+            <View style={styles.followButtonContainer}>
+              <FollowButton userId={item.createdBy?._id} style={styles.followButton} />
+            </View>
+          )}
         </View>
         <View style={styles.shortDetails}>
           <Text style={styles.shortTitle} numberOfLines={1}>{item.title}</Text>
