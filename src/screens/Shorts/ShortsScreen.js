@@ -211,11 +211,30 @@ function ShortsScreen({ route, navigation }) {
     socketRef.current.on('like-status', (data) => {
       console.log('Like status received:', data);
       if (data.moduleId) {
-        // Update likes state based on success
-        setLikes(prev => ({
-          ...prev,
-          [data.moduleId]: data.success === true
-        }));
+        // Handle different response formats like in Post.js
+        if (data.liked !== undefined) {
+          setLikes(prev => ({
+            ...prev,
+            [data.moduleId]: data.liked
+          }));
+        } else if (data.message) {
+          if (data.message.includes('liked')) {
+            setLikes(prev => ({
+              ...prev,
+              [data.moduleId]: true
+            }));
+          } else if (data.message.includes('unliked')) {
+            setLikes(prev => ({
+              ...prev,
+              [data.moduleId]: false
+            }));
+          }
+        } else if (data.success !== undefined) {
+          setLikes(prev => ({
+            ...prev,
+            [data.moduleId]: data.success === true
+          }));
+        }
         
         // Update like count in all_shorts
         setAllShorts(prevShorts => 
@@ -223,9 +242,7 @@ function ShortsScreen({ route, navigation }) {
             short._id === data.moduleId 
               ? { 
                   ...short, 
-                  likesCount: data.success 
-                    ? (short.likesCount || 0) + 1 
-                    : Math.max((short.likesCount || 0) - 1, 0)
+                  likesCount: data.likeCount !== undefined ? data.likeCount : short.likesCount
                 }
               : short
           )
@@ -234,6 +251,20 @@ function ShortsScreen({ route, navigation }) {
         setIsLiking(prev => ({
           ...prev,
           [data.moduleId]: false
+        }));
+        
+        // Request updated like count
+        requestLikeCount(data.moduleId);
+      }
+    });
+
+    // Add listener for check-like-status response
+    socketRef.current.on('check-like-status-response', (data) => {
+      console.log('Check like status response:', data);
+      if (data.moduleId && data.liked !== undefined) {
+        setLikes(prev => ({
+          ...prev,
+          [data.moduleId]: data.liked
         }));
       }
     });
@@ -442,20 +473,27 @@ function ShortsScreen({ route, navigation }) {
 
     try {
       setIsLiking(prev => ({ ...prev, [short._id]: true }));
-      joinLikeRoom(short._id);
+      
+      // Optimistic update - immediately update the UI
+      const newLikeState = !likes[short._id];
+      setLikes(prev => ({
+        ...prev,
+        [short._id]: newLikeState
+      }));
+      setAllShorts(prevShorts => 
+        prevShorts.map(s => 
+          s._id === short._id 
+            ? { ...s, likesCount: newLikeState ? (s.likesCount || 0) + 1 : Math.max((s.likesCount || 0) - 1, 0) }
+            : s
+        )
+      );
 
       const payload = {
         likedBy: currentUserId,
         moduleType: 'shorts',
         moduleId: short._id,
-        moduleCreatedBy: short.createdBy
+        moduleCreatedBy: short.createdBy._id || short.createdBy
       };
-
-      // Optimistically update the UI
-      setLikes(prev => ({
-        ...prev,
-        [short._id]: !likes[short._id]
-      }));
 
       if (likes[short._id]) {
         console.log('Unliking short:', short._id);
@@ -464,6 +502,12 @@ function ShortsScreen({ route, navigation }) {
         console.log('Liking short:', short._id);
         socketRef.current.emit('like', payload);
       }
+
+      // Call checkLikeStatus after a short delay to ensure the backend has processed the action
+      setTimeout(() => {
+        checkLikeStatus(short._id);
+      }, 500);
+
     } catch (error) {
       console.error('Like/Unlike Error:', error);
       showToast('Network error. Please check your connection and try again.', 'error');
@@ -472,6 +516,13 @@ function ShortsScreen({ route, navigation }) {
         ...prev,
         [short._id]: !prev[short._id]
       }));
+      setAllShorts(prevShorts => 
+        prevShorts.map(s => 
+          s._id === short._id 
+            ? { ...s, likesCount: likes[short._id] ? (s.likesCount || 0) + 1 : Math.max((s.likesCount || 0) - 1, 0) }
+            : s
+        )
+      );
       setIsLiking(prev => ({ ...prev, [short._id]: false }));
     }
   };
@@ -735,24 +786,20 @@ function ShortsScreen({ route, navigation }) {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) return;
 
-      const response = await fetch(
-        `${base_url}/like-status?moduleType=shorts&moduleId=${shortId}&moduleCreatedBy=${currentUserId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const response = await fetch(`${base_url}/like-status?moduleType=shorts&moduleId=${shortId}&moduleCreatedBy=${currentUserId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
-
+      });
+   
       const data = await response.json();
-      console.log('Like status check response:', data);
       
-      if (response.ok && data.success !== undefined) {
+      if (response.ok && data.success) {
         setLikes(prev => ({
           ...prev,
-          [shortId]: data.success
+          [shortId]: data.data.liked
         }));
       }
     } catch (error) {
@@ -768,6 +815,49 @@ function ShortsScreen({ route, navigation }) {
       });
     }
   }, [all_shorts, currentUserId]);
+
+  // Check like status when current short changes
+  useEffect(() => {
+    if (all_shorts.length > 0 && currentUserId && currentIndex < all_shorts.length) {
+      const currentShort = all_shorts[currentIndex];
+      if (currentShort && currentShort._id) {
+        console.log(`Short ${currentShort._id} - Checking initial like status`);
+        if (socketRef.current) {
+          socketRef.current.emit('check-like-status', {
+            moduleId: currentShort._id,
+            moduleType: 'shorts',
+            userId: currentUserId
+          });
+        }
+        checkLikeStatus(currentShort._id);
+        
+        // Join like room for current short
+        if (!isRoomJoined.current[currentShort._id]) {
+          joinLikeRoom(currentShort._id);
+        }
+      }
+    }
+  }, [currentIndex, currentUserId, all_shorts]);
+
+  // Handle short visibility changes for room management
+  useEffect(() => {
+    if (all_shorts.length > 0 && currentIndex < all_shorts.length) {
+      const currentShort = all_shorts[currentIndex];
+      if (currentShort && currentShort._id) {
+        // Join like room for current short
+        if (!isRoomJoined.current[currentShort._id]) {
+          joinLikeRoom(currentShort._id);
+        }
+        
+        // Leave like rooms for other shorts
+        all_shorts.forEach((short, index) => {
+          if (index !== currentIndex && isRoomJoined.current[short._id]) {
+            leaveLikeRoom(short._id);
+          }
+        });
+      }
+    }
+  }, [currentIndex, all_shorts]);
 
   // Update handleDeleteComment to match Post.js implementation
   const handleDeleteComment = (commentId) => {
