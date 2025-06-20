@@ -28,6 +28,7 @@ import { colors } from '../../utils/colors';
 import CustomLoader from '../../components/Loader/CustomLoader';
 import { BackHeader } from '../../components';
 import * as Location from 'expo-location';
+import * as FileSystem from 'expo-file-system';
 
 const { width } = Dimensions.get('window');
 
@@ -165,24 +166,75 @@ function MakeSchedule() {
     return unsubscribe;
   }, [navigation, route.params]);
 
+  // Retrieve user location from AsyncStorage and set as default From location
+  useEffect(() => {
+    const getUserLocationFromStorage = async () => {
+      try {
+        const userLocationString = await AsyncStorage.getItem('user');
+        console.log('userLocationString',userLocationString)
+        if (userLocationString) {
+          const userLocation = JSON.parse(userLocationString);
+          if (userLocation.latitude && userLocation.longitude) {
+            updateScheduleState({ 
+              locationFrom: `${userLocation.latitude},${userLocation.longitude}` 
+            });
+          }
+          if (userLocation.placeDetails && userLocation.placeDetails.name) {
+            setLocationFromName(userLocation.placeDetails.name);
+          } else if (userLocation.name) {
+            setLocationFromName(userLocation.name);
+          } else if (userLocation.fullName) {
+            setLocationFromName(userLocation.fullName);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user location from storage:', error);
+      }
+    };
+    getUserLocationFromStorage();
+  }, []);
+
   // Function to handle the form submission
   const handleSubmit = async () => {
     try {
-      setIsLoading(true);
-      
       // Validate required fields
       if (!bannerImage) {
         Alert.alert('Error', 'Banner image is required');
+        setIsLoading(false);
         return;
       }
 
+      // --- Google Place Photo API URL fix ---
+      let finalBannerImage = bannerImage;
+      if (
+        bannerImage &&
+        bannerImage.startsWith('https://maps.googleapis.com/maps/api/place/photo')
+      ) {
+        try {
+          const fileUri = FileSystem.cacheDirectory + 'banner.jpg';
+          const downloadResumable = FileSystem.createDownloadResumable(
+            bannerImage,
+            fileUri
+          );
+          const { uri } = await downloadResumable.downloadAsync();
+          finalBannerImage = uri;
+        } catch (error) {
+          Alert.alert('Error', 'Failed to download banner image from Google Places.');
+          setIsLoading(false);
+          return;
+        }
+      }
+      // --- end fix ---
+
       if (!tripName || tripName.length < 3) {
         Alert.alert('Error', 'Trip name is required and must be at least 3 characters long');
+        setIsLoading(false);
         return;
       }
 
       if (!days || days.length === 0) {
         Alert.alert('Error', 'At least one day plan is required');
+        setIsLoading(false);
         return;
       }
 
@@ -190,11 +242,13 @@ function MakeSchedule() {
       const invalidDays = days.filter(day => !day.latitude || !day.longitude || !day.description.trim());
       if (invalidDays.length > 0) {
         Alert.alert('Error', `Please complete all required fields for Day ${invalidDays[0].id}`);
+        setIsLoading(false);
         return;
       }
 
       if (!fromDate || !toDate) {
         Alert.alert('Error', 'Date range is required');
+        setIsLoading(false);
         return;
       }
 
@@ -204,21 +258,30 @@ function MakeSchedule() {
 
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
         Alert.alert('Error', 'Invalid date format');
+        setIsLoading(false);
         return;
       }
 
-      // Get location from first and last day's map coordinates
-      const firstDay = days[0];
-      const lastDay = days[days.length - 1];
+      // Get location from locationFrom and locationTo values
+      const fromCoords = locationFrom ? locationFrom.split(',') : [null, null];
+      const toCoords = locationTo ? locationTo.split(',') : [null, null];
+      const fromLatitude = Number(parseFloat(fromCoords[0]));
+      const fromLongitude = Number(parseFloat(fromCoords[1]));
+      const toLatitude = Number(parseFloat(toCoords[0]));
+      const toLongitude = Number(parseFloat(toCoords[1]));
 
-      if (!firstDay.latitude || !firstDay.longitude || !lastDay.latitude || !lastDay.longitude) {
-        Alert.alert('Error', 'Please select locations for all days');
+      if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude) {
+        Alert.alert('Error', 'Please select valid From and To locations');
+        setIsLoading(false);
         return;
       }
 
       // Calculate number of days between dates
       const diffTime = Math.abs(endDate - startDate);
       const numberOfDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+      // All validations passed, now show loader
+      setIsLoading(true);
 
       // Create the request body according to backend validation
       const requestBody = {
@@ -227,12 +290,12 @@ function MakeSchedule() {
         visible: visible || "Public", // Default to Public if not set
         location: {
           from: {
-            latitude: Number(parseFloat(firstDay.latitude)),
-            longitude: Number(parseFloat(firstDay.longitude))
+            latitude: fromLatitude,
+            longitude: fromLongitude
           },
           to: {
-            latitude: Number(parseFloat(lastDay.latitude)),
-            longitude: Number(parseFloat(lastDay.longitude))
+            latitude: toLatitude,
+            longitude: toLongitude
           }
         },
         dates: {
@@ -265,27 +328,21 @@ function MakeSchedule() {
       // Create FormData for multipart/form-data
       const formData = new FormData();
 
-      if (bannerImage) {
-        if (/^https?:\/\//.test(bannerImage)) {
-          // Remote URL, send as string
-          formData.append('bannerImage', bannerImage);
-        } else {
-          // Local file, send as file
-          formData.append('bannerImage', {
-            uri: bannerImage.startsWith('file://') ? bannerImage : `file://${bannerImage}`,
-            type: 'image/jpeg',
-            name: 'banner.jpg'
-          });
-        }
+      if (finalBannerImage) {
+        formData.append('bannerImage', {
+          uri: finalBannerImage.startsWith('file://') ? finalBannerImage : `file://${finalBannerImage}`,
+          type: 'image/jpeg',
+          name: 'banner.jpg'
+        });
       }
 
       formData.append('tripName', tripName.trim());
       formData.append('travelMode', "Bike");
       formData.append('visible', visible || "Public");
-      formData.append('location[from][latitude]', requestBody.location.from.latitude.toString());
-      formData.append('location[from][longitude]', requestBody.location.from.longitude.toString());
-      formData.append('location[to][latitude]', requestBody.location.to.latitude.toString());
-      formData.append('location[to][longitude]', requestBody.location.to.longitude.toString());
+      formData.append('location[from][latitude]', fromLatitude.toString());
+      formData.append('location[from][longitude]', fromLongitude.toString());
+      formData.append('location[to][latitude]', toLatitude.toString());
+      formData.append('location[to][longitude]', toLongitude.toString());
       formData.append('dates[from]', requestBody.dates.from);
       formData.append('dates[end]', requestBody.dates.end);
       formData.append('numberOfDays', numberOfDays.toString());
@@ -680,7 +737,10 @@ function MakeSchedule() {
             })() : 
             ''
         });
-        setLocationFromName('Current Location');
+        // Only set the name if it hasn't already been set by AsyncStorage
+        if (!locationFromName) {
+          setLocationFromName('Current Location');
+        }
       } catch (error) {
         console.error('Error getting current location:', error);
         Alert.alert('Error', 'Failed to get current location');
@@ -748,6 +808,32 @@ function MakeSchedule() {
       return null;
     }
   };
+
+  // Open map for selecting From location
+  const openMapForFromLocation = () => {
+    navigation.navigate('MapScreen', { type: 'from' });
+  };
+
+  // Open map for selecting To location
+  const openMapForToLocation = () => {
+    navigation.navigate('MapScreen', { type: 'to' });
+  };
+
+  // Listen for location selection from MapScreen for From/To
+  useEffect(() => {
+    const { latitude, longitude, type, placeName } = route.params || {};
+    if (latitude && longitude && type) {
+      if (type === 'from') {
+        updateScheduleState({ locationFrom: `${latitude},${longitude}` });
+        setLocationFromName(placeName || 'Selected Location');
+      } else if (type === 'to') {
+        updateScheduleState({ locationTo: `${latitude},${longitude}` });
+        setLocationToName(placeName || 'Selected Location');
+      }
+      // Clear params after update
+      navigation.setParams({ latitude: undefined, longitude: undefined, type: undefined, placeName: undefined });
+    }
+  }, [route.params]);
 
   return (
     <KeyboardAvoidingView 
@@ -857,10 +943,13 @@ function MakeSchedule() {
                   <TextInput
                     style={styles.input}
                     value={locationFromName}
-                    onChangeText={setLocationFromName}
                     placeholder="From location"
                     placeholderTextColor="#999"
+                    editable={false}
                   />
+                  <TouchableOpacity onPress={openMapForFromLocation}>
+                    <Icon name="map" size={20} color="#A60F93" />
+                  </TouchableOpacity>
                 </View>
                 {locationFrom && (
                   <MapView
@@ -887,10 +976,13 @@ function MakeSchedule() {
                   <TextInput
                     style={styles.input}
                     value={locationToName}
-                    onChangeText={setLocationToName}
                     placeholder="To location"
                     placeholderTextColor="#999"
+                    editable={false}
                   />
+                  <TouchableOpacity onPress={openMapForToLocation}>
+                    <Icon name="map" size={20} color="#A60F93" />
+                  </TouchableOpacity>
                 </View>
                 {locationTo && (
                   <MapView
@@ -983,7 +1075,7 @@ function MakeSchedule() {
                   onChangeText={(text) => updateDayDetails(day.id, "description", text)}
                   multiline
                   placeholderTextColor="#999"
-                  editable={!!day.latitude}
+                  //editable={!!day.latitude}
                 />
 
                 <TouchableOpacity
