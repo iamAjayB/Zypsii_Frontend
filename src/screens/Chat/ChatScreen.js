@@ -814,105 +814,70 @@ const ChatScreen = ({ route, navigation }) => {
     );
   };
 
-  const handleSharedContentPress = (moduleType, content) => {
+  const handleSharedContentPress = async (moduleType, content) => {
     if (moduleType === 'schedules') {
       console.log('Original schedule content:', JSON.stringify(content, null, 2));
       
-      // Convert planDescription to locationDetails format that TripDetail expects
-      const locationDetails = content.planDescription?.map((day, index) => {
-        // Get location data from the day's planDescription
-        const dayLocation = day.location || {};
-        const fromLocation = dayLocation.from || {};
-        const toLocation = dayLocation.to || {};
-        
-        return {
-          id: day._id || `day_${index}`,
-          name: day.Description || `Day ${index + 1}`,
-          address: fromLocation.latitude && fromLocation.longitude 
-            ? `${fromLocation.latitude}, ${fromLocation.longitude}` 
-            : 'Location not specified',
-          location: {
-            lat: fromLocation.latitude || 0,
-            lng: fromLocation.longitude || 0
-          },
-          description: day.Description || `Day ${index + 1} description`,
-          date: day.date || content.Dates?.from,
-          distanceInKilometer: null, // Will be calculated by TripDetail if needed
-          // Add additional location data for compatibility
-          from: fromLocation,
-          to: toLocation
-        };
-      }) || [];
-
-      console.log('Converted locationDetails:', JSON.stringify(locationDetails, null, 2));
-
-      // Get from and to addresses if available
+      // Get readable addresses from coordinates
       let fromAddress = 'Starting Point';
       let toAddress = 'End Point';
       
-      if (content.location?.from) {
-        fromAddress = `${content.location.from.latitude}, ${content.location.from.longitude}`;
+      try {
+        if (content.location?.from?.latitude && content.location?.from?.longitude) {
+          fromAddress = await getPlaceName(content.location.from.latitude, content.location.from.longitude);
+        }
+        if (content.location?.to?.latitude && content.location?.to?.longitude) {
+          toAddress = await getPlaceName(content.location.to.latitude, content.location.to.longitude);
+        }
+      } catch (error) {
+        console.error('Error getting addresses:', error);
+        // Fallback to coordinates if geocoding fails
+        if (content.location?.from) {
+          fromAddress = `${content.location.from.latitude}, ${content.location.from.longitude}`;
+        }
+        if (content.location?.to) {
+          toAddress = `${content.location.to.latitude}, ${content.location.to.longitude}`;
+        }
       }
-      if (content.location?.to) {
-        toAddress = `${content.location.to.latitude}, ${content.location.to.longitude}`;
-      }
-
-      // Create the complete tripData object with all schedule information
+      
+      // Transform the data to match TripDetail's expected format (same as DummyScreen)
       const tripData = {
-        // TripDetail expected format
         id: content._id,
-        title: content.tripName,
+        title: content.tripName || 'Untitled Trip',
         from: fromAddress,
         to: toAddress,
         date: content.Dates?.from || new Date().toISOString().split('T')[0],
         numberOfDays: content.numberOfDays?.toString() || '1',
-        imageUrl: content.bannerImage,
-        locationDetails: locationDetails,
-        riders: '1',
+        imageUrl: content.bannerImage || null,
+        locationDetails: content.location ? [
+          {
+            name: fromAddress,
+            address: fromAddress,
+            latitude: content.location.from?.latitude,
+            longitude: content.location.from?.longitude
+          },
+          {
+            name: toAddress,
+            address: toAddress,
+            latitude: content.location.to?.latitude,
+            longitude: content.location.to?.longitude
+          }
+        ] : [],
+        riders: content.numberOfDays?.toString() || '1',
         travelMode: content.travelMode || 'Bike',
-        visible: content.visible || 'Public',
-        
-        // Complete original schedule data
-        _id: content._id,
-        tripName: content.tripName,
-        bannerImage: content.bannerImage,
-        travelMode: content.travelMode,
-        visible: content.visible,
-        location: content.location,
-        Dates: content.Dates,
-        numberOfDays: content.numberOfDays,
-        planDescription: content.planDescription,
-        isDeleted: content.isDeleted,
-        createdAt: content.createdAt,
-        updatedAt: content.updatedAt,
-        createdBy: content.createdBy,
-        
-        // Additional metadata
-        __v: content.__v,
-        date: content.Dates?.from,
-        
-        // Ensure all fields are properly structured
-        scheduleData: content.planDescription?.map((day, index) => ({
-          day: index + 1,
-          description: day.Description,
-          date: day.date,
-          locations: day.location ? [{
-            id: day._id,
-            name: day.Description,
-            address: `${day.location.from?.latitude || 0}, ${day.location.from?.longitude || 0}`,
-            location: {
-              lat: day.location.from?.latitude || 0,
-              lng: day.location.from?.longitude || 0
-            }
-          }] : []
-        })) || []
+        visible: 'Public',
+        createdBy: content.createdBy || '',
+        createdAt: content.createdAt || '',
+        updatedAt: content.updatedAt || ''
       };
 
       console.log('Complete tripData being passed to TripDetail:', JSON.stringify(tripData, null, 2));
 
-      // Navigate to TripDetail screen with the complete schedule data
-      navigation.navigate('TripDetail', {
-        tripData: tripData
+      // Navigate to TripDetail screen with the same data structure as DummyScreen
+      navigation.navigate('TripDetail', { 
+        tripData: tripData,
+        scheduleData: content,
+        allSchedules: [] // You can pass all schedules if available
       });
     } else {
       // For other content types, show the preview modal

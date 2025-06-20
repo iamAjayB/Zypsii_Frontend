@@ -158,7 +158,43 @@ const DummyScreen = ({ navigation }) => {
       console.error('Invalid schedule item:', item);
       return;
     }
-    navigation.navigate('TripDetail', { tripId: item.id });
+    
+    // Transform the data to match TripDetail's expected format
+    const tripData = {
+      id: item.id,
+      title: item.title || 'Untitled Trip',
+      from: item.fromPlace || 'Starting Point',
+      to: item.toPlace || 'End Point',
+      date: item.date || new Date().toISOString().split('T')[0],
+      numberOfDays: item.riders || '1',
+      imageUrl: item.imageUrl || null,
+      locationDetails: item.rawLocation ? [
+        {
+          name: item.fromPlace || 'Starting Point',
+          address: item.fromPlace || 'Starting Point',
+          latitude: item.rawLocation.from?.latitude,
+          longitude: item.rawLocation.from?.longitude
+        },
+        {
+          name: item.toPlace || 'End Point',
+          address: item.toPlace || 'End Point',
+          latitude: item.rawLocation.to?.latitude,
+          longitude: item.rawLocation.to?.longitude
+        }
+      ] : [],
+      riders: item.riders || '1',
+      travelMode: item.travelMode || 'Bike',
+      visible: 'Public',
+      createdBy: item.createdBy || '',
+      createdAt: item.createdAt || '',
+      updatedAt: item.updatedAt || ''
+    };
+    
+    navigation.navigate('TripDetail', { 
+      tripData: tripData,
+      scheduleData: item,
+      allSchedules: all_schedule
+    });
   };
 
   // Function to get place name from coordinates
