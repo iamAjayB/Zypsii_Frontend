@@ -68,7 +68,7 @@ const MessageList = ({ navigation }) => {
           email: '', // Not provided in response
           profileImage: user.profilePicture || null,
           lastMessage: 'No messages yet',
-          lastMessageTime: user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString() : 'No time'
+          lastMessageTime: user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'No time'
         };
       });
       

@@ -13,11 +13,75 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useToast } from '../../context/ToastContext';
 
+/**
+ * MAP COMPONENT - DATA ACCESS GUIDE
+ * 
+ * This component receives comprehensive trip data from TripDetail screen.
+ * Here's how to access all the passed data:
+ * 
+ * 1. DIRECT ACCESS FROM route.params:
+ *    - tripData: Complete trip object with all details
+ *    - allLocations: Array of all locations from all days
+ *    - currentDayLocations: Array of locations for current active day
+ *    - activeDay: Current day number (1, 2, 3, etc.)
+ *    - totalDays: Total number of days in the trip
+ *    - scheduleData: Complete schedule data array
+ *    - tripId: Trip ID for API calls
+ *    - fromLocation: Starting location object
+ *    - toLocation: Destination location object
+ *    - tripMetadata: Trip metadata object
+ * 
+ * 2. UTILITY FUNCTIONS (recommended way):
+ *    - getTripInfo(): Returns trip information (title, date, etc.)
+ *    - getCurrentDayInfo(): Returns current day details
+ *    - getFixedLocations(): Returns from/to locations
+ *    - getAllTripLocations(): Returns all locations from all days
+ *    - getLocationsForDay(dayNumber): Returns locations for specific day
+ *    - getDataSummary(): Returns complete data summary
+ * 
+ * 3. EXAMPLE FUNCTIONS (showing practical usage):
+ *    - getTripTitle(): Get trip title
+ *    - getCurrentDayLocations(): Get current day locations
+ *    - getRouteSummary(): Get "From → To" summary
+ *    - getTotalDistance(): Calculate total trip distance
+ *    - getTripDuration(): Get trip duration in days
+ *    - isMultiDayTrip(): Check if multi-day trip
+ *    - getUniqueLocations(): Get unique locations (no duplicates)
+ *    - getLocationsByDay(dayNumber): Get locations for specific day
+ *    - getTripStats(): Get comprehensive trip statistics
+ * 
+ * 4. DEBUG COMPONENT:
+ *    - Shows all received data in development mode
+ *    - Displays example function results
+ *    - Shows trip statistics
+ * 
+ * Usage Examples:
+ * - Display trip title: getTripTitle()
+ * - Show route: getRouteSummary()
+ * - Get current day locations: getCurrentDayLocations()
+ * - Calculate total distance: getTotalDistance()
+ * - Check trip type: isMultiDayTrip()
+ */
+
 const { width, height } = Dimensions.get('window');
 
 const Map = ({ route }) => {
   const navigation = useNavigation();
   const { showToast } = useToast();
+  
+  // Extract all data passed from TripDetail
+  const {
+    tripData,
+    allLocations,
+    currentDayLocations,
+    activeDay,
+    totalDays,
+    scheduleData: passedScheduleData,
+    tripId,
+    fromLocation,
+    toLocation,
+    tripMetadata
+  } = route.params || {};
   
   const handleBackPress = () => {
     navigation.goBack();
@@ -40,45 +104,26 @@ const Map = ({ route }) => {
   };
 
   const [discoverbynearest, setDiscoverbyNearest] = useState([]);
-  const [scheduleData, setScheduleData] = useState([]);
+  const [scheduleData, setScheduleData] = useState(passedScheduleData || []);
   const [loading, setLoading] = useState(true);
   const [selectedPlaces, setSelectedPlaces] = useState([]);
   const [isFullMapVisible, setIsFullMapVisible] = useState(false);
   const mapRef = useRef(null);
   const fullMapRef = useRef(null);
-  const { tripId } = route.params || {};
-
-  // Add sample locations for 4 days
-  const [dayLocations, setDayLocations] = useState([
-    {
-      id: 'day1',
-      name: 'Kanyakumari',
-      location: { lat: 8.0883, lng: 77.5385 }, // Kanyakumari coordinates
-      address: 'Kanyakumari, Tamil Nadu'
-    },
-    {
-      id: 'day2',
-      name: 'Thiruvananthapuram',
-      location: { lat: 8.5241, lng: 76.9366 }, // Thiruvananthapuram coordinates
-      address: 'Thiruvananthapuram, Kerala'
-    },
-    {
-      id: 'day3',
-      name: 'Bangalore',
-      location: { lat: 12.9716, lng: 77.5946 }, // Bangalore coordinates
-      address: 'Bangalore, Karnataka'
-    },
-    {
-      id: 'day4',
-      name: 'Goa',
-      location: { lat: 15.4989, lng: 73.8278 }, // Goa coordinates
-      address: 'Goa'
-    }
-  ]);
 
   useEffect(() => {
-    fetchScheduleData();
-  }, [tripId]);
+    // If we have passed schedule data, use it; otherwise fetch from API
+    if (passedScheduleData && passedScheduleData.length > 0) {
+      setScheduleData(passedScheduleData);
+      const allPlaces = passedScheduleData.flatMap(day => day.planDescription || []);
+      setSelectedPlaces(allPlaces);
+      setLoading(false);
+    } else if (tripId) {
+      fetchScheduleData();
+    } else {
+      setLoading(false);
+    }
+  }, [tripId, passedScheduleData]);
 
   const fetchScheduleData = async () => {
     try {
@@ -87,7 +132,6 @@ const Map = ({ route }) => {
       const currentUserId = user ? JSON.parse(user)._id : null;
       
       if (!token || !currentUserId) {
-        console.error('Missing token or userId');
         setLoading(false);
         return;
       }
@@ -101,21 +145,17 @@ const Map = ({ route }) => {
         }
       );
       
-      console.log('Schedule Response:', response.data);
-      
       if (response.data && response.data.success && response.data.data) {
         setScheduleData(response.data.data);
         // Set all places as selected by default
         const allPlaces = response.data.data.flatMap(day => day.planDescription || []);
         setSelectedPlaces(allPlaces);
       } else {
-        console.log('No schedule data found');
         setScheduleData([]);
         setSelectedPlaces([]);
       }
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching schedule data:', error.response?.data || error.message);
       setScheduleData([]);
       setSelectedPlaces([]);
       setLoading(false);
@@ -161,39 +201,315 @@ const Map = ({ route }) => {
 
   // Calculate initial region based on selected locations
   const getInitialRegion = () => {
-    const locations = dayLocations;
-    if (locations.length === 0) {
+    try {
+      // First try to use actual trip locations
+      const tripLocations = getAllTripLocations();
+      if (tripLocations && tripLocations.length > 0) {
+        const validLocations = tripLocations.filter(loc => 
+          loc && loc.location && 
+          typeof loc.location.lat === 'number' && 
+          typeof loc.location.lng === 'number' &&
+          !isNaN(loc.location.lat) && 
+          !isNaN(loc.location.lng)
+        );
+        
+        if (validLocations.length > 0) {
+          const latitudes = validLocations.map(loc => loc.location.lat);
+          const longitudes = validLocations.map(loc => loc.location.lng);
+          
+          const minLat = Math.min(...latitudes);
+          const maxLat = Math.max(...latitudes);
+          const minLng = Math.min(...longitudes);
+          const maxLng = Math.max(...longitudes);
+
+          return {
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLng + maxLng) / 2,
+            latitudeDelta: Math.max(Math.abs(maxLat - minLat) * 1.5, 0.1),
+            longitudeDelta: Math.max(Math.abs(maxLng - minLng) * 1.5, 0.1),
+          };
+        }
+      }
+
+      // Try to use current day locations
+      const currentLocations = getCurrentDayLocations();
+      if (currentLocations && currentLocations.length > 0) {
+        const validLocations = currentLocations.filter(loc => 
+          loc && loc.location && 
+          typeof loc.location.lat === 'number' && 
+          typeof loc.location.lng === 'number' &&
+          !isNaN(loc.location.lat) && 
+          !isNaN(loc.location.lng)
+        );
+        
+        if (validLocations.length > 0) {
+          const latitudes = validLocations.map(loc => loc.location.lat);
+          const longitudes = validLocations.map(loc => loc.location.lng);
+          
+          const minLat = Math.min(...latitudes);
+          const maxLat = Math.max(...latitudes);
+          const minLng = Math.min(...longitudes);
+          const maxLng = Math.max(...longitudes);
+
+          return {
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLng + maxLng) / 2,
+            latitudeDelta: Math.max(Math.abs(maxLat - minLat) * 1.5, 0.1),
+            longitudeDelta: Math.max(Math.abs(maxLng - minLng) * 1.5, 0.1),
+          };
+        }
+      }
+
+      // Try to use from/to locations
+      const fixedLocations = getFixedLocations();
+      if (fixedLocations.from && fixedLocations.from.location) {
+        const lat = parseFloat(fixedLocations.from.location.lat);
+        const lng = parseFloat(fixedLocations.from.location.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          return {
+            latitude: lat,
+            longitude: lng,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          };
+        }
+      }
+
+      // Default to Bangalore coordinates
       return {
-        latitude: 12.9716, // Center on Bangalore
+        latitude: 12.9716,
         longitude: 77.5946,
-        latitudeDelta: 8, // Increased to show all locations
-        longitudeDelta: 8,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+      };
+    } catch (error) {
+      // Fallback to Bangalore coordinates
+      return {
+        latitude: 12.9716,
+        longitude: 77.5946,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
       };
     }
-
-    const latitudes = locations.map(loc => loc.location.lat);
-    const longitudes = locations.map(loc => loc.location.lng);
-    
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-
-    return {
-      latitude: (minLat + maxLat) / 2,
-      longitude: (minLng + maxLng) / 2,
-      latitudeDelta: Math.abs(maxLat - minLat) * 1.5,
-      longitudeDelta: Math.abs(maxLng - minLng) * 1.5,
-    };
   };
 
   // Get route coordinates from selected locations
   const getRouteCoordinates = () => {
-    const locations = selectedPlaces.length > 0 ? selectedPlaces : getAllLocations();
-    return locations.map(loc => ({
-      latitude: loc.location.lat,
-      longitude: loc.location.lng
-    }));
+    try {
+      const locations = selectedPlaces.length > 0 ? selectedPlaces : getAllLocations();
+      if (!locations || locations.length === 0) {
+        return [];
+      }
+      
+      return locations
+        .filter(loc => 
+          loc && loc.location && 
+          typeof loc.location.lat === 'number' && 
+          typeof loc.location.lng === 'number' &&
+          !isNaN(loc.location.lat) && 
+          !isNaN(loc.location.lng)
+        )
+        .map(loc => ({
+          latitude: loc.location.lat,
+          longitude: loc.location.lng
+        }));
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // Utility functions to work with passed data
+  
+  // Get locations for a specific day
+  const getLocationsForDay = (dayNumber) => {
+    try {
+      if (scheduleData && scheduleData.length > 0) {
+        const dayData = scheduleData.find(day => day && day.dayNumber === dayNumber);
+        return dayData ? (dayData.planDescription || []) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // Get all locations from all days
+  const getAllTripLocations = () => {
+    try {
+      if (allLocations && allLocations.length > 0) {
+        return allLocations;
+      }
+      if (scheduleData && scheduleData.length > 0) {
+        return scheduleData.flatMap(day => day && day.planDescription ? day.planDescription : []);
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // Get trip information
+  const getTripInfo = () => {
+    if (tripData) {
+      return {
+        title: tripData.title,
+        date: tripData.date,
+        numberOfDays: tripData.numberOfDays,
+        riders: tripData.riders,
+        travelMode: tripData.travelMode,
+        visible: tripData.visible,
+        imageUrl: tripData.imageUrl,
+        createdBy: tripData.createdBy,
+        createdAt: tripData.createdAt,
+        updatedAt: tripData.updatedAt
+      };
+    }
+    if (tripMetadata) {
+      return tripMetadata;
+    }
+    return null;
+  };
+
+  // Get from and to locations
+  const getFixedLocations = () => {
+    return {
+      from: fromLocation || null,
+      to: toLocation || null
+    };
+  };
+
+  // Get current day information
+  const getCurrentDayInfo = () => {
+    return {
+      activeDay: activeDay || 1,
+      totalDays: totalDays || 3, // Default to 3 days
+      currentDayLocations: currentDayLocations || []
+    };
+  };
+
+  // Get all available data summary
+  const getDataSummary = () => {
+    return {
+      tripInfo: getTripInfo(),
+      currentDay: getCurrentDayInfo(),
+      fixedLocations: getFixedLocations(),
+      allLocations: getAllTripLocations(),
+      scheduleData: scheduleData,
+      tripId: tripId
+    };
+  };
+
+  // Example functions showing how to use the received data
+  
+  // Example: Get trip title and display it
+  const getTripTitle = () => {
+    const tripInfo = getTripInfo();
+    return tripInfo?.title || 'Untitled Trip';
+  };
+
+  // Example: Get all locations for the current active day
+  const getCurrentDayLocations = () => {
+    const currentDay = getCurrentDayInfo();
+    const locations = getLocationsForDay(currentDay.activeDay);
+    return locations || [];
+  };
+
+  // Example: Get route summary (from -> to)
+  const getRouteSummary = () => {
+    const fixedLocations = getFixedLocations();
+    const from = fixedLocations.from?.name || 'Starting Point';
+    const to = fixedLocations.to?.name || 'Destination';
+    return `${from} → ${to}`;
+  };
+
+  // Example: Get total distance of the trip
+  const getTotalDistance = () => {
+    const locations = getAllTripLocations();
+    if (!locations || locations.length === 0) {
+      return 0;
+    }
+    return locations.reduce((total, location) => {
+      const distance = parseFloat(location.distanceInKilometer) || 0;
+      return total + distance;
+    }, 0);
+  };
+
+  // Example: Get trip duration
+  const getTripDuration = () => {
+    const currentDay = getCurrentDayInfo();
+    const days = currentDay.totalDays || 3; // Default to 3 days if no data
+    return `${days} day${days > 1 ? 's' : ''}`;
+  };
+
+  // Example: Check if trip is multi-day
+  const isMultiDayTrip = () => {
+    const currentDay = getCurrentDayInfo();
+    const days = currentDay.totalDays || 3; // Default to 3 days if no data
+    return days > 1;
+  };
+
+  // Example: Get all unique locations (no duplicates)
+  const getUniqueLocations = () => {
+    try {
+      const locations = getAllTripLocations() || [];
+      const unique = [];
+      const seen = new Set();
+      
+      locations.forEach(location => {
+        if (location) {
+          const key = location.name || location.title || location._id || Math.random().toString();
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(location);
+          }
+        }
+      });
+      
+      return unique;
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // Example: Get locations by day number
+  const getLocationsByDay = (dayNumber) => {
+    try {
+      if (scheduleData && scheduleData.length > 0) {
+        const dayData = scheduleData.find(day => day && day.dayNumber === dayNumber);
+        return dayData ? (dayData.planDescription || []) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // Example: Get trip statistics
+  const getTripStats = () => {
+    try {
+      const locations = getAllTripLocations() || [];
+      const uniqueLocations = getUniqueLocations() || [];
+      const totalDistance = getTotalDistance() || 0;
+      const currentDay = getCurrentDayInfo();
+      
+      return {
+        totalLocations: locations.length || 0,
+        uniqueLocations: uniqueLocations.length || 0,
+        totalDistance: totalDistance.toFixed(2) || '0.00',
+        totalDays: currentDay.totalDays || 3,
+        currentDay: currentDay.activeDay || 1,
+        isMultiDay: isMultiDayTrip() || false
+      };
+    } catch (error) {
+      return {
+        totalLocations: 0,
+        uniqueLocations: 0,
+        totalDistance: '0.00',
+        totalDays: 3,
+        currentDay: 1,
+        isMultiDay: true
+      };
+    }
   };
 
   useEffect(() => {
@@ -201,13 +517,10 @@ const Map = ({ route }) => {
       try {
         const accessToken = await AsyncStorage.getItem('accessToken');
         if (!accessToken) {
-          console.error('No access token found');
           return;
         }
 
-        console.log('Fetching discover data with token:', accessToken.substring(0, 10) + '...'); // Debug log
         const url = `${base_url}/schedule/places/getNearest?bestDestination=true`;
-        console.log('API URL:', url); // Debug log
 
         const response = await fetch(url, {
           method: 'GET',
@@ -217,32 +530,25 @@ const Map = ({ route }) => {
           }
         });
 
-        console.log('API Response status:', response.status); // Debug log
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('API Error Response:', errorText);
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
         const data = await response.json();
-        console.log('Raw API Response:', JSON.stringify(data, null, 2)); // Debug log
         
         if (!data) {
-          console.error('No data received from API');
           setDiscoverbyNearest([]);
           return;
         }
 
         if (!data.data || !Array.isArray(data.data)) {
-          console.error('Invalid data format received:', data);
           setDiscoverbyNearest([]);
           return;
         }
 
         const formattedData = data.data.map(item => {
           if (!item) {
-            console.warn('Received null item in data array');
             return null;
           }
 
@@ -255,30 +561,20 @@ const Map = ({ route }) => {
             distance: parseFloat(item.distanceInKilometer) || 0
           };
 
-          console.log('Formatted item:', formattedItem); // Debug log
           return formattedItem;
         }).filter(item => item !== null); // Remove any null items
         
-        console.log('Final formatted data:', formattedData); // Debug log
-        
         if (formattedData.length === 0) {
-          console.warn('No valid items found after formatting');
         }
 
         setDiscoverbyNearest(formattedData);
       } catch (error) {
-        console.error('Error in fetchDiscoverbyNearest:', error);
         setDiscoverbyNearest([]);
       }
     };
 
     fetchDiscoverbyNearest();
   }, []);
-
-  // Add a debug effect to monitor discoverbynearest state
-  useEffect(() => {
-    console.log('Current discoverbynearest state:', discoverbynearest);
-  }, [discoverbynearest]);
 
   // Update the FlatList to handle empty states better
   const renderDiscoverList = () => {
@@ -299,9 +595,7 @@ const Map = ({ route }) => {
         keyExtractor={(item) => item.id || item._id}
         data={discoverbynearest}
         renderItem={({ item }) => {
-         // console.log('Rendering discover item:', item); // Debug log
           if (!item) {
-           // console.warn('Received null or undefined item in FlatList');
             return null;
           }
           return (
@@ -328,7 +622,6 @@ const Map = ({ route }) => {
         )}
         onEndReachedThreshold={0.5}
         onEndReached={() => {
-          console.log('Reached end of discover list');
         }}
       />
     );
@@ -400,45 +693,101 @@ const Map = ({ route }) => {
         title: 'Trip Locations Export'
       });
     } catch (error) {
-      console.error('Error sharing locations:', error);
       showToast('Failed to export locations', 'error');
     }
   };
 
   const renderMapMarkers = () => {
-    return dayLocations.map((location, index) => (
-      <Marker
-        key={location.id}
-        coordinate={{
-          latitude: location.location.lat,
-          longitude: location.location.lng
-        }}
-        title={location.name}
-        description={location.address}
-      >
-        <View style={styles.customMarker}>
-          <View style={[styles.markerInner, { backgroundColor: colors.btncolor }]}>
-            <Text style={styles.markerText}>{index + 1}</Text>
-          </View>
-        </View>
-      </Marker>
-    ));
+    try {
+      // If scheduleData is available, use it to get day numbers
+      if (scheduleData && scheduleData.length > 0) {
+        return scheduleData.flatMap((day, dayIndex) => {
+          if (!day || !day.planDescription || day.planDescription.length === 0) {
+            return [];
+          }
+          const dayNumber = day.dayNumber || (dayIndex + 1);
+
+          return day.planDescription
+            .filter(loc => 
+              loc && loc.location && 
+              typeof loc.location.lat === 'number' && 
+              typeof loc.location.lng === 'number' &&
+              !isNaN(loc.location.lat) && 
+              !isNaN(loc.location.lng)
+            )
+            .map((location, locationIndex) => (
+              <Marker
+                key={location._id || location.id || `${dayIndex}-${locationIndex}`}
+                coordinate={{
+                  latitude: location.location.lat,
+                  longitude: location.location.lng
+                }}
+                title={location.name || location.title || 'Location'}
+                description={`Day ${dayNumber} - ${location.address || 'No address'}`}
+              >
+                <View style={styles.customMarker}>
+                  <View style={[styles.markerInner, { backgroundColor: colors.btncolor }]}>
+                    <Text style={styles.markerText}>{`D${dayNumber}`}</Text>
+                  </View>
+                </View>
+              </Marker>
+            ));
+        });
+      }
+
+      // Fallback to allLocations if scheduleData is not available
+      const locations = getAllTripLocations();
+      if (!locations || locations.length === 0) {
+        return null;
+      }
+
+      // Render without day numbers if only a flat list is available
+      return locations
+        .filter(loc => 
+          loc && loc.location && 
+          typeof loc.location.lat === 'number' && 
+          typeof loc.location.lng === 'number' &&
+          !isNaN(loc.location.lat) && 
+          !isNaN(loc.location.lng)
+        )
+        .map((location, index) => (
+          <Marker
+            key={location._id || location.id || index}
+            coordinate={{
+              latitude: location.location.lat,
+              longitude: location.location.lng
+            }}
+            title={location.name || location.title || 'Location'}
+            description={location.address || 'No address'}
+          >
+            <View style={styles.customMarker}>
+              <View style={[styles.markerInner, { backgroundColor: colors.btncolor }]}>
+                <Text style={styles.markerText}>{index + 1}</Text>
+              </View>
+            </View>
+          </Marker>
+        ));
+    } catch (error) {
+      return null;
+    }
   };
 
   const renderPolyline = () => {
-    if (dayLocations.length > 1) {
-      return (
-        <Polyline
-          coordinates={dayLocations.map(loc => ({
-            latitude: loc.location.lat,
-            longitude: loc.location.lng
-          }))}
-          strokeColor={colors.btncolor}
-          strokeWidth={3}
-        />
-      );
+    try {
+      const coordinates = getRouteCoordinates();
+      if (coordinates && coordinates.length > 1) {
+        return (
+          <Polyline
+            coordinates={coordinates}
+            strokeColor={colors.btncolor}
+            strokeWidth={3}
+          />
+        );
+      }
+      return null;
+    } catch (error) {
+      return null;
     }
-    return null;
   };
 
   return (
@@ -468,36 +817,41 @@ const Map = ({ route }) => {
           contentContainerStyle={{ paddingBottom: 80 }} // Add padding to account for bottom tab
         >
           {/* Enhanced Route Display */}
-          {dayLocations.length > 0 && (
-            <View style={styles.routeCard}>
-              <View style={styles.routeHeader}>
-                <MaterialCommunityIcons name="navigation" size={20} color={colors.btncolor} />
-                <Text style={[styles.routeTitle, { color: colors.btncolor }]}>South India Route</Text>
-              </View>
-              <View style={styles.fromToContainer}>
-                <View style={styles.locationInfo}>
-                  <View style={[styles.startMarker, { backgroundColor: colors.btncolor }]}>
-                    <MaterialCommunityIcons name="map-marker" size={16} color={colors.white} />
-                  </View>
-                  <Text style={styles.locationText} numberOfLines={1}>
-                    {dayLocations[0].name}
+          {(() => {
+            const locations = getAllTripLocations();
+            return locations && locations.length > 0 ? (
+              <View style={styles.routeCard}>
+                <View style={styles.routeHeader}>
+                  <MaterialCommunityIcons name="navigation" size={20} color={colors.btncolor} />
+                  <Text style={[styles.routeTitle, { color: colors.btncolor }]}>
+                    {getTripTitle() || 'Trip Route'}
                   </Text>
                 </View>
-                <View style={styles.routeLine}>
-                  <View style={[styles.dashedLine, { backgroundColor: colors.btncolor }]} />
-                  <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
-                </View>
-                <View style={styles.locationInfo}>
-                  <View style={[styles.endMarker, { backgroundColor: colors.btncolor }]}>
-                    <MaterialCommunityIcons name="flag" size={16} color={colors.white} />
+                <View style={styles.fromToContainer}>
+                  <View style={styles.locationInfo}>
+                    <View style={[styles.startMarker, { backgroundColor: colors.btncolor }]}>
+                      <MaterialCommunityIcons name="map-marker" size={16} color={colors.white} />
+                    </View>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {locations[0]?.name || locations[0]?.title || 'Starting Point'}
+                    </Text>
                   </View>
-                  <Text style={styles.locationText} numberOfLines={1}>
-                    {dayLocations[dayLocations.length - 1].name}
-                  </Text>
+                  <View style={styles.routeLine}>
+                    <View style={[styles.dashedLine, { backgroundColor: colors.btncolor }]} />
+                    <MaterialCommunityIcons name="arrow-right" size={16} color={colors.btncolor} />
+                  </View>
+                  <View style={styles.locationInfo}>
+                    <View style={[styles.endMarker, { backgroundColor: colors.btncolor }]}>
+                      <MaterialCommunityIcons name="flag" size={16} color={colors.white} />
+                    </View>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {locations[locations.length - 1]?.name || locations[locations.length - 1]?.title || 'Destination'}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
+            ) : null;
+          })()}
 
           {/* Enhanced Map Container */}
           <View style={styles.mapCard}>
@@ -570,12 +924,6 @@ const Map = ({ route }) => {
       >
         <View style={styles.fullMapContainer}>
           <View style={styles.fullMapHeader}>
-            {/* <TouchableOpacity 
-              style={styles.fullMapBackButton}
-              onPress={() => setIsFullMapVisible(false)}
-            >
-              <MaterialCommunityIcons name="arrow-left" size={24} color={colors.white} />
-            </TouchableOpacity> */}
             <Text style={styles.fullMapTitle}>Full Map View</Text>
             <View style={{ width: 40 }} />
           </View>
@@ -593,18 +941,6 @@ const Map = ({ route }) => {
           </MapView>
 
           <View style={styles.fullMapZoomControls}>
-            {/* <TouchableOpacity 
-              style={styles.fullMapZoomButton}
-              onPress={handleFullMapZoomIn}
-            >
-              <MaterialCommunityIcons name="plus" size={24} color={colors.white} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.fullMapZoomButton, { marginTop: 10 }]}
-              onPress={handleFullMapZoomOut}
-            >
-              <MaterialCommunityIcons name="minus" size={24} color={colors.white} />
-            </TouchableOpacity> */}
           </View>
         </View>
       </Modal>
@@ -644,7 +980,7 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     paddingTop: 90,
-    zIndex: 2,
+    zIndex: 99,
   },
   
   // Enhanced Route Card
@@ -765,8 +1101,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   map: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
   },
   customMarker: {
     width: 32,

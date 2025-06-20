@@ -537,16 +537,8 @@ const TripDetail = ({ route, navigation }) => {
           </View>
 
           <View style={styles.tripPlanSection}>
-            {/* <Text style={styles.sectionTitle}>Trip Detail Plan</Text>
-            <TouchableOpacity 
-              onPress={() =>
-                navigation.navigate('Map', { 
-                  tripId: safeTripData.id
-                })
-              }
-            >
-              <Text style={styles.sectionTitleplan}>📍 View All Locations</Text>
-            </TouchableOpacity> */}
+           
+          
 
             <View style={styles.daysTabs}>
               {daysWithLocations.map((day) => (
@@ -581,13 +573,6 @@ const TripDetail = ({ route, navigation }) => {
       </View>
 
       <View style={styles.buttonContainer}>
-        {/* <TouchableOpacity 
-          style={styles.button}
-          onPress={() => navigation.navigate('MakeSchedule')}
-        >
-          <Text style={styles.buttonText}>✏️ Change Plan</Text>
-        </TouchableOpacity> */}
-        
         <TouchableOpacity 
           style={[styles.button, !daysWithLocations.find(day => day > activeDay) && styles.disabledButton]}
           onPress={() => {
@@ -605,12 +590,40 @@ const TripDetail = ({ route, navigation }) => {
           style={styles.button}
           onPress={() =>
             navigation.navigate('Map', { 
-              locations: getLocationsForDay(activeDay).map(location => ({
+              // Pass complete trip data
+              tripData: safeTripData,
+              // Pass all locations from all days
+              allLocations: safeTripData.locationDetails,
+              // Pass current day's locations
+              currentDayLocations: getLocationsForDay(activeDay).map(location => ({
                 name: location.name,
                 address: location.address,
                 location: location.location,
                 distanceInKilometer: location.distanceInKilometer
-              }))
+              })),
+              // Pass current active day
+              activeDay: activeDay,
+              // Pass total number of days
+              totalDays: parseInt(safeTripData.numberOfDays),
+              // Pass schedule data if available
+              scheduleData: scheduleData,
+              // Pass trip ID for API calls
+              tripId: safeTripData.id,
+              // Pass from and to locations
+              fromLocation: getFixedLocations().from,
+              toLocation: getFixedLocations().to,
+              // Pass trip metadata
+              tripMetadata: {
+                title: safeTripData.title,
+                date: safeTripData.date,
+                riders: safeTripData.riders,
+                travelMode: safeTripData.travelMode,
+                visible: safeTripData.visible,
+                imageUrl: safeTripData.imageUrl,
+                createdBy: safeTripData.createdBy,
+                createdAt: safeTripData.createdAt,
+                updatedAt: safeTripData.updatedAt
+              }
             })
           }
         >

@@ -168,20 +168,43 @@ const DummyScreen = ({ navigation }) => {
       date: item.date || new Date().toISOString().split('T')[0],
       numberOfDays: item.riders || '1',
       imageUrl: item.imageUrl || null,
-      locationDetails: item.rawLocation ? [
-        {
-          name: item.fromPlace || 'Starting Point',
-          address: item.fromPlace || 'Starting Point',
-          latitude: item.rawLocation.from?.latitude,
-          longitude: item.rawLocation.from?.longitude
-        },
-        {
-          name: item.toPlace || 'End Point',
-          address: item.toPlace || 'End Point',
-          latitude: item.rawLocation.to?.latitude,
-          longitude: item.rawLocation.to?.longitude
-        }
-      ] : [],
+      // Pass all location details with coordinates for all days
+      locationDetails: item.locationDetails && Array.isArray(item.locationDetails) 
+        ? item.locationDetails.map(location => ({
+            name: location.name || 'Unknown Location',
+            address: location.address || location.name || 'Unknown Address',
+            latitude: location.latitude,
+            longitude: location.longitude,
+            distanceInKilometer: location.distanceInKilometer,
+            day: location.day,
+            _id: location._id,
+            location: {
+              lat: location.latitude,
+              lng: location.longitude
+            }
+          }))
+        : item.rawLocation ? [
+            {
+              name: item.fromPlace || 'Starting Point',
+              address: item.fromPlace || 'Starting Point',
+              latitude: item.rawLocation.from?.latitude,
+              longitude: item.rawLocation.from?.longitude,
+              location: {
+                lat: item.rawLocation.from?.latitude,
+                lng: item.rawLocation.from?.longitude
+              }
+            },
+            {
+              name: item.toPlace || 'End Point',
+              address: item.toPlace || 'End Point',
+              latitude: item.rawLocation.to?.latitude,
+              longitude: item.rawLocation.to?.longitude,
+              location: {
+                lat: item.rawLocation.to?.latitude,
+                lng: item.rawLocation.to?.longitude
+              }
+            }
+          ] : [],
       riders: item.riders || '1',
       travelMode: item.travelMode || 'Bike',
       visible: 'Public',
@@ -189,6 +212,15 @@ const DummyScreen = ({ navigation }) => {
       createdAt: item.createdAt || '',
       updatedAt: item.updatedAt || ''
     };
+    
+    console.log('Passing trip data to TripDetail:', {
+      tripId: tripData.id,
+      locationCount: tripData.locationDetails.length,
+      locations: tripData.locationDetails.map(loc => ({
+        name: loc.name,
+        coordinates: { lat: loc.latitude, lng: loc.longitude }
+      }))
+    });
     
     navigation.navigate('TripDetail', { 
       tripData: tripData,
@@ -220,6 +252,51 @@ const DummyScreen = ({ navigation }) => {
       const processedData = await Promise.all(
         scheduleData.map(async (item) => {
           if (!item) return null;
+          
+          // Process all location details with coordinates
+          const allLocationDetails = [];
+          
+          if (item.locationDetails && Array.isArray(item.locationDetails)) {
+            item.locationDetails.forEach((location, index) => {
+              if (location) {
+                allLocationDetails.push({
+                  name: location.name || location.address || `Location ${index + 1}`,
+                  address: location.address || location.name || `Address ${index + 1}`,
+                  latitude: location.latitude || location.lat,
+                  longitude: location.longitude || location.lng,
+                  distanceInKilometer: location.distanceInKilometer || location.distance,
+                  day: location.day || index + 1,
+                  _id: location._id || `loc_${index}`
+                });
+              }
+            });
+          }
+          
+          // If no locationDetails, try to extract from location object
+          if (allLocationDetails.length === 0 && item.location) {
+            if (item.location.from) {
+              allLocationDetails.push({
+                name: item.location.from.name || 'Starting Point',
+                address: item.location.from.address || 'Starting Point',
+                latitude: item.location.from.latitude,
+                longitude: item.location.from.longitude,
+                day: 1,
+                _id: 'from_location'
+              });
+            }
+            
+            if (item.location.to) {
+              allLocationDetails.push({
+                name: item.location.to.name || 'End Point',
+                address: item.location.to.address || 'End Point',
+                latitude: item.location.to.latitude,
+                longitude: item.location.to.longitude,
+                day: item.numberOfDays || 1,
+                _id: 'to_location'
+              });
+            }
+          }
+          
           return {
             id: item._id || Math.random().toString(),
             title: item.tripName || 'Untitled Trip',
@@ -232,6 +309,8 @@ const DummyScreen = ({ navigation }) => {
             createdBy: item.createdBy || '',
             createdAt: item.createdAt || '',
             updatedAt: item.updatedAt || '',
+            // Include all location details with coordinates
+            locationDetails: allLocationDetails,
             rawLocation: {
               from: {
                 latitude: item.location?.from?.latitude,

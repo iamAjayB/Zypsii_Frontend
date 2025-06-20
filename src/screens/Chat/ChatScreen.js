@@ -117,6 +117,15 @@ const ChatScreen = ({ route, navigation }) => {
     };
   }, []);
 
+  // Effect to scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0 && !loading) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [messages, loading]);
+
   useEffect(() => {
     // Enhanced header with gradient-style background
     navigation.setOptions({
@@ -310,7 +319,10 @@ const ChatScreen = ({ route, navigation }) => {
         if (Array.isArray(chatHistory)) {
           setMessages(chatHistory);
           setLoading(false);
-          setTimeout(() => scrollToBottom(), 100);
+          // Ensure scroll to bottom after messages are set
+          setTimeout(() => {
+            scrollToBottom();
+          }, 200);
           
           // Mark messages as read after loading history
           if (chatHistory.length > 0) {
@@ -399,7 +411,9 @@ const ChatScreen = ({ route, navigation }) => {
 
   const scrollToBottom = () => {
     if (flatListRef.current && messages.length > 0) {
-      flatListRef.current.scrollToEnd({ animated: true });
+      setTimeout(() => {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }, 100);
     }
   };
 
@@ -879,6 +893,11 @@ const ChatScreen = ({ route, navigation }) => {
         scheduleData: content,
         allSchedules: [] // You can pass all schedules if available
       });
+    } else if (moduleType === 'shorts') {
+      navigation.navigate('Shorts', {
+        userShorts: [content],
+        initialIndex: 0,
+      });
     } else {
       // For other content types, show the preview modal
       setPreviewModal({
@@ -1117,6 +1136,7 @@ const ChatScreen = ({ route, navigation }) => {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        enabled={true}
       >
         {/* Connection Status */}
         {!isConnected && (
@@ -1136,7 +1156,10 @@ const ChatScreen = ({ route, navigation }) => {
             // Fallback to index if no _id
             return index.toString();
           }}
-          contentContainerStyle={styles.messagesContainer}
+          contentContainerStyle={[
+            styles.messagesContainer,
+            { flexGrow: 1, justifyContent: messages.length === 0 ? 'center' : 'flex-end' }
+          ]}
           ItemSeparatorComponent={renderSeparator}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -1147,9 +1170,22 @@ const ChatScreen = ({ route, navigation }) => {
               </View>
             </View>
           }
-          onContentSizeChange={() => scrollToBottom()}
-          onLayout={() => scrollToBottom()}
+          onContentSizeChange={() => {
+            if (messages.length > 0) {
+              scrollToBottom();
+            }
+          }}
+          onLayout={() => {
+            if (messages.length > 0) {
+              scrollToBottom();
+            }
+          }}
           showsVerticalScrollIndicator={false}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10,
+          }}
+          removeClippedSubviews={false}
         />
 
         {/* Message Input */}
@@ -1164,6 +1200,12 @@ const ChatScreen = ({ route, navigation }) => {
               multiline
               maxLength={1000}
               editable={!sending && isConnected}
+              onFocus={() => {
+                // Scroll to bottom when input is focused
+                setTimeout(() => {
+                  scrollToBottom();
+                }, 300);
+              }}
             />
             <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
               <TouchableOpacity
@@ -1225,6 +1267,7 @@ const styles = StyleSheet.create({
   messagesContainer: {
     padding: 16,
     flexGrow: 1,
+    minHeight: '100%',
   },
   emptyContainer: {
     flex: 1,

@@ -71,6 +71,11 @@ function SearchPage() {
         }
       });
 
+      if (response.status === 404) {
+        setSearchResults([]);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
@@ -132,7 +137,9 @@ function SearchPage() {
       console.error('Error fetching search results:', error);
       console.error('Error details:', error.message);
       setSearchResults([]);
-      showToast('Failed to search. Please try again.', 'error');
+      if (error.message && !error.message.includes('Status: 404')) {
+        showToast('Failed to search. Please try again.', 'error');
+      }
     } finally {
       setIsLoading(false);
     }
