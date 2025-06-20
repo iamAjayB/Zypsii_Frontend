@@ -292,6 +292,11 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     try {
       setIsLiking(true);
+      
+      // Optimistic update - immediately update the UI
+      const newLikeState = !like;
+      setLike(newLikeState);
+      setLikeCount(prevCount => newLikeState ? prevCount + 1 : prevCount - 1);
 
       if (like) {
         socketRef.current.emit('unlike', {
@@ -308,9 +313,16 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
           moduleCreatedBy: item.createdBy
         });
       }
+
+      // Call checkLikeStatus after a short delay to ensure the backend has processed the action
+      setTimeout(() => {
+        checkLikeStatus();
+      }, 500);
+
     } catch (error) {
       console.error('Like/Unlike Error:', error);
       showToast('Network error. Please check your connection and try again.', 'error');
+      // Revert optimistic update on error
       setLike(like);
       setLikeCount(prevCount => like ? prevCount + 1 : prevCount - 1);
       setIsLiking(false);
@@ -705,8 +717,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        setLike(data.success);
-      
+        setLike(data.data.liked);
       }
     } catch (error) {
       console.error('Error checking like status:', error);

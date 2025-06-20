@@ -87,6 +87,7 @@ const DummyScreen = ({ navigation }) => {
 
           if (postCountResponse.ok) {
             const postCountResult = await postCountResponse.json();
+            console.log('Post count response:', postCountResult);
             if (postCountResult.success) {
               setProfileInfo(prev => ({
                 ...prev,
@@ -94,7 +95,6 @@ const DummyScreen = ({ navigation }) => {
               }));
             }
           }
-
           // Fetch followers count
           const followersResponse = await fetch(`${base_url}/follow/getFollowers/${user._id}`, {
             method: 'GET',
@@ -223,15 +223,17 @@ const DummyScreen = ({ navigation }) => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
+      
 
         const accessToken = await AsyncStorage.getItem('accessToken');
         if (!accessToken) {
           throw new Error('No access token found');
         }
-
+        const user = await AsyncStorage.getItem('user');
+        const user_id = user ? JSON.parse(user) : null;
         // Fetch posts with user ID filter
         setPostsLoading(true);
-        const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=my`, {
+        const postsResponse = await fetch(`${base_url}/post/listing/filter?filter=my&userId=${user_id._id}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -242,6 +244,7 @@ const DummyScreen = ({ navigation }) => {
         if (postsResponse.ok) {
           try {
             const response = await postsResponse.json();
+            console.log('Posts response:', response);
             
             if (response.success && Array.isArray(response.data)) {
               const postsData = response.data;
@@ -290,8 +293,7 @@ const DummyScreen = ({ navigation }) => {
 
         // Fetch schedules with user ID filter
         setScheduleLoading(true);
-        const user = await AsyncStorage.getItem('user');
-        const user_id = user ? JSON.parse(user) : null;
+       
 
         const scheduleResponse = await fetch(`${base_url}/schedule/listing/filter?filter=my&userId=${user_id._id}&limit=20`, {
           method: 'GET',

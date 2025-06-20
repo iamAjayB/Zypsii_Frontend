@@ -762,16 +762,16 @@ const ChatScreen = ({ route, navigation }) => {
           );
         case 'shorts':
           return (
-            <View style={styles.sharedContentPreview}>
-              <View style={styles.sharedImageContainer}>
+            <View style={styles.sharedContentPreviewShorts}>
+              <View style={styles.sharedImageContainerShorts}>
                 <Image 
                   source={{ uri: sharedContent.thumbnailUrl || sharedContent.videoUrl }} 
-                  style={styles.sharedContentImage}
+                  style={styles.sharedContentImageShorts}
                   resizeMode="cover"
                 />
                 {/* Play icon overlay */}
                 <View style={styles.playIconOverlay}>
-                  <Ionicons name="play-circle" size={30} color="#fff" />
+                  <Ionicons name="play-circle" size={40} color="#fff" />
                 </View>
               </View>
               <View style={styles.sharedContentTextContainer}>
@@ -1439,19 +1439,35 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   sharedContentPreview: {
-    width: 170,
+    width: 150,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  sharedContentPreviewShorts: {
+    width: 200,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#fff',
   },
   sharedImageContainer: {
     width: 80,
-    height: 80,
+    height: 100,
+    position: 'relative',
+  },
+  sharedImageContainerShorts: {
+    width: 200,
+    height: 150,
     position: 'relative',
   },
   sharedContentImage: {
     width: 150,
-    height: 80, 
+    height: 100, 
+    borderRadius: 8,
+  },
+  sharedContentImageShorts: {
+    width: 200,
+    height: 150, 
     borderRadius: 8,
   },
   playIconOverlay: {
