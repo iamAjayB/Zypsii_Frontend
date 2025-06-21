@@ -47,7 +47,39 @@ const BalanceSection = ({ balanceData, loadingBalance }) => {
               </View>
             </View>
 
+            {/* Paid By Information */}
+            <View style={styles.paidByInfo}>
+              <Text style={styles.paidByLabel}>
+                Paid by <Text style={styles.paidByName}>{item.paidBy?.fullName}</Text>
+              </Text>
+            </View>
+
+            {/* Paid Members */}
+            {item.paidByMembers && item.paidByMembers.length > 0 && (
+              <View style={styles.paidMembersList}>
+                <Text style={styles.membersSectionLabel}>Paid Members</Text>
+                {item.paidByMembers?.map((member, index) => (
+                  <View key={member.memberId || index} style={styles.paidMemberItem}>
+                    <View style={styles.paidMemberInfo}>
+                      <View style={styles.paidMemberAvatar}>
+                        <Text style={styles.paidMemberAvatarText}>
+                          {member.fullName?.charAt(0).toUpperCase() || '?'}
+                        </Text>
+                      </View>
+                      <View style={styles.paidMemberDetails}>
+                        <Text style={styles.paidMemberName}>{member.fullName}</Text>
+                        <Text style={styles.paidMemberEmail}>{member.email}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.paidMemberAmount}>₹{member.amount?.toFixed(2)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Due Members */}
             <View style={styles.dueMembersList}>
+              <Text style={styles.membersSectionLabel}>Due by Members</Text>
               {item.dueByMembers?.map((member, index) => (
                 <View key={member.memberId || index} style={styles.dueMemberItem}>
                   <View style={styles.dueMemberInfo}>
@@ -205,6 +237,70 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.error,
+  },
+  paidByInfo: {
+    marginBottom: 12,
+  },
+  paidByLabel: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
+  },
+  paidByName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+  },
+  paidMembersList: {
+    marginBottom: 12,
+  },
+  membersSectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.fontMainColor,
+    marginBottom: 8,
+  },
+  paidMemberItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  paidMemberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paidMemberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.btncolor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  paidMemberAvatarText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  paidMemberDetails: {
+    flex: 1,
+  },
+  paidMemberName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.fontMainColor,
+    marginBottom: 2,
+  },
+  paidMemberEmail: {
+    fontSize: 12,
+    color: colors.fontSecondColor,
+  },
+  paidMemberAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.success,
   },
 });
 
