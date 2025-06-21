@@ -94,11 +94,7 @@ function Destination({ route, navigation }) {
         title: item.name,
         subtitle: item.address || item.subtitle || 'No address',
         rating: parseFloat(item.rating) || 0,
-        distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null,
-        location: {
-          latitude: item.location?.latitude ?? item.location?.lat ?? null,
-          longitude: item.location?.longitude ?? item.location?.lng ?? null
-        }
+        distance: item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null
       }));
 
       // Append new data to existing
