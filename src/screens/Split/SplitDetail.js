@@ -246,73 +246,31 @@ function SplitDetail() {
                 </View>
                 
                 <View style={styles.expenseFooter}>
-                  {/* Paid By Information */}
-                  <View style={styles.paidByContainer}>
-                    <Text style={styles.paidByText}>
-                      Paid by <Text style={styles.paidByName}>{expense.paidBy?.fullName}</Text>
-                    </Text>
-                    <Text style={styles.paidByAmount}>
-                      ₹{expense.totalExpenseAmount?.toFixed(2)}
-                    </Text>
+                  <View style={styles.membersContainer}>
+                    <Text style={styles.membersLabel}>Due by Members</Text>
+                    <View style={styles.membersList}>
+                      {expense.dueByMembers.map((member) => (
+                        <View key={member.memberId} style={styles.memberItem}>
+                          <View style={styles.memberInfo}>
+                            <View style={styles.memberAvatar}>
+                              <Text style={styles.memberAvatarText}>
+                                {member.fullName.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <View style={styles.memberDetails}>
+                              <Text style={styles.memberName}>{member.fullName}</Text>
+                              <Text style={styles.memberAmount}>
+                                ₹{member.amountDue.toFixed(2)}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={[styles.paymentStatus, { backgroundColor: colors.error }]}>
+                            <Text style={styles.paymentStatusText}>Due</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
                   </View>
-
-                  {/* Paid Members */}
-                  {expense.paidByMembers && expense.paidByMembers.length > 0 && (
-                    <View style={styles.membersContainer}>
-                      <Text style={styles.membersLabel}>Paid Members</Text>
-                      <View style={styles.membersList}>
-                        {expense.paidByMembers.map((member) => (
-                          <View key={member.memberId} style={styles.memberItem}>
-                            <View style={styles.memberInfo}>
-                              <View style={styles.memberAvatar}>
-                                <Text style={styles.memberAvatarText}>
-                                  {member.fullName.charAt(0).toUpperCase()}
-                                </Text>
-                              </View>
-                              <View style={styles.memberDetails}>
-                                <Text style={styles.memberName}>{member.fullName}</Text>
-                                <Text style={styles.memberAmount}>
-                                  ₹{member.amount.toFixed(2)}
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={[styles.paymentStatus, { backgroundColor: colors.success }]}>
-                              <Text style={styles.paymentStatusText}>Paid</Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Due Members */}
-                  {expense.dueByMembers && expense.dueByMembers.length > 0 && (
-                    <View style={styles.membersContainer}>
-                      <Text style={styles.membersLabel}>Due by Members</Text>
-                      <View style={styles.membersList}>
-                        {expense.dueByMembers.map((member) => (
-                          <View key={member.memberId} style={styles.memberItem}>
-                            <View style={styles.memberInfo}>
-                              <View style={styles.memberAvatar}>
-                                <Text style={styles.memberAvatarText}>
-                                  {member.fullName.charAt(0).toUpperCase()}
-                                </Text>
-                              </View>
-                              <View style={styles.memberDetails}>
-                                <Text style={styles.memberName}>{member.fullName}</Text>
-                                <Text style={styles.memberAmount}>
-                                  ₹{member.amountDue.toFixed(2)}
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={[styles.paymentStatus, { backgroundColor: colors.error }]}>
-                              <Text style={styles.paymentStatusText}>Due</Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
                 </View>
               </View>
             ))
@@ -1125,15 +1083,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.white,
     fontWeight: '500',
-  },
-  paidByContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  paidByAmount: {
-    fontSize: 12,
-    color: colors.fontSecondColor,
-    marginLeft: 8,
   },
 });
 

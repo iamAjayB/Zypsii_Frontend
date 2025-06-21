@@ -14,6 +14,7 @@ const SelectedUserItem = ({ user, isCreator, onRemove }) => {
         </View>
         <View style={styles.userDetails}>
           <Text style={styles.userName}>{user.fullName || user.email}</Text>
+          <Text style={styles.userEmail}>{user.email}</Text>
         </View>
       </View>
       {!isCreator && (
@@ -64,6 +65,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: colors.fontMainColor,
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 14,
+    color: colors.fontSecondColor,
   },
   removeButton: {
     padding: 4,
