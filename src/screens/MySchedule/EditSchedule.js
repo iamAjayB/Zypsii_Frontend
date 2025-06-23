@@ -24,8 +24,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { useToast } from '../../context/ToastContext';
+import Moment from 'moment';
 
 const { width } = Dimensions.get('window');
+
+function formatDateForBackend(dateString) {
+  if (!dateString) return undefined;
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return undefined; // Invalid date
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
 
 const EditSchedule = ({ route, navigation }) => {
   const { scheduleId, scheduleData } = route.params || {};
@@ -417,85 +428,85 @@ const EditSchedule = ({ route, navigation }) => {
   );
 
   // Update the updateAllDayDescriptions function
-  const updateAllDayDescriptions = async (accessToken) => {
-    try {
-      for (let i = 0; i < daySchedules.length; i++) {
-        const daySchedule = daySchedules[i];
+  // const updateAllDayDescriptions = async (accessToken) => {
+  //   try {
+  //     for (let i = 0; i < daySchedules.length; i++) {
+  //       const daySchedule = daySchedules[i];
         
-        if (!daySchedule._id) {
-          console.error(`No description ID found for Day ${i + 1}`);
-          continue;
-        }
+  //       if (!daySchedule._id) {
+  //         console.error(`No description ID found for Day ${i + 1}`);
+  //         continue;
+  //       }
 
-        // Format date as DD-MM-YYYY for Moment.js parsing
-        const currentDate = new Date(formData.fromDate);
-        currentDate.setDate(currentDate.getDate() + i);
+  //       // Format date as DD-MM-YYYY for Moment.js parsing
+  //       const currentDate = new Date(formData.fromDate);
+  //       currentDate.setDate(currentDate.getDate() + i);
         
-        // Format date with leading zeros for consistent parsing
-        const dayNum = String(currentDate.getDate()).padStart(2, '0');
-        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-        const year = currentDate.getFullYear();
-        const formattedDate = `${dayNum}-${month}-${year}`;
+  //       // Format date with leading zeros for consistent parsing
+  //       const dayNum = String(currentDate.getDate()).padStart(2, '0');
+  //       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+  //       const year = currentDate.getFullYear();
+  //       const formattedDate = `${dayNum}-${month}-${year}`;
 
-        // Validate the date format
-        if (!dayNum || !month || !year) {
-          throw new Error(`Invalid date format for Day ${i + 1}`);
-        }
+  //       // Validate the date format
+  //       if (!dayNum || !month || !year) {
+  //         throw new Error(`Invalid date format for Day ${i + 1}`);
+  //       }
 
-        // Set the from location as current day's location
-        if (!daySchedule.latitude || !daySchedule.longitude) {
-          throw new Error(`Missing location for Day ${i + 1}`);
-        }
+  //       // Set the from location as current day's location
+  //       if (!daySchedule.latitude || !daySchedule.longitude) {
+  //         throw new Error(`Missing location for Day ${i + 1}`);
+  //       }
 
-        // Match the backend's expected structure exactly
-        const descriptionData = {
-          Description: daySchedule.description.trim(),
-          date: formattedDate,
-          fromLatitude: daySchedule.latitude.toString(),
-          fromLongitude: daySchedule.longitude.toString(),
-          toLatitude: daySchedule.latitude.toString(),
-          toLongitude: daySchedule.longitude.toString()
-        };
+  //       // Match the backend's expected structure exactly
+  //       const descriptionData = {
+  //         Description: daySchedule.description.trim(),
+  //         date: formattedDate,
+  //         fromLatitude: daySchedule.latitude.toString(),
+  //         fromLongitude: daySchedule.longitude.toString(),
+  //         toLatitude: daySchedule.latitude.toString(),
+  //         toLongitude: daySchedule.longitude.toString()
+  //       };
 
-        console.log('formattedDate', formattedDate);
-        console.log(`Updating Day ${i + 1} (ID: ${daySchedule._id}) with data:`, JSON.stringify(descriptionData, null, 2));
+  //       console.log('formattedDate', formattedDate);
+  //       console.log(`Updating Day ${i + 1} (ID: ${daySchedule._id}) with data:`, JSON.stringify(descriptionData, null, 2));
 
-        try {
-          const response = await fetch(
-            `${base_url}/schedule/edit/descriptions/${scheduleId}/${daySchedule._id}`,
-            {
-              method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(descriptionData)
-            }
-          );
+  //       try {
+  //         const response = await fetch(
+  //           `${base_url}/schedule/edit/descriptions/${scheduleId}/${daySchedule._id}`,
+  //           {
+  //             method: 'PUT',
+  //             headers: {
+  //               'Authorization': `Bearer ${accessToken}`,
+  //               'Content-Type': 'application/json',
+  //             },
+  //             body: JSON.stringify(descriptionData)
+  //           }
+  //         );
 
-          const responseData = await response.json();
+  //         const responseData = await response.json();
           
-          if (!response.ok) {
-            console.error(`Error updating description for Day ${i + 1}:`, {
-              status: response.status,
-              statusText: response.statusText,
-              responseData: responseData,
-              sentData: descriptionData
-            });
-            throw new Error(`Failed to update description for day ${i + 1}: ${responseData.message || 'Unknown error'}`);
-          }
+  //         if (!response.ok) {
+  //           console.error(`Error updating description for Day ${i + 1}:`, {
+  //             status: response.status,
+  //             statusText: response.statusText,
+  //             responseData: responseData,
+  //             sentData: descriptionData
+  //           });
+  //           throw new Error(`Failed to update description for day ${i + 1}: ${responseData.message || 'Unknown error'}`);
+  //         }
 
-          console.log(`Successfully updated description for Day ${i + 1}:`, responseData);
-        } catch (error) {
-          console.error(`Error updating Day ${i + 1}:`, error);
-          throw error;
-        }
-      }
-    } catch (error) {
-      console.error('Error in updateAllDayDescriptions:', error);
-      throw error;
-    }
-  };
+  //         console.log(`Successfully updated description for Day ${i + 1}:`, responseData);
+  //       } catch (error) {
+  //         console.error(`Error updating Day ${i + 1}:`, error);
+  //         throw error;
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Error in updateAllDayDescriptions:', error);
+  //     throw error;
+  //   }
+  // };
 
   // Update handleUpdate function
   const handleUpdate = async () => {
@@ -560,23 +571,21 @@ const EditSchedule = ({ route, navigation }) => {
         tripName: formData.tripName.trim(),
         travelMode: formData.travelMode.trim(),
         visible: formData.visible.trim(),
-        location: {
-          from: {
-            latitude: formData.fromLatitude.toString(),
-            longitude: formData.fromLongitude.toString()
-          },
-          to: {
-            latitude: formData.toLatitude.toString(),
-            longitude: formData.toLongitude.toString()
-          }
-        },
-        Dates: {
-          from: new Date(formData.fromDate).toISOString(),
-          to: formData.toDate ? new Date(formData.toDate).toISOString() : undefined
-        },
-        numberOfDays: parseInt(formData.numberOfDays)
+        fromLatitude: formData.fromLatitude ? parseFloat(formData.fromLatitude) : undefined,
+        fromLongitude: formData.fromLongitude ? parseFloat(formData.fromLongitude) : undefined,
+        toLatitude: formData.toLatitude ? parseFloat(formData.toLatitude) : undefined,
+        toLongitude: formData.toLongitude ? parseFloat(formData.toLongitude) : undefined,
+        numberOfDays: formData.numberOfDays ? parseInt(formData.numberOfDays) : undefined,
       };
-
+      // Only add fromDate and toDate if valid
+      const formattedFromDate = formatDateForBackend(formData.fromDate);
+      if (formattedFromDate) {
+        updateData.fromDate = formattedFromDate;
+      }
+      const formattedToDate = formatDateForBackend(formData.toDate);
+      if (formattedToDate) {
+        updateData.toDate = formattedToDate;
+      }
       // Add banner image if it exists and is not a local file URI
       if (bannerImage && !bannerImage.startsWith('file://')) {
         updateData.bannerImage = bannerImage;
@@ -609,7 +618,7 @@ const EditSchedule = ({ route, navigation }) => {
       }
 
       // Update all day descriptions
-      await updateAllDayDescriptions(accessToken);
+      a//wait updateAllDayDescriptions(accessToken);
 
       console.log('Schedule updated successfully');
       showToast('Schedule updated successfully', 'success');

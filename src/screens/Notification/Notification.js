@@ -22,8 +22,7 @@ const Notification = ({ navigation }) => {
         throw new Error('User not authenticated. Please login again.');
       }
 
-      const response = await fetch('https://admin.zypsii.com/user/getNotifications?read=false&offset=0&limit=10', {
-        headers: {
+      const response = await fetch('https://admin.zypsii.com/user/getNotifications?read=false&offset=0&limit=10', {        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
@@ -63,6 +62,24 @@ const Notification = ({ navigation }) => {
   useEffect(() => {
     fetchNotifications();
   }, []);
+
+  // Mark all notifications as read when this page is opened
+  useEffect(() => {
+    if (notifications.length > 0) {
+      markAllAsRead();
+    }
+  }, [notifications]);
+
+  // Function to mark all as read
+  const markAllAsRead = () => {
+    setNotifications(prevNotifications =>
+      prevNotifications.map(notification => ({ ...notification, read: true }))
+    );
+    // Optionally, call backend API to mark all as read here
+    // Example:
+    // const token = await AsyncStorage.getItem('accessToken');
+    // await fetch(`${base_url}/user/markAllNotificationsRead`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+  };
 
   const handleToggleReadStatus = (id) => {
     setNotifications(prevNotifications =>
@@ -187,11 +204,11 @@ const Notification = ({ navigation }) => {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.header}>Notifications</Text>
-        {unreadCount > 0 && (
+        {/* {unreadCount > 0 && (
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{unreadCount}</Text>
           </View>
-        )}
+        )} */}
       </View>
 
       <View style={styles.tabBar}>

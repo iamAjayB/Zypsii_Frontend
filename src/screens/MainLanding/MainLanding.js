@@ -52,6 +52,7 @@ function MainLanding(props) {
   const [selectedButton, setSelectedButton] = useState('All');
   const buttons = ['All', 'Posts', 'Shorts', 'Schedule'];
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   
   // Loading states
   const [isDiscoverByInterestLoading, setIsDiscoverByInterestLoading] = useState(true);
@@ -208,6 +209,38 @@ function MainLanding(props) {
 
     fetchUnreadMessages();
   }, []);
+
+  // Fetch unread notification count
+  const fetchUnreadNotifications = async () => {
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken) return;
+      const response = await fetch(`${base_url}/user/getNotifications?read=false&offset=0&limit=100`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadNotifications(Array.isArray(data.data) ? data.data.length : 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread notifications:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadNotifications();
+  }, []);
+
+  // Refresh unread notification count when coming back from Notification page
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUnreadNotifications();
+    }, [])
+  );
 
   // Add load more functions for all destination and best destination
   const loadMoreAllDestination = async () => {
@@ -1672,7 +1705,7 @@ function MainLanding(props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('Notification')}
+            onPress={handleNotificationPress}
             style={styles.notificationIconWrapper}
           >
             <MaterialIcons
@@ -1681,6 +1714,11 @@ function MainLanding(props) {
               color="#000"
               style={styles.notificationIcon}
             />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationText}>{unreadNotifications}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -1719,6 +1757,21 @@ function MainLanding(props) {
   );
 
   useStatusBar(colors.btncolor, 'light-content');
+
+  // Mark all notifications as read when notification icon is pressed
+  const handleNotificationPress = async () => {
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      if (!accessToken) return;
+      // Call your backend to mark all as read (if available), otherwise just set to 0 locally
+      // Example: await fetch(`${base_url}/user/markAllNotificationsRead`, { ... })
+      setUnreadNotifications(0);
+      navigation.navigate('Notification');
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+      navigation.navigate('Notification');
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.flex, styles.safeAreaStyle]}>
