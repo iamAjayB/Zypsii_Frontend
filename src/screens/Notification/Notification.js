@@ -8,6 +8,7 @@ const Notification = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasMarkedAllRead, setHasMarkedAllRead] = useState(false);
 
   const fetchNotifications = async () => {
     try {
@@ -22,7 +23,7 @@ const Notification = ({ navigation }) => {
         throw new Error('User not authenticated. Please login again.');
       }
 
-      const response = await fetch('https://admin.zypsii.com/user/getNotifications?read=false&offset=0&limit=10', {        headers: {
+      const response = await fetch('http://192.168.1.6:3030/user/getNotifications?read=false&offset=0&limit=10', {        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
@@ -63,25 +64,46 @@ const Notification = ({ navigation }) => {
     fetchNotifications();
   }, []);
 
-  // Mark all notifications as read when this page is opened
   useEffect(() => {
-    if (notifications.length > 0) {
+    if (notifications.length > 0 && !hasMarkedAllRead) {
       markAllAsRead();
+      markAllNotificationsAsReadOnBackend();
+      setHasMarkedAllRead(true);
     }
-  }, [notifications]);
+  }, [notifications, hasMarkedAllRead]);
 
-  // Function to mark all as read
+  // Function to mark all as read (local state)
   const markAllAsRead = () => {
     setNotifications(prevNotifications =>
       prevNotifications.map(notification => ({ ...notification, read: true }))
     );
-    // Optionally, call backend API to mark all as read here
-    // Example:
-    // const token = await AsyncStorage.getItem('accessToken');
-    // await fetch(`${base_url}/user/markAllNotificationsRead`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
   };
 
-  const handleToggleReadStatus = (id) => {
+  // Function to mark all notifications as read on backend
+  const markAllNotificationsAsReadOnBackend = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('User not authenticated. Please login again.');
+
+      const response = await fetch('http://192.168.1.6:3030/user/updateNotificationStatus', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ read: true }) // No notificationId means bulk update
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update notifications');
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  const handleToggleReadStatus = async (id) => {
     setNotifications(prevNotifications =>
       prevNotifications.map(notification =>
         notification.id === id
@@ -89,6 +111,22 @@ const Notification = ({ navigation }) => {
           : notification
       )
     );
+    // Call backend for single notification
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('User not authenticated. Please login again.');
+
+      await fetch('http://192.168.1.6:3030/user/updateNotificationStatus', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notificationId: id, read: true })
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
   const filteredNotifications = notifications.filter(notification => {
