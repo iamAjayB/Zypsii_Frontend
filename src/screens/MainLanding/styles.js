@@ -61,8 +61,22 @@ const styles = StyleSheet.create({
   },
   notificationIconWrapper: {
     marginLeft: 10,
-    justifyContent: 'flex-end', // Positions the icon on the far right
-    alignItems: 'flex-start', // Aligns vertically with the rest of the content
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: colors.errorColor || '#FF4444',
+    borderRadius: scale(10),
+    minWidth: scale(18),
+    height: scale(18),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: scale(4),
+    zIndex: 10,
   },
   locationText: {
     fontSize: 17,
