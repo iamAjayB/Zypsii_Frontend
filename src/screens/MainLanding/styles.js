@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: colors.errorColor || '#FF4444',
+    backgroundColor: colors.Zypsii_color || '#A60F93',
     borderRadius: scale(10),
     minWidth: scale(18),
     height: scale(18),
@@ -77,6 +77,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: scale(4),
     zIndex: 10,
+  },
+  notificationText: {
+    color: colors.white,
+    fontSize: scale(10),
+    fontWeight: '600',
   },
   locationText: {
     fontSize: 17,
