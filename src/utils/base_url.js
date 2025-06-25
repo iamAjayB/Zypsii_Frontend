@@ -4,13 +4,16 @@ import Constants from 'expo-constants'
 
 const ENV = {
   development: {
-    SERVER_URL: 'https://admin.zypsii.com',
+    SERVER_URL: 'http://192.168.2.10:3030',
   },
   staging: {
-    SERVER_URL: 'https://admin.zypsii.com',
+    SERVER_URL: 'http://192.168.2.10:3030',
   },
   production: {
-    SERVER_URL: 'https://admin.zypsii.com',
+    SERVER_URL: 'http://192.168.2.10:3030',
+  },
+  socket: {
+    SOCKET_URL: 'http://192.168.2.10:3030',
   }
 }
 
@@ -35,4 +38,6 @@ const getEnvVars = () => {
   }
 }
 
-export const base_url = getEnvVars().SERVER_URL || 'https://admin.zypsii.com';
+export const base_url = getEnvVars().SERVER_URL;
+
+export const socket_url = ENV.socket.SOCKET_URL;

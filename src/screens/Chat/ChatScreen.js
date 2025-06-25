@@ -20,7 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
-import { API_URL } from '../../config';
+import { socket_url } from '../../utils/base_url';
 import { colors } from '../../utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video } from 'expo-av';
@@ -206,7 +206,7 @@ const ChatScreen = ({ route, navigation }) => {
       setCurrentUserId(userIdFromStorage);
 
       // Initialize socket connection with reconnection options
-      const socketInstance = io(API_URL, {
+      const socketInstance = io(socket_url, {
         auth: {
           token: token
         },

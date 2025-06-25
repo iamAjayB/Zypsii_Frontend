@@ -5,10 +5,9 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionic from 'react-native-vector-icons/Ionicons';
 import Entypo from 'react-native-vector-icons/Entypo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { base_url } from '../../utils/base_url';
+import { base_url, socket_url } from '../../utils/base_url';
 import FollowButton from '../Follow/FollowButton';
 import io from 'socket.io-client';
-import { SOCKET_URL } from '../../config';
 import Toast from '../Toast/Toast';
 const { width } = Dimensions.get('window');
 
@@ -54,7 +53,7 @@ const Post = ({ item, isFromProfile, onDelete, isVisible }) => {
 
     // Initialize socket connection if not already connected
     if (!socketRef.current) {
-      socketRef.current = io(SOCKET_URL);
+      socketRef.current = io(socket_url);
 
       // Wait for socket to connect before setting up listeners
       socketRef.current.on('connect', () => {

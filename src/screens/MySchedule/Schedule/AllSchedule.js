@@ -6,10 +6,9 @@ import Icon from 'react-native-vector-icons/Ionicons'; // Import vector icons
 import { AntDesign } from '@expo/vector-icons'; // Import AntDesign icons
 import { colors } from '../../../utils';// Import colors
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { base_url } from '../../../utils/base_url';
+import { base_url, socket_url } from '../../../utils/base_url';
 import { useToast } from '../../../context/ToastContext';
 import io from 'socket.io-client';
-import { SOCKET_URL } from '../../../config';
 
 const AllSchedule = ({item, isFromProfile}) => {
   const navigation = useNavigation(); // Access navigation object
@@ -62,7 +61,7 @@ const AllSchedule = ({item, isFromProfile}) => {
   useEffect(() => {
     // Initialize socket connection if not already connected
     if (!socketRef.current) {
-      socketRef.current = io(SOCKET_URL, {
+      socketRef.current = io(socket_url, {
         transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: 5,

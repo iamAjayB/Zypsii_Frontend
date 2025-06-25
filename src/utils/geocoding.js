@@ -1,4 +1,4 @@
-import { API_URL } from '../config';
+import { base_url } from '../utils/base_url';
 
 export const getAddressFromCoordinates = async (location) => {
   try {
@@ -12,7 +12,7 @@ export const getAddressFromCoordinates = async (location) => {
     // If we have coordinates, fetch the address from our backend
     if (location.latitude && location.longitude) {
       const response = await fetch(
-        `${API_URL}/api/places/reverse-geocode?lat=${location.latitude}&lng=${location.longitude}`
+        `${base_url}/api/places/reverse-geocode?lat=${location.latitude}&lng=${location.longitude}`
       );
       
       if (!response.ok) {

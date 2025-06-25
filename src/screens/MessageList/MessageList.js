@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, Text, StyleSheet, TextInput, Image, ActivityIndicator, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { API_URL } from '../../config';
+import { base_url } from '../../utils/base_url';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useToast } from '../../context/ToastContext';
 
@@ -29,7 +29,7 @@ const MessageList = ({ navigation }) => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.get(`${API_URL}/user/list-chat-members`, {
+      const response = await axios.get(`${base_url}/user/list-chat-members`, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

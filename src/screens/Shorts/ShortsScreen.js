@@ -21,10 +21,9 @@ import Feather from 'react-native-vector-icons/Feather';
 import { TextDefault } from '../../components';
 import { colors } from '../../utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { base_url } from '../../utils/base_url';
+import { base_url, socket_url } from '../../utils/base_url';
 import FollowButton from '../../components/Follow/FollowButton';
 import io from 'socket.io-client';
-import { SOCKET_URL } from '../../config';
 import { useToast } from '../../context/ToastContext';
 
 const { height, width } = Dimensions.get('window');
@@ -146,7 +145,7 @@ function ShortsScreen({ route, navigation }) {
 
     // Initialize socket connection
     if (!socketRef.current) {
-      socketRef.current = io(SOCKET_URL);
+      socketRef.current = io(socket_url);
 
       socketRef.current.on('connect', () => {
         console.log('Socket connected:', socketRef.current.id);
