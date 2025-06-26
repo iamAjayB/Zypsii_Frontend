@@ -45,13 +45,19 @@ import { useToast } from '../../context/ToastContext';
 
 const { height, width } = Dimensions.get('window');
 
+const outdoorsAndAdventureTags = [
+   "Beach", "Camping", "Diving", "Fishing",
+   "Hiking", "Mountains", "Nature", "Outdoors","Free Diving",
+ 
+];
+
+
 function MainLanding(props) { 
   const navigation = useNavigation();
   const { scheduleData } = useSchedule();
   const { showToast } = useToast();
   const [selectedButton, setSelectedButton] = useState('All');
   const buttons = ['All', 'Posts', 'Shorts', 'Schedule'];
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   
   // Loading states
@@ -183,32 +189,6 @@ function MainLanding(props) {
       return () => backHandler.remove();
     }, [])
   );
-
-  // Add useEffect to fetch unread messages
-  useEffect(() => {
-    const fetchUnreadMessages = async () => {
-      try {
-        const accessToken = await AsyncStorage.getItem('accessToken');
-        if (!accessToken) return;
-
-        const response = await fetch(`${base_url}/api/messages/unread`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadMessages(data.count || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching unread messages:', error);
-      }
-    };
-
-    fetchUnreadMessages();
-  }, []);
 
   // Fetch unread notification count
   const fetchUnreadNotifications = async () => {
@@ -1419,12 +1399,29 @@ function MainLanding(props) {
     <View style={styles.titleSpacerdesti}>
       <View style={styles.sectionHeader}>
         <TextDefault textColor={colors.fontMainColor} H5 bold>
-          {'Discover by Nearest'}
+          {'Outdoors and adventure'}
         </TextDefault>
         <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'nearest' })}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      {outdoorsAndAdventureTags.map((tag, idx) => (
+        <View
+          key={tag}
+          style={{
+            backgroundColor: '#f2f2f2',
+            borderRadius: 20,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            margin: 4,
+          }}
+        >
+          <Text style={{ color: '#333', fontSize: 15 }}>{tag}</Text>
+        </View>
+      ))}
+    </View>
 
       {isNearestLoading && discoverbynearest.length === 0 ? (
         <HorizontalListLoader count={8} />
@@ -1641,11 +1638,7 @@ function MainLanding(props) {
             ) : (
               renderScheduleContainer()
             )}
-            {/* {isDiscoverByInterestLoading ? (
-              <HorizontalListLoader count={8} />
-            ) : (
-              renderDiscoverByInterest()
-            )} */}
+            
             {isNearestLoading ? (
               <HorizontalListLoader count={8} />
             ) : (
@@ -1697,11 +1690,6 @@ function MainLanding(props) {
               color="#000"
               style={[styles.icon, { marginRight: 5 }]}
             />
-            {unreadMessages > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{unreadMessages}</Text>
-              </View>
-            )}
           </TouchableOpacity>
 
           <TouchableOpacity

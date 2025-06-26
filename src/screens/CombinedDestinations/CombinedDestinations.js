@@ -5,7 +5,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Dimensions
+  Dimensions,
+  Text
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextDefault } from '../../components';
@@ -25,6 +26,14 @@ const VIEW_TYPES = {
   BEST: 'best',
   ALL: 'all'
 };
+
+// Categories data
+const categories = [
+  "Backpacking", "Beach Bars", "Camping", "Diving", "Fishing",
+  "Free Diving", "Hiking", "Mountains", "Nature", "Outdoors",
+  "Rock Climbing", "Sailing", "Scuba Diving", "Snorkeling", "Surfing",
+  "Swimming", "Trekking", "Water Sports", "Wildlife", "Adventure Sports"
+];
 
 function CombinedDestinations() {
   const navigation = useNavigation();
@@ -117,6 +126,24 @@ function CombinedDestinations() {
     </View>
   );
 
+  const renderCategories = () => (
+    <View style={styles.categoriesContainer}>
+      <TextDefault textColor={colors.fontMainColor} H5 bold style={styles.categoriesTitle}>
+        Categories
+      </TextDefault>
+      <View style={styles.categoriesWrapper}>
+        {categories.map((category, idx) => (
+          <View
+            key={category}
+            style={styles.categoryTag}
+          >
+            <Text style={styles.categoryText}>{category}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
   const renderItem = ({ item }) => (
     <ProductCard
       styles={styles.itemCardContainer}
@@ -129,6 +156,7 @@ function CombinedDestinations() {
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
+      {renderCategories()}
       {loading && !pagination.nextPageToken ? (
         <View style={styles.initialLoaderContainer}>
           <ActivityIndicator size="large" color={colors.btncolor} />
@@ -195,6 +223,31 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: scale(40),
+  },
+  categoriesContainer: {
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(16),
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderColor,
+  },
+  categoriesTitle: {
+    marginBottom: scale(12),
+  },
+  categoriesWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  categoryTag: {
+    backgroundColor: '#f2f2f2',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    margin: 4,
+  },
+  categoryText: {
+    color: '#333',
+    fontSize: 15,
   },
   listContainer: {
     paddingTop: scale(10),
