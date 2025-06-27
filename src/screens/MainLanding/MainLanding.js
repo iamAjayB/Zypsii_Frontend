@@ -46,9 +46,14 @@ import { useToast } from '../../context/ToastContext';
 const { height, width } = Dimensions.get('window');
 
 const outdoorsAndAdventureTags = [
-   "Beach", "Camping", "Diving", "Fishing",
-   "Hiking", "Mountains", "Nature", "Outdoors","Free Diving",
- 
+   "Beach",
+   "Beaches",
+   "Mountains",
+   "Hiking",
+   "Trekking",
+   "Camping",
+   "Diving",
+   "Fishing",
 ];
 
 
@@ -114,6 +119,31 @@ function MainLanding(props) {
   const [userLocation, setUserLocation] = useState({
     latitude: 13.0843,
     longitude: 80.2705
+  });
+
+  // --- STATE FOR OUTDOORS AND ADVENTURE TAGS ---
+  const [selectedAdventureTag, setSelectedAdventureTag] = useState(outdoorsAndAdventureTags[0]);
+  const [adventurePlaces, setAdventurePlaces] = useState([]);
+  const [isAdventureLoading, setIsAdventureLoading] = useState(false);
+  const [adventurePagination, setAdventurePagination] = useState({
+    nextPageToken: null,
+    hasMore: false
+  });
+
+  // --- STATE FOR MOUNTAINS PAGINATION ---
+  const [mountainPlaces, setMountainPlaces] = useState([]);
+  const [isMountainsLoading, setIsMountainsLoading] = useState(false);
+  const [mountainsPagination, setMountainsPagination] = useState({
+    nextPageToken: null,
+    hasMore: false
+  });
+
+  // --- STATE FOR VIEW POINTS PAGINATION ---
+  const [viewPointsPlaces, setViewPointsPlaces] = useState([]);
+  const [isViewPointsLoading, setIsViewPointsLoading] = useState(false);
+  const [viewPointsPagination, setViewPointsPagination] = useState({
+    nextPageToken: null,
+    hasMore: false
   });
 
   // Add function to update live location
@@ -377,64 +407,10 @@ function MainLanding(props) {
       });
 
       // Best Destination
-      fetch(`${base_url}/schedule/places/getNearest?bestDestination=true`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (Array.isArray(data?.data)) {
-          setBest_destination(data.data.slice(0, 100).map(item => ({
-            id: item._id || item.name,
-            image: item.image,
-            name: item.name,
-            rating: item.rating,
-            distanceInKilometer: item.distanceInKilometer
-          })));
-          setBestDestinationPagination({
-            nextPageToken: data.nextPageToken || null,
-            hasMore: !!data.nextPageToken
-          });
-        }
-        setIsBestDestinationLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching best destination:', error);
-        setBest_destination([]);
-        setIsBestDestinationLoading(false);
-      });
+      await handleMountainsTagClick();
 
       // All Destination
-      fetch(`${base_url}/schedule/places/getNearest`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (Array.isArray(data?.data)) {
-          setAll_destination(data.data.slice(0, 100).map(item => ({
-            id: item._id || item.name,
-            image: item.image,
-            name: item.name,
-            rating: item.rating,
-            distanceInKilometer: item.distanceInKilometer
-          })));
-          setAllDestinationPagination({
-            nextPageToken: data.nextPageToken || null,
-            hasMore: !!data.nextPageToken
-          });
-        }
-        setIsAllDestinationLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching all destination:', error);
-        setAll_destination([]);
-        setIsAllDestinationLoading(false);
-      });
+      await handleViewPointsTagClick();
 
       // All Schedule
       fetch(`${base_url}/schedule/listing/filter?filter=Public`, {
@@ -836,7 +812,7 @@ function MainLanding(props) {
       });
 
       const data = await response.json();
-      
+
       if (Array.isArray(data?.data)) {
         const newData = data.data.map(item => ({
           id: item._id || item.image,
@@ -1394,77 +1370,392 @@ function MainLanding(props) {
     );
   };
 
+  // --- HANDLER FOR TAG CLICK ---
+  const handleAdventureTagClick = async (tag) => {
+    setSelectedAdventureTag(tag);
+    setIsAdventureLoading(true);
+    setAdventurePlaces([]);
+    setAdventurePagination({ nextPageToken: null, hasMore: false });
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      const url = `${base_url}/schedule/places/getNearest?type=${tag}&keyword=${tag}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      const data = await response.json();
 
+      if (Array.isArray(data?.data)) {
+        setAdventurePlaces(data?.data?.map(item => ({
+          id: item._id,
+          image: item.image,
+          name: item.name,
+          address: item.address,
+          rating: parseFloat(item.rating) || 0,
+          distanceInKilometer: item.distanceInKilometer,
+          location: item.location
+        })));
+        setAdventurePagination({
+          nextPageToken: data?.nextPageToken || null,
+          hasMore: !!data?.nextPageToken
+        });
+      } else {
+        setAdventurePlaces([]);
+        setAdventurePagination({ nextPageToken: null, hasMore: false });
+      }
+    } catch (error) {
+      setAdventurePlaces([]);
+      setAdventurePagination({ nextPageToken: null, hasMore: false });
+    } finally {
+      setIsAdventureLoading(false);
+    }
+  };
+
+  // --- PAGINATION FOR ADVENTURE PLACES ---
+  const loadMoreAdventurePlaces = async () => {
+    if (!adventurePagination.hasMore || isAdventureLoading) return;
+    setIsAdventureLoading(true);
+
+    let nextPageToken = adventurePagination.nextPageToken;
+    let hasMore = true;
+    let allNewData = [];
+
+    const accessToken = await AsyncStorage.getItem('accessToken');
+
+    try {
+      while (hasMore && nextPageToken) {
+        const url = `${base_url}/schedule/places/getNearest?nextPageToken=${nextPageToken}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        const data = await response.json();
+
+        if (Array.isArray(data?.data)) {
+          const newData = data.data.map(item => ({
+            id: item._id || item.name,
+            image: item.image,
+            name: item.name,
+            address: item.address,
+            rating: parseFloat(item.rating) || 0,
+            distanceInKilometer: item.distanceInKilometer || 0,
+            location: item.location
+          }));
+          allNewData = [...allNewData, ...newData];
+          nextPageToken = data.nextPageToken || null;
+          hasMore = !!data.nextPageToken;
+        } else {
+          hasMore = false;
+          nextPageToken = null;
+        }
+      }
+
+      // Add all new data to the state at once
+      setAdventurePlaces(prev => [...prev, ...allNewData]);
+      setAdventurePagination({
+        nextPageToken: nextPageToken,
+        hasMore: !!nextPageToken
+      });
+    } catch (error) {
+      setAdventurePagination({ nextPageToken: null, hasMore: false });
+    } finally {
+      setIsAdventureLoading(false);
+    }
+  };
+
+  // Add function to fetch paginated mountains data
+  const handleMountainsTagClick = async () => {
+    setIsMountainsLoading(true);
+    setMountainPlaces([]);
+    setMountainsPagination({ nextPageToken: null, hasMore: false });
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      const url = `${base_url}/schedule/places/getNearest?type=mountains&keyword=Mountains`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (Array.isArray(data?.data)) {
+        setMountainPlaces(data.data.map(item => ({
+          id: item._id || item.name,
+          image: item.image,
+          name: item.name,
+          address: item.address,
+          rating: parseFloat(item.rating) || 0,
+          distanceInKilometer: item.distanceInKilometer,
+          location: item.location
+        })));
+        setMountainsPagination({
+          nextPageToken: data?.nextPageToken || null,
+          hasMore: !!data?.nextPageToken
+        });
+      } else {
+        setMountainPlaces([]);
+        setMountainsPagination({ nextPageToken: null, hasMore: false });
+      }
+    } catch (error) {
+      setMountainPlaces([]);
+      setMountainsPagination({ nextPageToken: null, hasMore: false });
+    } finally {
+      setIsMountainsLoading(false);
+    }
+  };
+
+  // PAGINATION FOR MOUNTAINS
+  const loadMoreMountains = async () => {
+    if (!mountainsPagination.hasMore || isMountainsLoading) return;
+    setIsMountainsLoading(true);
+    let nextPageToken = mountainsPagination.nextPageToken;
+    let hasMore = true;
+    let allNewData = [];
+    const accessToken = await AsyncStorage.getItem('accessToken');
+    try {
+      while (hasMore && nextPageToken) {
+        const url = `${base_url}/schedule/places/getNearest?type=mountains&keyword=Mountains&nextPageToken=${nextPageToken}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        const data = await response.json();
+        if (Array.isArray(data?.data)) {
+          const newData = data.data.map(item => ({
+            id: item._id || item.name,
+            image: item.image,
+            name: item.name,
+            address: item.address,
+            rating: parseFloat(item.rating) || 0,
+            distanceInKilometer: item.distanceInKilometer || 0,
+            location: item.location
+          }));
+          allNewData = [...allNewData, ...newData];
+          nextPageToken = data.nextPageToken || null;
+          hasMore = !!data.nextPageToken;
+        } else {
+          hasMore = false;
+          nextPageToken = null;
+        }
+      }
+      setMountainPlaces(prev => [...prev, ...allNewData]);
+      setMountainsPagination({
+        nextPageToken: nextPageToken,
+        hasMore: !!nextPageToken
+      });
+    } catch (error) {
+      setMountainsPagination({ nextPageToken: null, hasMore: false });
+    } finally {
+      setIsMountainsLoading(false);
+    }
+  };
+
+  // Add function to fetch paginated view points data
+  const handleViewPointsTagClick = async () => {
+    setIsViewPointsLoading(true);
+    setViewPointsPlaces([]);
+    setViewPointsPagination({ nextPageToken: null, hasMore: false });
+    try {
+      const accessToken = await AsyncStorage.getItem('accessToken');
+      const url = `${base_url}/schedule/places/getNearest?type=view points&keyword=View Points`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (Array.isArray(data?.data)) {
+        setViewPointsPlaces(data.data.map(item => ({
+          id: item._id || item.name,
+          image: item.image,
+          name: item.name,
+          address: item.address,
+          rating: parseFloat(item.rating) || 0,
+          distanceInKilometer: item.distanceInKilometer,
+          location: item.location
+        })));
+        setViewPointsPagination({
+          nextPageToken: data?.nextPageToken || null,
+          hasMore: !!data?.nextPageToken
+        });
+      } else {
+        setViewPointsPlaces([]);
+        setViewPointsPagination({ nextPageToken: null, hasMore: false });
+      }
+    } catch (error) {
+      setViewPointsPlaces([]);
+      setViewPointsPagination({ nextPageToken: null, hasMore: false });
+    } finally {
+      setIsViewPointsLoading(false);
+    }
+  };
+
+  // PAGINATION FOR VIEW POINTS
+  const loadMoreViewPoints = async () => {
+    if (!viewPointsPagination.hasMore || isViewPointsLoading) return;
+    setIsViewPointsLoading(true);
+    let nextPageToken = viewPointsPagination.nextPageToken;
+    let hasMore = true;
+    let allNewData = [];
+    const accessToken = await AsyncStorage.getItem('accessToken');
+    try {
+      while (hasMore && nextPageToken) {
+        const url = `${base_url}/schedule/places/getNearest?type=view points&keyword=View Points&nextPageToken=${nextPageToken}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        const data = await response.json();
+        if (Array.isArray(data?.data)) {
+          const newData = data.data.map(item => ({
+            id: item._id || item.name,
+            image: item.image,
+            name: item.name,
+            address: item.address,
+            rating: parseFloat(item.rating) || 0,
+            distanceInKilometer: item.distanceInKilometer || 0,
+            location: item.location
+          }));
+          allNewData = [...allNewData, ...newData];
+          nextPageToken = data.nextPageToken || null;
+          hasMore = !!data.nextPageToken;
+        } else {
+          hasMore = false;
+          nextPageToken = null;
+        }
+      }
+      setViewPointsPlaces(prev => [...prev, ...allNewData]);
+      setViewPointsPagination({
+        nextPageToken: nextPageToken,
+        hasMore: !!nextPageToken
+      });
+    } catch (error) {
+      setViewPointsPagination({ nextPageToken: null, hasMore: false });
+    } finally {
+      setIsViewPointsLoading(false);
+    }
+  };
+
+  //Changed to Outdoors and adventure
   const renderDiscoverByNearest = () => (
     <View style={styles.titleSpacerdesti}>
-      <View style={styles.sectionHeader}>
+      <View className="sectionHeader" style={styles.sectionHeader}>
         <TextDefault textColor={colors.fontMainColor} H5 bold>
           {'Outdoors and adventure'}
         </TextDefault>
-        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'nearest' })}>
+        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { outDoorTag: selectedAdventureTag})}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-      {outdoorsAndAdventureTags.map((tag, idx) => (
-        <View
-          key={tag}
-          style={{
-            backgroundColor: '#f2f2f2',
-            borderRadius: 20,
-            paddingHorizontal: 14,
-            paddingVertical: 6,
-            margin: 4,
-          }}
-        >
-          <Text style={{ color: '#333', fontSize: 15 }}>{tag}</Text>
-        </View>
-      ))}
-    </View>
-
-      {isNearestLoading && discoverbynearest.length === 0 ? (
-        <HorizontalListLoader count={8} />
+      {/* TAGS ROW */}
+      <FlatList
+        data={outdoorsAndAdventureTags}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item}
+        contentContainerStyle={{ paddingHorizontal: 8, marginBottom: 10 }}
+        renderItem={({ item: tag }) => (
+          <TouchableOpacity
+            style={{
+              backgroundColor: selectedAdventureTag === tag ? colors.Zypsii_color : '#f2f2f2',
+              borderRadius: 20,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              marginRight: 8,
+            }}
+            onPress={() => handleAdventureTagClick(tag)}
+          >
+            <Text style={{ color: selectedAdventureTag === tag ? '#fff' : '#333', fontSize: 15 }}>{tag}</Text>
+          </TouchableOpacity>
+        )}
+      />
+      {/* PLACES LIST */}
+      {selectedAdventureTag ? (
+        isAdventureLoading && adventurePlaces.length === 0 ? (
+          <HorizontalListLoader count={8} />
+        ) : adventurePlaces.length === 0 ? (
+          <View style={{ alignItems: 'center', padding: 20 }}>
+            <TextDefault textColor={colors.fontSecondColor} H5>
+              No places found for {selectedAdventureTag}
+            </TextDefault>
+          </View>
+        ) : (
+          <FlatList
+            data={adventurePlaces}
+            keyExtractor={(item) => item.id}
+            horizontal={true}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('DestinationDetail', { id: item.id })}
+                activeOpacity={0.8}
+              >
+                <DiscoverByNearest
+                  styles={styles.itemCardContainer}
+                  {...item}
+                  name={item.name}
+                  address={item.address}
+                  image={item.image}
+                  rating={item.rating}
+                  distance={item.distanceInKilometer}
+                  location={item.location}
+                />
+              </TouchableOpacity>
+            )}
+            onEndReached={loadMoreAdventurePlaces}
+            onEndReachedThreshold={0.2}
+            ListFooterComponent={() =>
+              isAdventureLoading ? (
+                <View style={{ padding: 10 }}>
+                  <ActivityIndicator size="small" color={colors.btncolor} />
+                </View>
+              ) : null
+            }
+          />
+        )
       ) : (
-        <FlatList
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item, index) => item.id}
-          data={discoverbynearest}
-          renderItem={({ item, index }) => (
-            <DiscoverByNearest 
-              styles={styles.itemCardContainer} 
-              {...item}
-              rating={item.rating}
-            />
-          )}
-          onEndReached={loadMoreDiscoverByNearest}
-          onEndReachedThreshold={0.2}
-          ListFooterComponent={() => (
-            isNearestLoading ? (
-              <View style={{ padding: 10 }}>
-                <ActivityIndicator size="small" color={colors.btncolor} />
-              </View>
-            ) : null
-          )}
-          ref={(ref) => (this.nearestListRef = ref)}
-        />
+        <View style={{ alignItems: 'center', padding: 20 }}>
+          <TextDefault textColor={colors.fontSecondColor} H5>
+            Select a tag to explore places
+          </TextDefault>
+        </View>
       )}
     </View>
   );
 
+  //Changed to Mountains
   const renderBestDestination = () => (
     <View style={styles.titleSpacerdesti}>
       <View style={styles.sectionHeader}>
         <TextDefault textColor={colors.fontMainColor} H5 bold>
-          {'Best Destination'}
+          {'Mountains'}
         </TextDefault>
-        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'best' })}>
+        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', {outDoorTag: 'mountains'})}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
 
-      {isBestDestinationLoading && best_destination.length === 0 ? (
+      {isMountainsLoading && mountainPlaces.length === 0 ? (
         renderInitialLoading()
       ) : (
         <View>
@@ -1472,20 +1763,28 @@ function MainLanding(props) {
             horizontal={true}
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item, index) => item.id}
-            data={best_destination}
+            data={mountainPlaces}
             renderItem={({ item, index }) => (
-              <ProductCard 
-                styles={styles.itemCardContainer} 
-                {...item}
-                rating={parseInt(item.rating) || 0}
-                distance={item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null}
-              />
+              <TouchableOpacity
+                onPress={() => navigation.navigate('DestinationDetail', { id: item.id })}
+                activeOpacity={0.8}
+              >
+                <DiscoverByNearest
+                  styles={styles.itemCardContainer}
+                  name={item.name}
+                  address={item.address}
+                  image={item.image}
+                  rating={parseFloat(item.rating) || 0}
+                  distance={item?.distanceInKilometer}
+                  location={item.location}
+                />
+              </TouchableOpacity>
             )}
-            onEndReached={loadMoreBestDestination}
+            onEndReached={loadMoreMountains}
             onEndReachedThreshold={0.2}
             ref={(ref) => (this.bestDestinationListRef = ref)}
             ListHeaderComponent={() => (
-              loadingNewBestItems ? (
+              isMountainsLoading ? (
                 <View style={{ flexDirection: 'row', marginRight: 10 }}>
                   {[1, 2, 3, 4].map((_, index) => (
                     <View key={index} style={{ marginRight: 10 }}>
@@ -1529,39 +1828,48 @@ function MainLanding(props) {
     </View>
   );
 
+  //Changed to render View Points details
   const renderAllDestination = () => (
     <View style={styles.titleSpacerdesti}>
       <View style={styles.sectionHeader}>
         <TextDefault textColor={colors.fontMainColor} H5 bold>
-          {'All Destination'}
+          {'View Points'}
         </TextDefault>
-        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { viewType: 'all' })}>
+        <TouchableOpacity onPress={() => navigation.navigate('CombinedDestinations', { outDoorTag: 'view points' })}>
           <TextDefault textColor={colors.btncolor} H5>View All</TextDefault>
         </TouchableOpacity>
       </View>
 
-      {isAllDestinationLoading && all_destination.length === 0 ? (
+      {isViewPointsLoading && viewPointsPlaces.length === 0 ? (
         renderInitialLoading()
       ) : (
         <View>
           <FlatList
             horizontal={true}
             showsHorizontalScrollIndicator={false}
-            data={all_destination}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ProductCard 
-                styles={styles.itemCardContainer} 
-                {...item}
-                rating={parseFloat(item.rating) || 0}
-                distance={item.distanceInKilometer ? parseFloat(item.distanceInKilometer).toFixed(1) : null}
-              />
+            keyExtractor={(item, index) => item.id}
+            data={viewPointsPlaces}
+            renderItem={({ item, index }) => (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('DestinationDetail', { id: item.id })}
+                activeOpacity={0.8}
+              >
+                <DiscoverByNearest
+                  styles={styles.itemCardContainer}
+                  name={item.name}
+                  address={item.address}
+                  image={item.image}
+                  rating={parseFloat(item.rating) || 0}
+                  distance={item?.distanceInKilometer}
+                  location={item.location}
+                />
+              </TouchableOpacity>
             )}
-            onEndReached={loadMoreAllDestination}
+            onEndReached={loadMoreViewPoints}
             onEndReachedThreshold={0.2}
-            ref={(ref) => (this.allDestinationListRef = ref)}
+            ref={(ref) => (this.viewPointsListRef = ref)}
             ListHeaderComponent={() => (
-              loadingNewItems ? (
+              isViewPointsLoading ? (
                 <View style={{ flexDirection: 'row', marginRight: 10 }}>
                   {[1, 2, 3, 4].map((_, index) => (
                     <View key={index} style={{ marginRight: 10 }}>
@@ -1644,7 +1952,7 @@ function MainLanding(props) {
             ) : (
               renderDiscoverByNearest()
             )}
-            {isBestDestinationLoading ? (
+            {isMountainsLoading ? (
               <HorizontalListLoader count={8} />
             ) : (
               renderBestDestination()
@@ -1760,6 +2068,15 @@ function MainLanding(props) {
       navigation.navigate('Notification');
     }
   };
+
+  useEffect(() => {
+    if (outdoorsAndAdventureTags[0]) {
+      handleAdventureTagClick(outdoorsAndAdventureTags[0]);
+    }
+    handleMountainsTagClick();
+    handleViewPointsTagClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <SafeAreaView style={[styles.flex, styles.safeAreaStyle]}>
