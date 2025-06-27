@@ -126,14 +126,18 @@ const DiscoverByNearest = (props) => {
         <TextDefault numberOfLines={1} style={styles.discoverCardTitle}>
           {props.title}
         </TextDefault>
-        <TextDefault numberOfLines={2} style={styles.discoverCardSubtitle}>
-          {props.subtitle && props.subtitle.length > 0 ? props.subtitle : 'No address available'}
+        <TextDefault numberOfLines={1} style={styles.discoverCardSubtitle}>
+          {props.name && props.name.trim().length > 0
+            ? props.name
+            : props.subtitle && props.subtitle.trim().length > 0
+              ? props.subtitle
+              : 'No address available'}
         </TextDefault>
         <View style={styles.discoverCardFooter}>
           <View style={styles.discoverCardDistance}>
             <Ionicons name="location-outline" size={14} color={colors.Zypsii_color} />
             <TextDefault style={styles.distanceText}>
-            {props.distance ? `${props.distance} km` : 'N/A'}
+            {props.distance ? `${props.distance}` : '0 km'}
             </TextDefault>
           </View>
           <View style={styles.discoverCardRating}>
