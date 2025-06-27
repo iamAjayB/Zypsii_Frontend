@@ -106,7 +106,7 @@ const DummyScreen = ({ navigation, route }) => {
           'Content-Type': 'application/json'
         }
       });
-
+console.log('postCountResponse', postCountResponse);
       if (postCountResponse.ok) {
         const postCountResult = await postCountResponse.json();
         if (postCountResult.success) {

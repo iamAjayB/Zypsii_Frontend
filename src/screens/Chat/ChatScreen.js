@@ -789,6 +789,20 @@ const ChatScreen = ({ route, navigation }) => {
                 </View>
               </View>
               <View style={styles.sharedContentTextContainer}>
+                {/* User info section */}
+                {sharedContent.createdBy && (
+                  <View style={styles.sharedContentUserInfo}>
+                    <Image
+                      source={{
+                        uri: sharedContent.createdBy.profilePicture || 'https://via.placeholder.com/24'
+                      }}
+                      style={styles.sharedContentUserAvatar}
+                    />
+                    <Text style={styles.sharedContentUsername} numberOfLines={1}>
+                      {sharedContent.createdBy.userName || 'User'}
+                    </Text>
+                  </View>
+                )}
                 <Text style={styles.sharedContentTitle} numberOfLines={2}>
                   {sharedContent.title || 'Shared short'}
                 </Text>
@@ -981,11 +995,28 @@ const ChatScreen = ({ route, navigation }) => {
                 />
               ) : (
                 <Image 
-                  source={{ uri: content.thumbnail }}
+                  source={{ uri: content.thumbnailUrl || content.thumbnail }}
                   style={styles.previewImage}
                 />
               )}
-              <Text style={styles.previewTitle}>{content.caption || 'Shared short'}</Text>
+              {/* User info overlay */}
+              {content.createdBy && (
+                <View style={styles.previewUserInfo}>
+                  <Image
+                    source={{
+                      uri: content.createdBy.profilePicture || 'https://via.placeholder.com/32'
+                    }}
+                    style={styles.previewUserAvatar}
+                  />
+                  <Text style={styles.previewUsername}>
+                    {content.createdBy.userName || 'User'}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.previewTitle}>{content.title || content.caption || 'Shared short'}</Text>
+              {content.description && (
+                <Text style={styles.previewDescription}>{content.description}</Text>
+              )}
             </View>
           );
         case 'story':
@@ -1776,6 +1807,43 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 6,
     fontWeight: '500',
+  },
+  sharedContentUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sharedContentUserAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  sharedContentUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  previewUserInfo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  previewUserAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  previewUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
 

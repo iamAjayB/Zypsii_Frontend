@@ -57,6 +57,8 @@ function ProfileDashboard(props) {
 
       if (result.success && result.data && result.data.length > 0) {
         const userData = result.data[0];
+        
+        // Set basic profile info
         setProfileInfo({
           id: userData._id || '',
           name: userData.fullName || '',
@@ -64,11 +66,68 @@ function ProfileDashboard(props) {
           email: userData.email || '',
           website: userData.website || '',
           bio: userData.bio || '',
-          Posts: userData.posts?.length?.toString() || '0',
-          Followers: userData.followers?.length?.toString() || '0',
-          Following: userData.following?.length?.toString() || '0',
-          image: userData.profileImage || null
+          Posts: '0', // Will be fetched separately
+          Followers: '0', // Will be fetched separately
+          Following: '0', // Will be fetched separately
+          image: userData.profilePicture || null
         });
+
+        // Fetch post count
+        const postCountResponse = await fetch(`${base_url}/post/listing/postCount?userId=${userData._id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (postCountResponse.ok) {
+          const postCountResult = await postCountResponse.json();
+          if (postCountResult.success) {
+            setProfileInfo(prev => ({
+              ...prev,
+              Posts: postCountResult.postCountData?.toString() || '0'
+            }));
+          }
+        }
+
+        // Fetch followers count
+        const followersResponse = await fetch(`${base_url}/follow/getFollowers/${userData._id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (followersResponse.ok) {
+          const followersResult = await followersResponse.json();
+          if (followersResult.status) {
+            setProfileInfo(prev => ({
+              ...prev,
+              Followers: followersResult.followersCount?.toString() || '0'
+            }));
+          }
+        }
+
+        // Fetch following count
+        const followingResponse = await fetch(`${base_url}/follow/getFollowing/${userData._id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (followingResponse.ok) {
+          const followingResult = await followingResponse.json();
+          if (followingResult.status) {
+            setProfileInfo(prev => ({
+              ...prev,
+              Following: followingResult.followingCount?.toString() || '0'
+            }));
+          }
+        }
       } else {
         throw new Error('No profile data found');
       }

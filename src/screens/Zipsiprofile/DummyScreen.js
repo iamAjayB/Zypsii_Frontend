@@ -77,7 +77,7 @@ const DummyScreen = ({ navigation }) => {
           const user = userStr ? JSON.parse(userStr) : null;
 
           // Fetch post count
-          const postCountResponse = await fetch(`${base_url}/post/listing/postCount`, {
+          const postCountResponse = await fetch(`${base_url}/post/listing/postCount?userId=${user._id}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
