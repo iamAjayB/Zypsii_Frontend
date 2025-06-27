@@ -106,15 +106,27 @@ const DummyScreen = ({ navigation, route }) => {
           'Content-Type': 'application/json'
         }
       });
-console.log('postCountResponse', postCountResponse);
+      
+      console.log('postCountResponse status:', postCountResponse.status);
+      console.log('postCountResponse ok:', postCountResponse.ok);
+      
       if (postCountResponse.ok) {
         const postCountResult = await postCountResponse.json();
+        console.log('postCountResult:', postCountResult);
+        
         if (postCountResult.success) {
+          console.log('Setting post count to:', postCountResult.postCountData);
           setProfileInfo(prev => ({
             ...prev,
             Posts: postCountResult.postCountData?.toString() || '0'
           }));
+        } else {
+          console.error('Post count API returned success: false:', postCountResult.message);
         }
+      } else {
+        console.error('Post count API failed with status:', postCountResponse.status);
+        const errorText = await postCountResponse.text();
+        console.error('Post count API error response:', errorText);
       }
 
       // Fetch followers count

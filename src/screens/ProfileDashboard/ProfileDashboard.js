@@ -81,14 +81,25 @@ function ProfileDashboard(props) {
           }
         });
 
+        console.log('ProfileDashboard - postCountResponse status:', postCountResponse.status);
+        console.log('ProfileDashboard - postCountResponse ok:', postCountResponse.ok);
+
         if (postCountResponse.ok) {
           const postCountResult = await postCountResponse.json();
+          console.log('ProfileDashboard - postCountResult:', postCountResult);
           if (postCountResult.success) {
+            console.log('ProfileDashboard - Setting post count to:', postCountResult.postCountData);
             setProfileInfo(prev => ({
               ...prev,
               Posts: postCountResult.postCountData?.toString() || '0'
             }));
+          } else {
+            console.error('ProfileDashboard - Post count API returned success: false:', postCountResult.message);
           }
+        } else {
+          console.error('ProfileDashboard - Post count API failed with status:', postCountResponse.status);
+          const errorText = await postCountResponse.text();
+          console.error('ProfileDashboard - Post count API error response:', errorText);
         }
 
         // Fetch followers count
