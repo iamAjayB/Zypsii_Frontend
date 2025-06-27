@@ -267,9 +267,13 @@ function ProductCard(props) {
       </View>
 
       {/* Product Information */}
-      <View style={styles.botCardContainer}>
+      <View style={[styles.botCardContainer, { minHeight: 40, justifyContent: 'center' }]}> 
         <View style={styles.botSubCardContainer}>
-          <Text style={{ color: colors.fontMainColor }} numberOfLines={1}>
+          <Text 
+            style={{ color: colors.fontMainColor, fontSize: 15, fontWeight: 'bold' }} 
+            numberOfLines={1} 
+            ellipsizeMode="tail"
+          >
             {props.name}
           </Text>
         </View>
