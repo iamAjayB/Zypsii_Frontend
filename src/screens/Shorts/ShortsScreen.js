@@ -699,7 +699,6 @@ function ShortsScreen({ route, navigation }) {
     const isSupportedFormat = videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
     const isHttpUrl = url.startsWith('http');
     const isHttpsUrl = url.startsWith('https');
-    
     return (isSupportedFormat || isHttpUrl || isHttpsUrl) && !url.toLowerCase().endsWith('.3gp');
   };
 

@@ -25,11 +25,7 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [isPayerModalVisible, setIsPayerModalVisible] = useState(false);
-  const [selectedParticipants, setSelectedParticipants] = useState(
-    participants?.reduce((acc, p) => ({ ...acc, [p?.memberId?._id]: true }), {}) || {}
-  );
-  console.log('Participants data:', participants);
-  console.log('Selected participants:', selectedParticipants);
+  const [selectedParticipants, setSelectedParticipants] = useState({});
 
   const categories = [
     'Food',
@@ -39,6 +35,19 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
     'Shopping',
     'Other'
   ];
+
+  // Initialize all participants as selected when modal opens or participants change
+  useEffect(() => {
+    if (participants && participants.length > 0) {
+      const initialSelected = {};
+      participants.forEach(participant => {
+        if (participant?.memberId?._id) {
+          initialSelected[participant.memberId._id] = true;
+        }
+      });
+      setSelectedParticipants(initialSelected);
+    }
+  }, [participants, visible]);
 
   useEffect(() => {
     if (participants?.length && totalAmount) {
@@ -84,6 +93,16 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
     setSplitAmounts({});
     setIsSubmitting(false);
     setErrors({});
+    // Reset selected participants to include all members
+    if (participants && participants.length > 0) {
+      const initialSelected = {};
+      participants.forEach(participant => {
+        if (participant?.memberId?._id) {
+          initialSelected[participant.memberId._id] = true;
+        }
+      });
+      setSelectedParticipants(initialSelected);
+    }
   };
 
   const handleNext = () => {
@@ -305,6 +324,35 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
     });
   };
 
+  const handleSelectAll = () => {
+    const allSelected = {};
+    participants.forEach(participant => {
+      if (participant?.memberId?._id) {
+        allSelected[participant.memberId._id] = true;
+      }
+    });
+    setSelectedParticipants(allSelected);
+    
+    // Recalculate split amounts if total amount is set
+    if (totalAmount) {
+      const selectedCount = participants.length;
+      if (selectedCount > 0) {
+        const equalShare = (parseFloat(totalAmount) / selectedCount).toFixed(2);
+        const newSplitAmounts = {};
+        participants.forEach(participant => {
+          newSplitAmounts[participant.memberId?._id] = {
+            value: equalShare,
+            isManuallyEdited: false
+          };
+        });
+        setSplitAmounts(newSplitAmounts);
+      }
+    }
+  };
+
+  const isAllSelected = participants && participants.length > 0 && 
+    Object.values(selectedParticipants).filter(Boolean).length === participants.length;
+
   const renderStep1 = () => (
     <View style={styles.step1Container}>
       <ScrollView style={styles.modalBody}>
@@ -408,13 +456,22 @@ const AddExpenseModal = ({ visible, onClose, onAddExpense, participants, splitId
 
         <View style={styles.splitListContainer}>
           <View style={styles.splitListHeader}>
-            <Text style={styles.splitListTitle}>
-              {`${Object.values(selectedParticipants).filter(Boolean).length} Selected`}
-            </Text>
-            <TouchableOpacity onPress={handleSplitEqually} style={styles.splitEquallyButton}>
-              <Ionicons name="refresh" size={20} color={colors.Zypsii_color} />
-              <Text style={styles.splitEquallyText}>Split Equally</Text>
-            </TouchableOpacity>
+            <View style={styles.splitListHeaderLeft}>
+              <Text style={styles.splitListTitle}>
+                {`${Object.values(selectedParticipants).filter(Boolean).length} of ${participants?.length || 0} Selected`}
+              </Text>
+             
+            </View>
+            <View style={styles.splitListHeaderRight}>
+              <TouchableOpacity onPress={handleSelectAll} style={styles.selectAllButton}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.Zypsii_color} />
+                <Text style={styles.selectAllText}>Select All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSplitEqually} style={styles.splitEquallyButton}>
+                <Ionicons name="refresh" size={20} color={colors.Zypsii_color} />
+                <Text style={styles.splitEquallyText}>Split Equally</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {participants?.map((participant) => (
@@ -677,9 +734,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  splitListHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   splitListTitle: {
     fontSize: 14,
     color: colors.fontSecondColor,
+  },
+  allSelectedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  allSelectedText: {
+    fontSize: 12,
+    color: colors.success,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  splitListHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: `${colors.Zypsii_color}15`,
+  },
+  selectAllText: {
+    color: colors.Zypsii_color,
+    fontWeight: '600',
+    fontSize: 12,
+    marginLeft: 4,
   },
   splitEquallyButton: {
     flexDirection: 'row',

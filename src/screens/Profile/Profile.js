@@ -68,7 +68,7 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* Images Section */}
         <FlatList
-          data={images['th-large']} // Always show the default images
+          data={images['th-large']} 
           keyExtractor={(item) => item.id}
           numColumns={3}
           renderItem={({ item }) => (

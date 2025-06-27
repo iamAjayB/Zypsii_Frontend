@@ -77,7 +77,7 @@ const DummyScreen = ({ navigation }) => {
           const user = userStr ? JSON.parse(userStr) : null;
 
           // Fetch post count
-          const postCountResponse = await fetch(`${base_url}/post/listing/postCount`, {
+          const postCountResponse = await fetch(`${base_url}/post/listing/postCount?userId=${user._id}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -85,15 +85,25 @@ const DummyScreen = ({ navigation }) => {
             }
           });
 
+          console.log('DummyScreen - postCountResponse status:', postCountResponse.status);
+          console.log('DummyScreen - postCountResponse ok:', postCountResponse.ok);
+
           if (postCountResponse.ok) {
             const postCountResult = await postCountResponse.json();
-            console.log('Post count response:', postCountResult);
+            console.log('DummyScreen - Post count response:', postCountResult);
             if (postCountResult.success) {
+              console.log('DummyScreen - Setting post count to:', postCountResult.postCountData);
               setProfileInfo(prev => ({
                 ...prev,
                 Posts: postCountResult.postCountData?.toString() || '0'
               }));
+            } else {
+              console.error('DummyScreen - Post count API returned success: false:', postCountResult.message);
             }
+          } else {
+            console.error('DummyScreen - Post count API failed with status:', postCountResponse.status);
+            const errorText = await postCountResponse.text();
+            console.error('DummyScreen - Post count API error response:', errorText);
           }
           // Fetch followers count
           const followersResponse = await fetch(`${base_url}/follow/getFollowers/${user._id}`, {
