@@ -45,10 +45,11 @@ function CombinedDestinations() {
     nextPageToken: null,
     hasMore: true
   });
+  const [selectedTag, setSelectedTag] = useState(route.params?.outDoorTag || categories[0]);
 
   useStatusBar(colors.btncolor, 'light-content');
 
-  const fetchDestinations = async (viewType, nextPageToken = null) => {
+  const fetchDestinations = async (viewType, nextPageToken = null, tag = null) => {
     try {
       setLoading(true);
       const accessToken = await AsyncStorage.getItem('accessToken');
@@ -61,6 +62,11 @@ function CombinedDestinations() {
         url += '?bestDestination=true';
       } else if (viewType === VIEW_TYPES.NEAREST) {
         url += '?type=nearest';
+      }
+
+      // Add tag filter if present
+      if (tag) {
+        url += (url.includes('?') ? '&' : '?') + `type=${encodeURIComponent(tag)}&keyword=${encodeURIComponent(tag)}`;
       }
 
       if (nextPageToken) {
@@ -104,43 +110,57 @@ function CombinedDestinations() {
   };
 
   useEffect(() => {
-    fetchDestinations(selectedView);
-  }, [selectedView]);
+    fetchDestinations(selectedView, null, selectedTag);
+  }, [selectedView, selectedTag]);
 
   const loadMore = () => {
     if (pagination.hasMore && !loading) {
-      fetchDestinations(selectedView, pagination.nextPageToken);
+      fetchDestinations(selectedView, pagination.nextPageToken, selectedTag);
     }
   };
 
+  //Back button control
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <TouchableOpacity
-        style={styles.backButton}
+        style={styles.backButtonCustom}
         onPress={() => navigation.goBack()}
       >
-        <MaterialIcons name="arrow-back" size={24} color={colors.fontMainColor} />
+        <MaterialIcons name="arrow-back" size={22} color="#fff" />
       </TouchableOpacity>
-      <TextDefault style={styles.headerTitle}>Where to Go</TextDefault>
+      <TextDefault style={styles.headerTitleCustom}>Where to Go</TextDefault>
       <View style={styles.headerRight} />
     </View>
   );
 
   const renderCategories = () => (
-    <View style={styles.categoriesContainer}>
-      <TextDefault textColor={colors.fontMainColor} H5 bold style={styles.categoriesTitle}>
-        Categories
-      </TextDefault>
-      <View style={styles.categoriesWrapper}>
-        {categories.map((category, idx) => (
-          <View
-            key={category}
-            style={styles.categoryTag}
+    <View style={{ marginVertical: 10 }}>
+      <FlatList
+        data={categories}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item}
+        contentContainerStyle={{ paddingHorizontal: 8, marginBottom: 10 }}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={{
+              backgroundColor: selectedTag === item ? colors.Zypsii_color : '#f2f2f2',
+              borderRadius: 20,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              marginRight: 8,
+            }}
+            onPress={() => setSelectedTag(item)}
           >
-            <Text style={styles.categoryText}>{category}</Text>
-          </View>
-        ))}
-      </View>
+            <Text style={{
+              color: selectedTag === item ? '#fff' : '#333',
+              fontSize: 15,
+            }}>
+              {item}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 
@@ -191,7 +211,12 @@ const CARD_WIDTH = (width - CARD_HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white
+    backgroundColor: colors.white,
+    elevation: 2,
+    shadowColor: colors.Zypsii_color,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -200,26 +225,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     paddingVertical: scale(12),
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderColor,
-    elevation: 2,
-    shadowColor: '#000',
+    elevation: 4,
+    shadowColor: colors.Zypsii_color,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+  },
+  backButtonCustom: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.Zypsii_color,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: colors.Zypsii_color,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
     shadowRadius: 4,
   },
-  backButton: {
-    padding: scale(8),
-    backgroundColor: colors.grayBackground,
-    borderRadius: scale(8),
-  },
-  headerTitle: {
-    fontSize: scale(18),
+  headerTitleCustom: {
+    fontSize: scale(15),
     fontWeight: 'bold',
     color: colors.fontMainColor,
     flex: 1,
     textAlign: 'center',
     marginHorizontal: scale(16),
+    letterSpacing: 0.5,
   },
   headerRight: {
     width: scale(40),
@@ -258,6 +290,13 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     marginBottom: CARD_GAP,
     marginRight: CARD_GAP,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: colors.Zypsii_color,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.13,
+    shadowRadius: 8,
   },
   loaderContainer: {
     padding: scale(20),
