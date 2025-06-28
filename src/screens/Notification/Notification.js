@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from "../../utils";
+import { base_url } from '../../utils/base_url';
 
 const Notification = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("All");
@@ -23,7 +24,7 @@ const Notification = ({ navigation }) => {
         throw new Error('User not authenticated. Please login again.');
       }
 
-      const response = await fetch('http://192.168.1.6:3030/user/getNotifications?read=false&offset=0&limit=10', {        headers: {
+      const response = await fetch(`${base_url}/user/getNotifications?read=false&offset=0&limit=10`, {        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }

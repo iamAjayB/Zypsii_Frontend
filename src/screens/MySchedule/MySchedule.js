@@ -168,6 +168,7 @@ function MySchedule({ navigation }) {
             
             return {
               id: item._id,
+              _id: item._id,
               title: item.tripName,
               from: item.locationDetails?.[0]?.address || 'Unknown location',
               to: item.locationDetails?.[1]?.address || 'Unknown location',
@@ -179,6 +180,9 @@ function MySchedule({ navigation }) {
               imageUrl: item.bannerImage,
               locationDetails: item.locationDetails,
               createdAt: createdAt.toISOString().split('T')[0],
+              createdBy: item.createdBy,
+              joined: item.joined || false,
+              riders: '0 riders',
               rawLocation: {
                 from: {
                   latitude: item.location?.from?.latitude || 0,

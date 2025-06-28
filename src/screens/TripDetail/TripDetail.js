@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, FlatList, ScrollView, Modal, ActivityIndicator, Alert } from 'react-native';
 import { BackHeader, BottomTab } from '../../components';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { alignment, colors } from '../../utils';
@@ -15,6 +15,16 @@ const TripDetail = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [placeDescriptions, setPlaceDescriptions] = useState([]);
   const [isBackButtonLoading, setIsBackButtonLoading] = useState(false);
+  
+  // New state for members management
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [membersList, setMembersList] = useState([]);
+  const [requestsList, setRequestsList] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [processingRequest, setProcessingRequest] = useState(null); // Track which request is being processed
   
   // Default values if tripData is undefined
   const defaultTripData = {
@@ -64,7 +74,19 @@ const TripDetail = ({ route, navigation }) => {
 
   useEffect(() => {
     getPlaceDescriptions();
+    getCurrentUser();
   }, []);
+
+  const getCurrentUser = async () => {
+    try {
+      const user = await AsyncStorage.getItem('user');
+      if (user) {
+        setCurrentUser(JSON.parse(user));
+      }
+    } catch (error) {
+      console.error('Error getting current user:', error);
+    }
+  };
 
   const getPlaceDescriptions = async () => {
     try {
@@ -90,6 +112,143 @@ const TripDetail = ({ route, navigation }) => {
     } catch (error) {
       console.error('Error fetching place descriptions:', error);
       setPlaceDescriptions([]);
+    }
+  };
+
+  // Fetch joined members
+  const fetchJoinedMembers = async () => {
+    try {
+      setLoadingMembers(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) {
+        console.error('Authentication required');
+        return;
+      }
+
+      console.log('Fetching joined members...');
+      console.log('API URL:', `${base_url}/schedule/listing/join-request/filter?accepted=true`);
+
+      const response = await fetch(`${base_url}/schedule/listing/join-request/filter?accepted=true`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Joined members response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Joined members response data:', data);
+      
+      if (response.ok && data.success) {
+        setMembersList(data.data || []);
+        console.log('Joined members loaded:', data.data?.length || 0);
+      } else {
+        console.error('Failed to fetch joined members:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching joined members:', error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  // Fetch requested members
+  const fetchRequestedMembers = async () => {
+    try {
+      setLoadingRequests(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) {
+        console.error('Authentication required');
+        return;
+      }
+
+      console.log('Fetching requested members...');
+      console.log('API URL:', `${base_url}/schedule/listing/join-requested/users-list`);
+
+      const response = await fetch(`${base_url}/schedule/listing/join-requested/users-list`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Requested members response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Requested members response data:', data);
+      
+      if (response.ok && data.success) {
+        setRequestsList(data.data || []);
+        console.log('Requested members loaded:', data.data?.length || 0);
+      } else {
+        console.error('Failed to fetch requested members:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching requested members:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  // Handle accept/reject request
+  const handleAcceptRejectRequest = async (requestId, accept) => {
+    try {
+      console.log(`Processing ${accept ? 'accept' : 'reject'} request for ID:`, requestId);
+      
+      // Set loading state for this specific request
+      setProcessingRequest(requestId);
+      
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) {
+        console.error('Authentication required');
+        Alert.alert('Error', 'Authentication required. Please login again.');
+        return;
+      }
+
+      const requestBody = {
+        requestId,
+        accept
+      };
+
+      console.log('Request payload:', requestBody);
+      console.log('API URL:', `${base_url}/schedule/join-request/accept-reject`);
+
+      const response = await fetch(`${base_url}/schedule/join-request/accept-reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (response.ok && data.status) {
+        const action = accept ? 'accepted' : 'rejected';
+        console.log(`Request ${action} successfully`);
+        Alert.alert('Success', `Request ${action} successfully`);
+        
+        // Refresh the requests list
+        await fetchRequestedMembers();
+      } else {
+        const errorMessage = data.message || 'Failed to process request';
+        console.error('Failed to process request:', errorMessage);
+        Alert.alert('Error', errorMessage);
+      }
+    } catch (error) {
+      console.error('Error processing request:', error);
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      // Clear loading state
+      setProcessingRequest(null);
     }
   };
 
@@ -156,6 +315,95 @@ const TripDetail = ({ route, navigation }) => {
     (_, i) => i + 1
   ).filter(day => getLocationsForDay(day).length > 0);
 
+  const openMembersModal = () => {
+    setShowMembersModal(true);
+    fetchJoinedMembers();
+  };
+
+  const openRequestsModal = () => {
+    setShowRequestsModal(true);
+    fetchRequestedMembers();
+  };
+
+  // Render member item
+  const renderMemberItem = ({ item }) => (
+    <View style={styles.memberItem}>
+      <Image
+        source={{ 
+          uri: item.requestUserId?.avatar || 'https://via.placeholder.com/50'
+        }}
+        style={styles.memberAvatar}
+      />
+      <View style={styles.memberInfo}>
+        <Text style={styles.memberName}>
+          {item.requestUserId?.fullName || item.requestUserId?.userName || 'Unknown User'}
+        </Text>
+        <Text style={styles.memberUsername}>
+          @{item.requestUserId?.userName || 'username'}
+        </Text>
+      </View>
+      <View style={styles.memberStatus}>
+        <Text style={styles.acceptedText}>✓ Accepted</Text>
+      </View>
+    </View>
+  );
+
+  // Render request item
+  const renderRequestItem = ({ item }) => {
+    const isProcessing = processingRequest === item._id;
+    
+    return (
+      <View style={styles.memberItem}>
+        <Image
+          source={{ 
+            uri: item.requestUserId?.avatar || 'https://via.placeholder.com/50'
+          }}
+          style={styles.memberAvatar}
+        />
+        <View style={styles.memberInfo}>
+          <Text style={styles.memberName}>
+            {item.requestUserId?.fullName || item.requestUserId?.userName || 'Unknown User'}
+          </Text>
+          <Text style={styles.memberUsername}>
+            @{item.requestUserId?.userName || 'username'}
+          </Text>
+        </View>
+        <View style={styles.requestActions}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton, 
+              styles.acceptButton,
+              isProcessing && styles.disabledButton
+            ]}
+            onPress={() => handleAcceptRejectRequest(item._id, true)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.actionButtonText}>Accept</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.actionButton, 
+              styles.rejectButton,
+              isProcessing && styles.disabledButton
+            ]}
+            onPress={() => handleAcceptRejectRequest(item._id, false)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.actionButtonText}>Reject</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderDayPlan = ({ item, index, arrayLength }) => (
     <View style={[styles.dayPlanItem, { borderColor: enhancedColors.border }]}>
       <View style={styles.iconAndLineContainer}>
@@ -182,6 +430,19 @@ const TripDetail = ({ route, navigation }) => {
       </View>
     </View>
   );
+
+  // Check if current user is the schedule creator
+  const isScheduleCreator = currentUser && safeTripData.createdBy && 
+    (currentUser._id === safeTripData.createdBy._id || currentUser._id === safeTripData.createdBy);
+
+  // Debug logging
+  console.log('TripDetail Debug Info:', {
+    currentUser: currentUser,
+    tripCreatedBy: safeTripData.createdBy,
+    isScheduleCreator: isScheduleCreator,
+    currentUserId: currentUser?._id,
+    tripCreatorId: safeTripData.createdBy?._id || safeTripData.createdBy
+  });
 
   const styles = StyleSheet.create({
     container: { 
@@ -481,7 +742,158 @@ const TripDetail = ({ route, navigation }) => {
     },
     BottomTab: {
       zIndex: 5,
-    }
+    },
+    // New styles for members management
+    membersSection: {
+      marginBottom: 24,
+      paddingHorizontal: 20,
+    },
+    membersButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    memberButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: enhancedColors.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      elevation: 2,
+      shadowColor: enhancedColors.primary,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+    },
+    memberButtonText: {
+      color: enhancedColors.surface,
+      fontSize: 14,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: enhancedColors.surface,
+      borderRadius: 12,
+      width: '90%',
+      maxHeight: '80%',
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: enhancedColors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: enhancedColors.text,
+    },
+    closeButton: {
+      padding: 4,
+    },
+    modalLoading: {
+      padding: 40,
+      alignItems: 'center',
+    },
+    modalList: {
+      padding: 16,
+    },
+    // Member item styles
+    memberItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      backgroundColor: enhancedColors.surface,
+      borderRadius: 8,
+      marginBottom: 8,
+      elevation: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    },
+    memberAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginRight: 12,
+    },
+    memberInfo: {
+      flex: 1,
+    },
+    memberName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: enhancedColors.text,
+    },
+    memberUsername: {
+      fontSize: 14,
+      color: enhancedColors.textSecondary,
+      marginTop: 2,
+    },
+    memberStatus: {
+      alignItems: 'flex-end',
+    },
+    acceptedText: {
+      fontSize: 12,
+      color: enhancedColors.success,
+      fontWeight: '600',
+    },
+    requestActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    actionButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+      minWidth: 60,
+      alignItems: 'center',
+    },
+    acceptButton: {
+      backgroundColor: enhancedColors.success,
+    },
+    rejectButton: {
+      backgroundColor: enhancedColors.error,
+    },
+    actionButtonText: {
+      color: enhancedColors.surface,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    emptyState: {
+      alignItems: 'center',
+      padding: 40,
+    },
+    emptyStateText: {
+      fontSize: 16,
+      color: enhancedColors.textSecondary,
+      marginTop: 12,
+      textAlign: 'center',
+    },
+    debugText: {
+      fontSize: 12,
+      color: enhancedColors.textSecondary,
+      marginTop: 12,
+      textAlign: 'center',
+    },
   });
 
   return (
@@ -536,10 +948,29 @@ const TripDetail = ({ route, navigation }) => {
             </Text>
           </View>
 
-          <View style={styles.tripPlanSection}>
-           
-          
+          {/* Members Management Section - Always show for testing */}
+          <View style={styles.membersSection}>
+            
+            <View style={styles.membersButtons}>
+              <TouchableOpacity
+                style={styles.memberButton}
+                onPress={openMembersModal}
+              >
+                <Icon name="account-group" size={20} color={enhancedColors.surface} />
+                <Text style={styles.memberButtonText}>View Joined Members</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.memberButton}
+                onPress={openRequestsModal}
+              >
+                <Icon name="account-clock" size={20} color={enhancedColors.surface} />
+                <Text style={styles.memberButtonText}>View Requests</Text>
+              </TouchableOpacity>
+            </View>
+            
+          </View>
 
+          <View style={styles.tripPlanSection}>
             <View style={styles.daysTabs}>
               {daysWithLocations.map((day) => (
                 <TouchableOpacity
@@ -630,6 +1061,91 @@ const TripDetail = ({ route, navigation }) => {
           <Text style={styles.buttonText}>🗺️ Map</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Joined Members Modal */}
+      <Modal
+        visible={showMembersModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowMembersModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Joined Members</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowMembersModal(false)}
+              >
+                <Icon name="close" size={24} color={enhancedColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            {loadingMembers ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={enhancedColors.primary} />
+                <Text style={styles.emptyStateText}>Loading members...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={membersList}
+                renderItem={renderMemberItem}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={styles.modalList}
+                ListEmptyComponent={
+                  <View style={styles.emptyState}>
+                    <Icon name="account-group-outline" size={48} color={enhancedColors.textSecondary} />
+                    <Text style={styles.emptyStateText}>No joined members yet</Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Requested Members Modal */}
+      <Modal
+        visible={showRequestsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRequestsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Join Requests</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowRequestsModal(false)}
+              >
+                <Icon name="close" size={24} color={enhancedColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            {loadingRequests ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={enhancedColors.primary} />
+                <Text style={styles.emptyStateText}>Loading requests...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={requestsList}
+                renderItem={renderRequestItem}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={styles.modalList}
+                ListEmptyComponent={
+                  <View style={styles.emptyState}>
+                    <Icon name="account-clock-outline" size={48} color={enhancedColors.textSecondary} />
+                    <Text style={styles.emptyStateText}>No pending requests</Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <BottomTab screen="WhereToGo" style={styles.BottomTab} />
     </View>
   );

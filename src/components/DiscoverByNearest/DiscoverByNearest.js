@@ -58,7 +58,7 @@ const DiscoverByNearest = (props) => {
     
     // If coordinates are missing, try to search by place name
     if ((latitude === undefined || longitude === undefined) && props.title) {
-      console.log('Auto-searching coordinates for:', props.title);
+     // console.log('Auto-searching coordinates for:', props.title);
       const coordinates = await searchPlaceCoordinates(props.title);
       if (coordinates) {
         console.log('Found coordinates for', props.title, ':', coordinates);

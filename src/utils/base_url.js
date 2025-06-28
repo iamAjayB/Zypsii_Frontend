@@ -2,18 +2,34 @@ import { View, Text } from 'react-native'
 import React from 'react'
 import Constants from 'expo-constants'
 
+// const ENV = {
+//   development: {
+//     SERVER_URL: 'https://zypsii.com/api',
+//   },
+//   staging: {
+//     SERVER_URL: 'https://zypsii.com/api',
+//   },
+//   production: {
+//     SERVER_URL: 'https://zypsii.com/api',
+//   },
+//   socket: {
+//     SOCKET_URL: 'https://zypsii.com',
+//   }
+// }
+
+
 const ENV = {
   development: {
-    SERVER_URL: 'https://zypsii.com/api',
+    SERVER_URL: 'http://192.168.2.10:3030',
   },
   staging: {
-    SERVER_URL: 'https://zypsii.com/api',
+    SERVER_URL: 'http://192.168.2.10:3030',
   },
   production: {
-    SERVER_URL: 'https://zypsii.com/api',
+    SERVER_URL: 'http://192.168.2.10:3030',
   },
   socket: {
-    SOCKET_URL: 'https://zypsii.com',
+    SOCKET_URL: 'http://192.168.2.10:3030',
   }
 }
 

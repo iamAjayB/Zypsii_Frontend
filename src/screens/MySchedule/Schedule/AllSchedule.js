@@ -20,12 +20,15 @@ const AllSchedule = ({item, isFromProfile}) => {
   const [fromPlace, setFromPlace] = useState('');
   const [toPlace, setToPlace] = useState('');
   const [isJoined, setIsJoined] = useState(item.joined || false);
+  const [joinRequestSent, setJoinRequestSent] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [followers, setFollowers] = useState([]);
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const [shareCount, setShareCount] = useState(item.shareCount || 0);
   const socketRef = useRef(null);
   const isShareRoomJoined = useRef(false);
+
+  console.log('AllSchedule item:', item);
 
   useEffect(() => {
     const loadUserId = async () => {
@@ -311,12 +314,13 @@ const AllSchedule = ({item, isFromProfile}) => {
     }
 
     if (!isShareRoomJoined.current) {
+      const creatorId = item.createdBy?._id || item.createdBy || item.creatorId;
       const roomData = {
         moduleId: item._id || item.id,
         moduleType: 'schedules',
-        moduleCreatedBy: item.createdBy,
+        moduleCreatedBy: creatorId,
         senderId: currentUserId,
-        receiverId: item.createdBy || item.creatorId
+        receiverId: creatorId
       };
       console.log('Joining share room with data:', roomData);
       socketRef.current.emit('join-share-room', roomData);
@@ -326,12 +330,13 @@ const AllSchedule = ({item, isFromProfile}) => {
   const leaveShareRoom = () => {
     if (socketRef.current?.connected && isShareRoomJoined.current) {
       console.log('Leaving share room for schedule:', item._id || item.id);
+      const creatorId = item.createdBy?._id || item.createdBy || item.creatorId;
       socketRef.current.emit('leave-share-room', {
         moduleId: item._id || item.id,
         moduleType: 'schedules',
-        moduleCreatedBy: item.createdBy,
+        moduleCreatedBy: creatorId,
         senderId: currentUserId,
-        receiverId: item.createdBy || item.creatorId
+        receiverId: creatorId
       });
       isShareRoomJoined.current = false;
     }
@@ -410,12 +415,13 @@ const AllSchedule = ({item, isFromProfile}) => {
       }
 
       // Check if we have the required IDs
-      if (!item.createdBy || !item.id) {
+      const creatorId = item.createdBy?._id || item.createdBy || item.creatorId;
+      if (!creatorId || !item._id) {
         showToast('Missing required schedule information', 'error');
         return;
       }
 
-      const response = await fetch(`${base_url}/schedule/delete/descriptions/${item.id}/${item.createdBy}`, {
+      const response = await fetch(`${base_url}/schedule/delete/descriptions/${item._id || item.id}/${creatorId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -476,11 +482,22 @@ const AllSchedule = ({item, isFromProfile}) => {
       }
 
       const postData = {
-        scheduleId: item.id,
-        scheduleCreatedBy: parsedUser._id
+        scheduleId: item._id || item.id,
+        scheduleCreatedBy: item.createdBy?._id || item.createdBy || item.creatorId
       };
 
-      const response = await fetch(`${base_url}/schedule/join-un-join`, {
+      //console.log('Join request postData:', postData);
+      //console.log('item.createdBy:', item.createdBy);
+      //console.log('item.createdBy._id:', item.createdBy?._id);
+      //console.log('Final scheduleCreatedBy:', item.createdBy?._id || item.createdBy || item.creatorId);
+
+      // Validate that we have the required data
+      if (!postData.scheduleCreatedBy) {
+        showToast('Schedule creator information is missing', 'error');
+        return;
+      }
+
+      const response = await fetch(`${base_url}/schedule/join-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -492,11 +509,16 @@ const AllSchedule = ({item, isFromProfile}) => {
       const data = await response.json();
 
       if (response.ok && data.status) {
-        setIsJoined(!isJoined);
-        showToast(
-          isJoined ? 'Successfully unjoined the schedule' : 'Successfully joined the schedule',
-          'success'
-        );
+        // Handle the response based on whether request was already sent
+        if (data.alreadyRequested) {
+          showToast('Join request already sent', 'info');
+          setJoinRequestSent(true);
+        } else {
+          showToast('Join request sent successfully', 'success');
+          setJoinRequestSent(true);
+        }
+        // Update the UI to show that a request has been sent
+        setIsJoined(true);
       } else {
         if (data.message === 'Internal Server Error') {
           showToast('Unable to process request. Please try again later.', 'error');
@@ -505,19 +527,19 @@ const AllSchedule = ({item, isFromProfile}) => {
         }
       }
     } catch (error) {
-      console.error('Join/Unjoin Error:', error);
+      console.error('Join Request Error:', error);
       showToast('Network error. Please check your connection and try again.', 'error');
     } finally {
       setIsJoining(false);
     }
   };
 
-  const isScheduleCreator = currentUserId === item.creatorId;
+  const isScheduleCreator = currentUserId === (item.createdBy?._id || item.createdBy || item.creatorId);
 
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        key={item.id}
+        key={item._id || item.id}
         style={[styles.card, { padding: 4 }]}
         onPress={() => handleCardPress(item)}
       >
@@ -567,14 +589,14 @@ const AllSchedule = ({item, isFromProfile}) => {
             style={[
               styles.joinedButton, 
               isJoining && styles.disabledButton,
-              isJoined && styles.joinedButtonActive
+              (isJoined || joinRequestSent) && styles.joinedButtonActive
             ]} 
             onPress={handleJoin}
-            disabled={isJoining}
+            disabled={isJoining || joinRequestSent}
           >
             {isJoining ? (
               <ActivityIndicator size="small" color={colors.white} />
-            ) : isJoined ? (
+            ) : (isJoined || joinRequestSent) ? (
               <Icon name="checkmark-circle" size={20} color={colors.white} />
             ) : (
               <Text style={styles.joinedText}>Join</Text>

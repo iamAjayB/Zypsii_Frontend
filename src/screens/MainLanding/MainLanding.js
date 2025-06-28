@@ -159,7 +159,7 @@ function MainLanding(props) {
       // Use the location from user data if available, otherwise use default
       const latitude = user?.location?.latitude || userLocation.latitude;
       const longitude = user?.location?.longitude || userLocation.longitude;
-     console.log(accessToken)
+     //console.log(accessToken)
       const response = await fetch(`${base_url}/user/update-live-location`, {
         method: 'POST',
         headers: {
@@ -424,6 +424,7 @@ function MainLanding(props) {
         if (Array.isArray(data?.data)) {
           setAll_schedule(data.data.map(item => ({
             id: item._id,
+            _id: item._id,
             title: item.tripName,
             from: (item.locationDetails?.[0]?.address 
               ? item.locationDetails[0].address.slice(0, 5) + '...'
@@ -439,6 +440,7 @@ function MainLanding(props) {
             imageUrl: item.bannerImage,
             locationDetails: item.locationDetails,
             createdAt: new Date(item.createdAt).toLocaleDateString(),
+            createdBy: item.createdBy,
             riders: '0 riders',
             joined: false,
             rawLocation: {
@@ -1706,10 +1708,7 @@ function MainLanding(props) {
             keyExtractor={(item) => item.id}
             horizontal={true}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('DestinationDetail', { id: item.id })}
-                activeOpacity={0.8}
-              >
+             
                 <DiscoverByNearest
                   styles={styles.itemCardContainer}
                   {...item}
@@ -1720,7 +1719,7 @@ function MainLanding(props) {
                   distance={item.distanceInKilometer}
                   location={item.location}
                 />
-              </TouchableOpacity>
+             
             )}
             onEndReached={loadMoreAdventurePlaces}
             onEndReachedThreshold={0.2}
@@ -1766,7 +1765,15 @@ function MainLanding(props) {
             data={mountainPlaces}
             renderItem={({ item, index }) => (
               <TouchableOpacity
-                onPress={() => navigation.navigate('DestinationDetail', { id: item.id })}
+                onPress={() => navigation.navigate('Destination', { 
+                  id: item.id,
+                  image: item.image,
+                  cardTitle: item.name,
+                  subtitle: item.address,
+                  rating: item.rating,
+                  distance: item.distanceInKilometer,
+                  location: item.location
+                })}
                 activeOpacity={0.8}
               >
                 <DiscoverByNearest
@@ -1851,7 +1858,15 @@ function MainLanding(props) {
             data={viewPointsPlaces}
             renderItem={({ item, index }) => (
               <TouchableOpacity
-                onPress={() => navigation.navigate('DestinationDetail', { id: item.id })}
+                onPress={() => navigation.navigate('Destination', { 
+                  id: item.id,
+                  image: item.image,
+                  cardTitle: item.name,
+                  subtitle: item.address,
+                  rating: item.rating,
+                  distance: item.distanceInKilometer,
+                  location: item.location
+                })}
                 activeOpacity={0.8}
               >
                 <DiscoverByNearest
