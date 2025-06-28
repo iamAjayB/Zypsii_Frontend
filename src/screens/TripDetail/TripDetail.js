@@ -330,7 +330,7 @@ const TripDetail = ({ route, navigation }) => {
     <View style={styles.memberItem}>
       <Image
         source={{ 
-          uri: item.requestUserId?.avatar || 'https://via.placeholder.com/50'
+          uri: item.requestUserId?.profilePicture || 'https://via.placeholder.com/50'
         }}
         style={styles.memberAvatar}
       />
