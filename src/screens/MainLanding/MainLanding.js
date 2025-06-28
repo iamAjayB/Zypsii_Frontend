@@ -47,7 +47,7 @@ const { height, width } = Dimensions.get('window');
 
 const outdoorsAndAdventureTags = [
    "Beach",
-   "Beaches",
+
    "Mountains",
    "Hiking",
    "Trekking",
