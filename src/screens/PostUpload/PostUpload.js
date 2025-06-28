@@ -224,7 +224,6 @@ function PostUpload() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.fontMainColor} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Post</Text>
       </View>
 
       <ScrollView>
