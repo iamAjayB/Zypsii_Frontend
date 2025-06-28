@@ -25,7 +25,6 @@ import { colors } from '../../utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video } from 'expo-av';
 import AllSchedule from '../MySchedule/Schedule/AllSchedule';
-import { MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -761,10 +760,6 @@ const ChatScreen = ({ route, navigation }) => {
                     style={styles.sharedContentImage}
                     resizeMode="cover"
                   />
-                  {/* Add a subtle overlay to indicate it's clickable */}
-                  <View style={styles.clickableOverlay}>
-                    <MaterialIcons name="open-in-new" size={16} color="#fff" />
-                  </View>
                 </View>
               )}
               <View style={styles.sharedContentTextContainer}>
@@ -776,9 +771,6 @@ const ChatScreen = ({ route, navigation }) => {
                     {sharedContent.mediaType} • {sharedContent.postType}
                   </Text>
                 )}
-                <Text style={styles.sharedContentSubtext}>
-                  Tap to view full post
-                </Text>
               </View>
             </View>
           );
@@ -851,13 +843,6 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const handleSharedContentPress = async (moduleType, content) => {
-    if (!content) {
-      console.error('No content provided to handleSharedContentPress');
-      return;
-    }
-
-    console.log(`Handling shared content press for moduleType: ${moduleType}`, JSON.stringify(content, null, 2));
-
     if (moduleType === 'schedules') {
       console.log('Original schedule content:', JSON.stringify(content, null, 2));
       
@@ -922,48 +907,6 @@ const ChatScreen = ({ route, navigation }) => {
         scheduleData: content,
         allSchedules: [] // You can pass all schedules if available
       });
-    } else if (moduleType === 'post') {
-      try {
-        console.log('Processing post content:', JSON.stringify(content, null, 2));
-        
-        // Transform post data to match PostDetail's expected format
-        const postData = {
-          id: content._id || content.id,
-          postTitle: content.postTitle || content.title || 'Untitled Post',
-          imageUrl: content.mediaUrl || content.images || [],
-          mediaType: content.mediaType || 'image',
-          likes: String(content.likesCount || content.likes || 0),
-          comments: String(content.commentsCount || content.comments || 0),
-          shares: String(content.shareCount || content.shares || 0),
-          postType: content.postType || 'Public',
-          createdBy: content.createdBy || '',
-          createdAt: content.createdAt || '',
-          updatedAt: content.updatedAt || '',
-          tags: Array.isArray(content.tags) ? content.tags : []
-        };
-
-        console.log('Post data being passed to PostDetail:', JSON.stringify(postData, null, 2));
-
-        // Validate required fields
-        if (!postData.id) {
-          console.error('Post ID is missing');
-          Alert.alert('Error', 'Post data is incomplete');
-          return;
-        }
-
-        // Navigate to PostDetail screen
-        console.log('Navigating to PostDetail with post data');
-        navigation.navigate('PostDetail', { post: postData });
-      } catch (error) {
-        console.error('Error processing post data:', error);
-        Alert.alert('Error', 'Failed to open post details');
-        // Fallback to preview modal
-        setPreviewModal({
-          visible: true,
-          content,
-          type: moduleType
-        });
-      }
     } else if (moduleType === 'shorts') {
       navigation.navigate('Shorts', {
         userShorts: [content],
@@ -1901,16 +1844,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
-  },
-  clickableOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });
 
